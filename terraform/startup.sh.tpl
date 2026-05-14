@@ -50,4 +50,18 @@ systemctl daemon-reload
 systemctl enable zoobot
 systemctl start zoobot
 
+# ── Daily backup (2am, keep 3 latest copies) ──────────────────────────────────
+cat > /usr/local/bin/zoo_backup.sh << 'BACKUPEOF'
+#!/bin/bash
+BACKUP_DIR=/opt/zoo_bot/backups
+DB=/opt/zoo_bot/zoo_bot.db
+
+mkdir -p "$$BACKUP_DIR"
+cp "$$DB" "$$BACKUP_DIR/zoo_bot_$$(date +%Y%m%d_%H%M%S).db"
+ls -t "$$BACKUP_DIR"/*.db | tail -n +4 | xargs -r rm
+BACKUPEOF
+
+chmod +x /usr/local/bin/zoo_backup.sh
+echo "0 2 * * * root /usr/local/bin/zoo_backup.sh" > /etc/cron.d/zoo_backup
+
 echo "=== Done. Bot is running ==="
