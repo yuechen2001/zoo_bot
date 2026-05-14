@@ -1,0 +1,11 @@
+project_id     = "your-gcp-project-id"
+region         = "us-east1"
+zone           = "us-east1-b"
+ssh_user       = "ubuntu"
+ssh_public_key = "ssh-rsa AAAA..."   # paste contents of ~/.ssh/id_rsa.pub
+
+bot_token      = "your-telegram-bot-token"
+admin_ids      = "537356731"
+
+# For private repo: "https://YOUR_GITHUB_TOKEN@github.com/yuechen2001/zoo_bot.git"
+repo_url       = "https://github.com/yuechen2001/zoo_bot.git"
