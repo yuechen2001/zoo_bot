@@ -1,0 +1,23 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GCP VM
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.GCP_VM_IP }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/zoo_bot
+            git pull origin main
+            ./venv/bin/pip install -r requirements.txt --quiet
+            sudo systemctl restart zoobot
+            sleep 2
+            sudo systemctl is-active --quiet zoobot && echo "Bot restarted successfully" || (echo "Bot failed to start" && sudo journalctl -u zoobot -n 20 && exit 1)
