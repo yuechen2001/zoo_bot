@@ -68,6 +68,13 @@ def init_db():
                 streak_window INTEGER,
                 checked_in_at TEXT DEFAULT (datetime('now'))
             );
+
+            CREATE TABLE IF NOT EXISTS user_achievements (
+                user_id         INTEGER REFERENCES users(user_id),
+                achievement_key TEXT NOT NULL,
+                earned_at       TEXT DEFAULT (datetime('now')),
+                PRIMARY KEY (user_id, achievement_key)
+            );
         """)
         _seed_species(conn)
 
@@ -207,3 +214,30 @@ def get_ready_breeds():
             "JOIN species so ON so.species_id = bq.offspring_species_id "
             "WHERE bq.collected = 0 AND bq.ready_at <= datetime('now')",
         ).fetchall()
+
+
+# ── Achievements ──────────────────────────────────────────────────────────────
+
+def get_user_achievements(user_id):
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT * FROM user_achievements WHERE user_id = ? ORDER BY earned_at",
+            (user_id,),
+        ).fetchall()
+
+
+def get_achievement_keys(user_id) -> set:
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT achievement_key FROM user_achievements WHERE user_id = ?",
+            (user_id,),
+        ).fetchall()
+        return {r["achievement_key"] for r in rows}
+
+
+def award_achievement(user_id, key):
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO user_achievements (user_id, achievement_key) VALUES (?, ?)",
+            (user_id, key),
+        )

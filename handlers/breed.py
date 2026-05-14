@@ -3,6 +3,7 @@ import datetime
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
+from achievements import check_achievements
 from game.breed_engine import resolve_offspring, calc_breed_ready_at, calc_breed_cost, breed_duration_str
 from keyboards import breed_collect_keyboard
 
@@ -17,7 +18,7 @@ async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     # /breed collect
     if ctx.args and ctx.args[0].lower() == "collect":
-        await _collect_breed(update, tg_id)
+        await _collect_breed(update, tg_id, ctx)
         return
 
     # /breed <a> <b>
@@ -94,7 +95,7 @@ async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def _collect_breed(update, tg_id):
+async def _collect_breed(update, tg_id, ctx=None):
     pending = db.get_pending_breed(tg_id)
 
     if not pending:
@@ -133,9 +134,11 @@ async def _collect_breed(update, tg_id):
         f"Use `/name <number> <name>` to give it a nickname.",
         parse_mode="Markdown",
     )
+    if ctx:
+        await check_achievements(tg_id, "breed", ctx)
 
 
 async def breed_collect_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    await _collect_breed(query, query.from_user.id)
+    await _collect_breed(query, query.from_user.id, ctx)

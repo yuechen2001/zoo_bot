@@ -7,6 +7,7 @@ from game.catch_engine import roll_encounter, pick_species, roll_catch
 from keyboards import catch_keyboard
 from species_data import RARITY_LABELS
 from config import CATCH_EXPIRY_MINUTES
+from achievements import check_achievements
 
 
 async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -113,6 +114,7 @@ async def catch_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             f"Use `/name <number> <name>` to give it a nickname.",
             parse_mode="Markdown",
         )
+        await check_achievements(tg_id, "catch", ctx)
     else:
         await query.answer("It escaped...")
         await query.edit_message_text(

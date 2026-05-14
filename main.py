@@ -5,6 +5,7 @@ from config import BOT_TOKEN, PROMPT_INTERVAL_MINUTES
 from db import init_db
 from scheduler import tick
 from handlers import (
+    achievements_command,
     admin_command,
     start_command,
     zoo_command,
@@ -53,7 +54,8 @@ def main():
     app.add_handler(CommandHandler("pause",     pause_command))
     app.add_handler(CommandHandler("resume",    resume_command))
     app.add_handler(CommandHandler("help",      help_command))
-    app.add_handler(CommandHandler("admin",     admin_command))
+    app.add_handler(CommandHandler("admin",        admin_command))
+    app.add_handler(CommandHandler("achievements", achievements_command))
     app.add_handler(CallbackQueryHandler(handle_callback))
 
     app.job_queue.run_repeating(

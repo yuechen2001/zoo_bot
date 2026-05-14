@@ -5,6 +5,7 @@ from telegram.ext import ContextTypes
 import db
 from game.mood_engine import calc_coins, EMOJI_LABELS, EMOJI_HAPPINESS_DELTA
 from config import CHECKIN_WINDOW_MINUTES
+from achievements import check_achievements
 
 
 async def moodstart_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -135,10 +136,12 @@ async def mood_checkin_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(
         f"{emoji} *{query.from_user.first_name}* — {label}\n\n"
         f"💰 +{coins} coins{multiplier_note}\n"
-        f"🔥 Streak: {new_streak} windows",
+        f"🔥 Streak: {new_streak} window{'s' if new_streak != 1 else ''}",
         parse_mode="Markdown",
     )
     await query.answer(f"+{coins} coins!")
+
+    await check_achievements(tg_id, "checkin", ctx)
 
 
 async def help_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

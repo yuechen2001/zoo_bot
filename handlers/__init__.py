@@ -1,3 +1,4 @@
+from .achievements import achievements_command
 from .admin import admin_command
 from .start import start_command
 from .zoo import zoo_command
@@ -26,4 +27,5 @@ __all__ = [
     "mood_checkin_callback",
     "help_command",
     "admin_command",
+    "achievements_command",
 ]
