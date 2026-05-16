@@ -1,7 +1,20 @@
 from telegram import Update
 from telegram.ext import ContextTypes
+import datetime
 import db
 from game.mood_engine import streak_label
+
+
+def _time_remaining(ready_at_str: str) -> str:
+    ready = datetime.datetime.fromisoformat(ready_at_str)
+    delta = ready - datetime.datetime.utcnow()
+    if delta.total_seconds() <= 0:
+        return "ready!"
+    hours, rem = divmod(int(delta.total_seconds()), 3600)
+    minutes = rem // 60
+    if hours:
+        return f"{hours}h {minutes}m"
+    return f"{minutes}m"
 
 ROW_LEN = 9
 BORDER_A = "🌿"
