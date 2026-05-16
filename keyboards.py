@@ -32,6 +32,15 @@ def breed_collect_keyboard():
     )
 
 
+def enclosure_upgrade_keyboard(habitats_with_cost: list[tuple[str, int]]):
+    """habitats_with_cost: list of (habitat_key, upgrade_cost) for enclosures not at max level."""
+    buttons = [
+        [InlineKeyboardButton(f"⬆️ {habitat} ({cost} 🪙)", callback_data=f"enc_upgrade_{habitat}")]
+        for habitat, cost in habitats_with_cost
+    ]
+    return InlineKeyboardMarkup(buttons)
+
+
 def trade_keyboard(trade_id: int, recipient_id: int):
     return InlineKeyboardMarkup(
         [

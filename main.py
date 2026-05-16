@@ -4,7 +4,7 @@ from telegram.ext import Application, CallbackQueryHandler, CommandHandler
 
 from config import BOT_TOKEN, PROMPT_INTERVAL_MINUTES
 from db import init_db
-from scheduler import tick, cleanup
+from scheduler import tick, cleanup, enclosure_income
 from handlers import (
     achievements_command,
     admin_command,
@@ -31,6 +31,8 @@ from handlers import (
     trade_callback,
     invest_command,
     sell_command,
+    enclosures_command,
+    enclosure_upgrade_callback,
 )
 
 logging.basicConfig(
@@ -60,6 +62,7 @@ async def post_init(application):
             BotCommand("trade", "Offer an animal trade to another player"),
             BotCommand("invest", "Invest coins for a 25% return after 24h"),
             BotCommand("sell", "Sell an animal for coins"),
+            BotCommand("enclosures", "View and upgrade your enclosures"),
             BotCommand("help", "Show all commands"),
         ]
     )
@@ -77,6 +80,8 @@ async def handle_callback(update, ctx):
         await trivia_callback(update, ctx)
     elif data.startswith("trade_"):
         await trade_callback(update, ctx)
+    elif data.startswith("enc_upgrade_"):
+        await enclosure_upgrade_callback(update, ctx)
     else:
         await update.callback_query.answer("Unknown action")
 
@@ -106,6 +111,7 @@ def main():
     app.add_handler(CommandHandler("trade", trade_command))
     app.add_handler(CommandHandler("invest", invest_command))
     app.add_handler(CommandHandler("sell", sell_command))
+    app.add_handler(CommandHandler("enclosures", enclosures_command))
     app.add_handler(CallbackQueryHandler(handle_callback))
 
     app.job_queue.run_repeating(
@@ -119,6 +125,12 @@ def main():
         interval=60,
         first=10,
         job_kwargs={"misfire_grace_time": 30},
+    )
+    app.job_queue.run_repeating(
+        enclosure_income,
+        interval=3600,
+        first=3600,
+        job_kwargs={"misfire_grace_time": 300},
     )
 
     print(f"🦁 Zoo Bot is running! Mood prompts every {PROMPT_INTERVAL_MINUTES} min.")
