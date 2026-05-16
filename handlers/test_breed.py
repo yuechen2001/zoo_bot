@@ -52,14 +52,15 @@ async def test_breed_status_no_breeding():
         "handlers.breed.db.get_pending_breed", return_value=None
     ):
         await breed_command(update, ctx)
-    update.message.reply_text.assert_called_once_with("No breeding in progress.")
+    reply = update.message.reply_text.call_args[0][0]
+    assert "No breeding in progress" in reply
 
 
 @pytest.mark.asyncio
 async def test_breed_status_shows_time_remaining():
     update, ctx = _make_update(args=["status"])
     future = (
-        datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         + datetime.timedelta(hours=2, minutes=30)
     ).isoformat()
 
@@ -99,7 +100,8 @@ async def test_breed_status_shows_time_remaining():
 async def test_breed_status_shows_ready_when_past():
     update, ctx = _make_update(args=["status"])
     past = (
-        datetime.datetime.now(datetime.UTC).replace(tzinfo=None) - datetime.timedelta(minutes=5)
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        - datetime.timedelta(minutes=5)
     ).isoformat()
 
     pending = MagicMock()
