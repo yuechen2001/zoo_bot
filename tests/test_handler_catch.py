@@ -68,6 +68,12 @@ async def test_catch_deducts_encounter_fee_upfront():
     ), patch("handlers.catch.roll_encounter", return_value="common"), patch(
         "handlers.catch.pick_species", return_value=species
     ), patch(
+        "handlers.catch.db.get_species_habitat", return_value="woodland"
+    ), patch(
+        "handlers.catch.db.get_animal_count_by_habitat", return_value=1
+    ), patch(
+        "handlers.catch.db.get_enclosure_level", return_value=1
+    ), patch(
         "handlers.catch.catch_keyboard", return_value=MagicMock()
     ):
         await catch_command(update, ctx)
@@ -104,6 +110,12 @@ async def test_catch_stores_pending_catch_in_context():
         "handlers.catch.db.get_conn", return_value=cm
     ), patch("handlers.catch.roll_encounter", return_value="rare"), patch(
         "handlers.catch.pick_species", return_value=species
+    ), patch(
+        "handlers.catch.db.get_species_habitat", return_value="woodland"
+    ), patch(
+        "handlers.catch.db.get_animal_count_by_habitat", return_value=0
+    ), patch(
+        "handlers.catch.db.get_enclosure_level", return_value=1
     ), patch(
         "handlers.catch.catch_keyboard", return_value=MagicMock()
     ):

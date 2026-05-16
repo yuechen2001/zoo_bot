@@ -32,6 +32,20 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("No animals found... try again!")
         return
 
+    # Check capacity before charging anything
+    habitat = db.get_species_habitat(species["species_id"])
+    used = db.get_animal_count_by_habitat(tg_id, habitat)
+    enc_level = db.get_enclosure_level(tg_id, habitat)
+    capacity = ENCLOSURE_LEVELS[enc_level]["capacity"]
+    if used >= capacity:
+        h = HABITATS[habitat]
+        await update.message.reply_text(
+            f"Your {h['emoji']} *{h['name']}* enclosure is full! (Lv {enc_level}, {used}/{capacity})\n\n"
+            f"/sell an animal or use /enclosures to upgrade.",
+            parse_mode="Markdown",
+        )
+        return
+
     with db.get_conn() as conn:
         conn.execute(
             "UPDATE users SET coins = coins - ? WHERE user_id = ?",
@@ -113,6 +127,22 @@ async def catch_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await query.answer(f"Not enough coins! Need {cost}.")
         return
 
+    # Re-check capacity before charging — it may have filled up since the offer
+    habitat = db.get_species_habitat(pending["species_id"])
+    used = db.get_animal_count_by_habitat(tg_id, habitat)
+    enc_level = db.get_enclosure_level(tg_id, habitat)
+    capacity = ENCLOSURE_LEVELS[enc_level]["capacity"]
+    if used >= capacity:
+        h = HABITATS[habitat]
+        await query.answer("Enclosure full!", show_alert=True)
+        await query.edit_message_text(
+            f"Your {h['emoji']} *{h['name']}* enclosure is full! (Lv {enc_level}, {used}/{capacity})\n\n"
+            f"/sell an animal or use /enclosures to upgrade.",
+            parse_mode="Markdown",
+        )
+        ctx.user_data.pop("pending_catch", None)
+        return
+
     with db.get_conn() as conn:
         conn.execute(
             "UPDATE users SET coins = coins - ? WHERE user_id = ?",
@@ -123,19 +153,6 @@ async def catch_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     ctx.user_data.pop("pending_catch", None)
 
     if success:
-        habitat = db.get_species_habitat(pending["species_id"])
-        used = db.get_animal_count_by_habitat(tg_id, habitat)
-        enc_level = db.get_enclosure_level(tg_id, habitat)
-        capacity = ENCLOSURE_LEVELS[enc_level]["capacity"]
-        if used >= capacity:
-            h = HABITATS[habitat]
-            await query.edit_message_text(
-                f"🎉 You caught the {pending['emoji']} *{pending['name']}*... "
-                f"but your {h['emoji']} *{h['name']}* enclosure is full! (Lv {enc_level}, {used}/{capacity})\n\n"
-                f"Use /enclosures to upgrade before catching another one.",
-                parse_mode="Markdown",
-            )
-            return
 
         animal_id = str(uuid.uuid4())
         with db.get_conn() as conn:
