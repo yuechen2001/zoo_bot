@@ -1,6 +1,11 @@
 import datetime
 from unittest.mock import patch
-from game.breed_engine import calc_breed_cost, breed_duration_str, calc_breed_ready_at, resolve_offspring
+from game.breed_engine import (
+    calc_breed_cost,
+    breed_duration_str,
+    calc_breed_ready_at,
+    resolve_offspring,
+)
 
 
 class TestCalcBreedCost:
@@ -86,21 +91,27 @@ class TestResolveOffspring:
         # random[0]=0.5 → no bump (>0.10); random[1]=0.3 → picks higher (< 0.7)
         with patch("game.breed_engine.random.random", side_effect=[0.5, 0.3]):
             species_id = resolve_offspring("common", "rare", conn)
-        row = conn.execute("SELECT rarity FROM species WHERE species_id=?", (species_id,)).fetchone()
+        row = conn.execute(
+            "SELECT rarity FROM species WHERE species_id=?", (species_id,)
+        ).fetchone()
         assert row["rarity"] == "rare"
 
     def test_no_bump_picks_lower_rarity(self, conn):
         # random[0]=0.5 → no bump; random[1]=0.9 → picks lower (>= 0.7)
         with patch("game.breed_engine.random.random", side_effect=[0.5, 0.9]):
             species_id = resolve_offspring("common", "rare", conn)
-        row = conn.execute("SELECT rarity FROM species WHERE species_id=?", (species_id,)).fetchone()
+        row = conn.execute(
+            "SELECT rarity FROM species WHERE species_id=?", (species_id,)
+        ).fetchone()
         assert row["rarity"] == "common"
 
     def test_bump_on_common_common_gives_rare(self, conn):
         # random[0]=0.05 → bump (< 0.10); common → rare
         with patch("game.breed_engine.random.random", return_value=0.05):
             species_id = resolve_offspring("common", "common", conn)
-        row = conn.execute("SELECT rarity FROM species WHERE species_id=?", (species_id,)).fetchone()
+        row = conn.execute(
+            "SELECT rarity FROM species WHERE species_id=?", (species_id,)
+        ).fetchone()
         assert row["rarity"] == "rare"
 
     def test_legendary_cannot_bump_further(self, conn):
@@ -108,10 +119,14 @@ class TestResolveOffspring:
         # Falls to else branch: random[1]=0.3 → picks higher = legendary
         with patch("game.breed_engine.random.random", side_effect=[0.05, 0.3]):
             species_id = resolve_offspring("legendary", "legendary", conn)
-        row = conn.execute("SELECT rarity FROM species WHERE species_id=?", (species_id,)).fetchone()
+        row = conn.execute(
+            "SELECT rarity FROM species WHERE species_id=?", (species_id,)
+        ).fetchone()
         assert row["rarity"] == "legendary"
 
     def test_returns_valid_species_id(self, conn):
         species_id = resolve_offspring("common", "common", conn)
-        row = conn.execute("SELECT species_id FROM species WHERE species_id=?", (species_id,)).fetchone()
+        row = conn.execute(
+            "SELECT species_id FROM species WHERE species_id=?", (species_id,)
+        ).fetchone()
         assert row is not None

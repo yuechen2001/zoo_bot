@@ -8,7 +8,8 @@ def conn():
     """In-memory SQLite DB with schema + species seeded. Used by game logic tests."""
     c = sqlite3.connect(":memory:")
     c.row_factory = sqlite3.Row
-    c.executescript("""
+    c.executescript(
+        """
         CREATE TABLE species (
             species_id     INTEGER PRIMARY KEY AUTOINCREMENT,
             name           TEXT NOT NULL,
@@ -61,7 +62,8 @@ def conn():
             user_id     INTEGER,
             claimed_at  TEXT NOT NULL
         );
-    """)
+    """
+    )
     for s in SPECIES:
         c.execute(
             "INSERT INTO species (name, emoji, rarity, catch_rate, catch_cost, hunger_decay, breed_time_hrs) "

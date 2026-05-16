@@ -31,9 +31,11 @@ def _make_animal(
 def _mock_breed_conn(breeding_pairs=None):
     """Return a mock db.get_conn() that returns given breeding pairs."""
     rows = []
-    for pa, pb in (breeding_pairs or []):
+    for pa, pb in breeding_pairs or []:
         row = MagicMock()
-        row.__getitem__ = MagicMock(side_effect=lambda k, _pa=pa, _pb=pb: _pa if k == "parent_a" else _pb)
+        row.__getitem__ = MagicMock(
+            side_effect=lambda k, _pa=pa, _pb=pb: _pa if k == "parent_a" else _pb
+        )
         rows.append(row)
 
     inner = MagicMock()
@@ -45,6 +47,7 @@ def _mock_breed_conn(breeding_pairs=None):
 
 
 # ── render_zoo ────────────────────────────────────────────────────────────────
+
 
 def test_render_zoo_empty():
     text = render_zoo("Alice", [], 100, 0)
@@ -80,7 +83,9 @@ def test_render_zoo_no_happiness_shown():
 
 def test_render_zoo_breeding_lock_shown():
     animal = _make_animal(animal_id="a1", nickname="Fido", is_breeding=0)
-    with patch("handlers.zoo.db.get_conn", return_value=_mock_breed_conn(breeding_pairs=[("a1", "a2")])):
+    with patch(
+        "handlers.zoo.db.get_conn", return_value=_mock_breed_conn(breeding_pairs=[("a1", "a2")])
+    ):
         text = render_zoo("Alice", [animal], 100, 0)
 
     assert "🔒" in text
@@ -115,7 +120,9 @@ def test_render_zoo_position_numbers_sequential():
     animals = [
         _make_animal(animal_id="a1", nickname="One"),
         _make_animal(animal_id="a2", species_id=2, species_name="Frog", emoji="🐸", nickname="Two"),
-        _make_animal(animal_id="a3", species_id=3, species_name="Cat", emoji="🐱", nickname="Three"),
+        _make_animal(
+            animal_id="a3", species_id=3, species_name="Cat", emoji="🐱", nickname="Three"
+        ),
     ]
     with patch("handlers.zoo.db.get_conn", return_value=_mock_breed_conn()):
         text = render_zoo("Alice", animals, 100, 0)

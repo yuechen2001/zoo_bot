@@ -136,6 +136,7 @@ async def mood_checkin_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     multiplier_note = ""
     if new_streak >= 4:
         from game.mood_engine import get_streak_multiplier
+
         mult = get_streak_multiplier(new_streak)
         multiplier_note = f" ({mult}x streak bonus)"
 

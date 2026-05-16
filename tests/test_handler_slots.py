@@ -13,6 +13,7 @@ def _make_conn_mock():
 
 # ── constants ──────────────────────────────────────────────────────────────────
 
+
 def test_spin_cost_is_10():
     assert SPIN_COST == 10
 
@@ -34,6 +35,7 @@ def test_symbols_are_unique():
 
 
 # ── validation ─────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_slots_rejects_group_chat():
@@ -76,6 +78,7 @@ async def test_slots_rejects_insufficient_coins():
 
 # ── payout paths ──────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_slots_three_of_a_kind_pays_win3():
     update = MagicMock()
@@ -85,9 +88,9 @@ async def test_slots_three_of_a_kind_pays_win3():
 
     after_user = {"coins": 100 - SPIN_COST + WIN_3}
 
-    with patch("handlers.slots.db.get_user", side_effect=[{"coins": 100}, after_user]), \
-         patch("handlers.slots.db.get_conn", return_value=_make_conn_mock()), \
-         patch("handlers.slots.random.choice", return_value="🐼"):
+    with patch("handlers.slots.db.get_user", side_effect=[{"coins": 100}, after_user]), patch(
+        "handlers.slots.db.get_conn", return_value=_make_conn_mock()
+    ), patch("handlers.slots.random.choice", return_value="🐼"):
         await slots_command(update, MagicMock())
 
     reply = update.message.reply_text.call_args[0][0]
@@ -104,9 +107,9 @@ async def test_slots_two_of_a_kind_pays_win2():
 
     after_user = {"coins": 100 - SPIN_COST + WIN_2}
 
-    with patch("handlers.slots.db.get_user", side_effect=[{"coins": 100}, after_user]), \
-         patch("handlers.slots.db.get_conn", return_value=_make_conn_mock()), \
-         patch("handlers.slots.random.choice", side_effect=["🐼", "🐼", "🐭"]):
+    with patch("handlers.slots.db.get_user", side_effect=[{"coins": 100}, after_user]), patch(
+        "handlers.slots.db.get_conn", return_value=_make_conn_mock()
+    ), patch("handlers.slots.random.choice", side_effect=["🐼", "🐼", "🐭"]):
         await slots_command(update, MagicMock())
 
     reply = update.message.reply_text.call_args[0][0]
@@ -123,9 +126,9 @@ async def test_slots_no_match_loses_spin_cost():
 
     after_user = {"coins": 100 - SPIN_COST}
 
-    with patch("handlers.slots.db.get_user", side_effect=[{"coins": 100}, after_user]), \
-         patch("handlers.slots.db.get_conn", return_value=_make_conn_mock()), \
-         patch("handlers.slots.random.choice", side_effect=["🐭", "🐸", "🐱"]):
+    with patch("handlers.slots.db.get_user", side_effect=[{"coins": 100}, after_user]), patch(
+        "handlers.slots.db.get_conn", return_value=_make_conn_mock()
+    ), patch("handlers.slots.random.choice", side_effect=["🐭", "🐸", "🐱"]):
         await slots_command(update, MagicMock())
 
     reply = update.message.reply_text.call_args[0][0]
@@ -141,9 +144,9 @@ async def test_slots_reply_shows_three_reels():
 
     after_user = {"coins": 90}
 
-    with patch("handlers.slots.db.get_user", side_effect=[{"coins": 100}, after_user]), \
-         patch("handlers.slots.db.get_conn", return_value=_make_conn_mock()), \
-         patch("handlers.slots.random.choice", side_effect=["🐭", "🐸", "🐱"]):
+    with patch("handlers.slots.db.get_user", side_effect=[{"coins": 100}, after_user]), patch(
+        "handlers.slots.db.get_conn", return_value=_make_conn_mock()
+    ), patch("handlers.slots.random.choice", side_effect=["🐭", "🐸", "🐱"]):
         await slots_command(update, MagicMock())
 
     reply = update.message.reply_text.call_args[0][0]

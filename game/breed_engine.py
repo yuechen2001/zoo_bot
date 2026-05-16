@@ -9,7 +9,7 @@ def resolve_offspring(rarity_a: str, rarity_b: str, conn) -> int:
     10% chance of bumping up one rarity tier; otherwise inherits one parent's rarity.
     """
     higher = max(rarity_a, rarity_b, key=lambda r: RARITY_ORDER.index(r))
-    lower  = min(rarity_a, rarity_b, key=lambda r: RARITY_ORDER.index(r))
+    lower = min(rarity_a, rarity_b, key=lambda r: RARITY_ORDER.index(r))
 
     bump_chance = 0.10
     higher_idx = RARITY_ORDER.index(higher)
@@ -19,9 +19,7 @@ def resolve_offspring(rarity_a: str, rarity_b: str, conn) -> int:
     else:
         offspring_rarity = higher if random.random() < 0.7 else lower
 
-    rows = conn.execute(
-        "SELECT * FROM species WHERE rarity = ?", (offspring_rarity,)
-    ).fetchall()
+    rows = conn.execute("SELECT * FROM species WHERE rarity = ?", (offspring_rarity,)).fetchall()
     return random.choice(rows)["species_id"] if rows else 1
 
 

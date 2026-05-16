@@ -12,9 +12,7 @@ async def start_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     username = user.username or user.first_name
 
     if chat.type == "private":
-        await update.message.reply_text(
-            "Hey! Add me to a group and use /start there. 🦁"
-        )
+        await update.message.reply_text("Hey! Add me to a group and use /start there. 🦁")
         return
 
     db.ensure_user(tg_id, username, chat.id)
@@ -28,9 +26,7 @@ async def start_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     # Give a random starter common animal
     with db.get_conn() as conn:
-        commons = conn.execute(
-            "SELECT * FROM species WHERE rarity = 'common'"
-        ).fetchall()
+        commons = conn.execute("SELECT * FROM species WHERE rarity = 'common'").fetchall()
         starter = random.choice(commons)
         animal_id = str(uuid.uuid4())
         conn.execute(

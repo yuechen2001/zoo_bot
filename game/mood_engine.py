@@ -10,7 +10,7 @@ EMOJI_BASE_COINS = {
 
 EMOJI_HAPPINESS_DELTA = {
     "😢": -5,
-    "😐":  0,
+    "😐": 0,
     "🙂": +3,
     "😄": +5,
     "🤩": +10,

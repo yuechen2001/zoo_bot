@@ -56,11 +56,13 @@ async def admin_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     elif sub == "tick":
         from scheduler import tick
+
         await tick(ctx)
         await update.message.reply_text("✅ Tick fired.")
 
     elif sub == "prompt":
         from keyboards import mood_keyboard
+
         now = __import__("datetime").datetime.utcnow().isoformat()
         with db.get_conn() as conn:
             conn.execute("UPDATE users SET last_prompt_at = ? WHERE user_id = ?", (now, tg_id))
@@ -77,10 +79,13 @@ async def admin_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await _cmd_stats(update)
 
     else:
-        await update.message.reply_text(f"Unknown subcommand: `{sub}`\n\n{_help_text()}", parse_mode="Markdown")
+        await update.message.reply_text(
+            f"Unknown subcommand: `{sub}`\n\n{_help_text()}", parse_mode="Markdown"
+        )
 
 
 # ── Subcommands ───────────────────────────────────────────────────────────────
+
 
 async def _cmd_coins(update, tg_id, args):
     if not args or not args[0].lstrip("-").isdigit():
@@ -88,10 +93,14 @@ async def _cmd_coins(update, tg_id, args):
         return
     amount = int(args[0])
     with db.get_conn() as conn:
-        conn.execute("UPDATE users SET coins = MAX(0, coins + ?) WHERE user_id = ?", (amount, tg_id))
+        conn.execute(
+            "UPDATE users SET coins = MAX(0, coins + ?) WHERE user_id = ?", (amount, tg_id)
+        )
     user = db.get_user(tg_id)
     sign = "+" if amount >= 0 else ""
-    await update.message.reply_text(f"💰 {sign}{amount} coins. Balance: *{user['coins']}* 🪙", parse_mode="Markdown")
+    await update.message.reply_text(
+        f"💰 {sign}{amount} coins. Balance: *{user['coins']}* 🪙", parse_mode="Markdown"
+    )
 
 
 async def _cmd_give(update, tg_id, args):
@@ -105,7 +114,9 @@ async def _cmd_give(update, tg_id, args):
         ).fetchone()
     if not species:
         with db.get_conn() as conn:
-            all_names = [r["name"] for r in conn.execute("SELECT name FROM species ORDER BY name").fetchall()]
+            all_names = [
+                r["name"] for r in conn.execute("SELECT name FROM species ORDER BY name").fetchall()
+            ]
         await update.message.reply_text(
             f"Species `{name}` not found.\nAvailable: {', '.join(all_names)}",
             parse_mode="Markdown",
@@ -129,19 +140,29 @@ async def _cmd_set_stat(update, tg_id, args, stat):
         await update.message.reply_text(f"No animal at position {position}.")
         return
     with db.get_conn() as conn:
-        conn.execute(f"UPDATE animals SET {stat} = ? WHERE animal_id = ?", (value, animal["animal_id"]))
+        conn.execute(
+            f"UPDATE animals SET {stat} = ? WHERE animal_id = ?", (value, animal["animal_id"])
+        )
     name = animal["nickname"] or animal["species_name"]
-    await update.message.reply_text(f"✅ {animal['emoji']} *{name}* {stat} set to {value}.", parse_mode="Markdown")
+    await update.message.reply_text(
+        f"✅ {animal['emoji']} *{name}* {stat} set to {value}.", parse_mode="Markdown"
+    )
 
 
 async def _cmd_reset(update, tg_id):
     with db.get_conn() as conn:
-        animal_ids = [r["animal_id"] for r in conn.execute(
-            "SELECT animal_id FROM animals WHERE user_id = ?", (tg_id,)
-        ).fetchall()]
+        animal_ids = [
+            r["animal_id"]
+            for r in conn.execute(
+                "SELECT animal_id FROM animals WHERE user_id = ?", (tg_id,)
+            ).fetchall()
+        ]
         if animal_ids:
             placeholders = ",".join("?" * len(animal_ids))
-            conn.execute(f"DELETE FROM breeding_queue WHERE parent_a IN ({placeholders}) OR parent_b IN ({placeholders})", animal_ids + animal_ids)
+            conn.execute(
+                f"DELETE FROM breeding_queue WHERE parent_a IN ({placeholders}) OR parent_b IN ({placeholders})",
+                animal_ids + animal_ids,
+            )
         conn.execute("DELETE FROM animals WHERE user_id = ?", (tg_id,))
         conn.execute("DELETE FROM mood_checkins WHERE user_id = ?", (tg_id,))
         conn.execute(
@@ -149,14 +170,18 @@ async def _cmd_reset(update, tg_id):
             "last_prompt_at = NULL, last_checkin_at = NULL, paused_until = NULL WHERE user_id = ?",
             (tg_id,),
         )
-    await update.message.reply_text("🔄 Your data has been reset. Use /start to get a new starter animal.")
+    await update.message.reply_text(
+        "🔄 Your data has been reset. Use /start to get a new starter animal."
+    )
 
 
 async def _cmd_stats(update):
     with db.get_conn() as conn:
         users = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
         animals = conn.execute("SELECT COUNT(*) FROM animals").fetchone()[0]
-        breeding = conn.execute("SELECT COUNT(*) FROM breeding_queue WHERE collected = 0").fetchone()[0]
+        breeding = conn.execute(
+            "SELECT COUNT(*) FROM breeding_queue WHERE collected = 0"
+        ).fetchone()[0]
         checkins = conn.execute("SELECT COUNT(*) FROM mood_checkins").fetchone()[0]
         by_rarity = conn.execute(
             "SELECT s.rarity, COUNT(*) as n FROM animals a "

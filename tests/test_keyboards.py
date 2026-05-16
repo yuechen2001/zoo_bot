@@ -5,9 +5,9 @@ class TestMoodKeyboard:
     def test_callback_data_includes_user_id(self):
         kb = mood_keyboard(12345)
         for btn in kb.inline_keyboard[0]:
-            assert btn.callback_data.startswith("mood_12345_"), (
-                f"Expected mood_12345_<emoji>, got {btn.callback_data}"
-            )
+            assert btn.callback_data.startswith(
+                "mood_12345_"
+            ), f"Expected mood_12345_<emoji>, got {btn.callback_data}"
 
     def test_all_mood_emojis_present(self):
         kb = mood_keyboard(99)

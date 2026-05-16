@@ -19,7 +19,9 @@ def _insert_user_and_animal(db_path, animal_id, hunger, is_breeding=0, group_cha
                 "INSERT OR IGNORE INTO users (user_id, username, group_chat_id) VALUES (1, 'tester', ?)",
                 (group_chat_id,),
             )
-            species_id = conn.execute("SELECT species_id FROM species LIMIT 1").fetchone()["species_id"]
+            species_id = conn.execute("SELECT species_id FROM species LIMIT 1").fetchone()[
+                "species_id"
+            ]
             conn.execute(
                 "INSERT INTO animals (animal_id, user_id, species_id, nickname, hunger, is_breeding) "
                 "VALUES (?, 1, ?, 'Buddy', ?, ?)",
@@ -28,6 +30,7 @@ def _insert_user_and_animal(db_path, animal_id, hunger, is_breeding=0, group_cha
 
 
 # ── starvation ────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_starved_animal_deleted(temp_db):
@@ -90,6 +93,7 @@ async def test_breeding_animal_not_deleted_when_hunger_zero(temp_db):
 
 
 # ── hunger decay ──────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_decay_reduces_hunger(temp_db):

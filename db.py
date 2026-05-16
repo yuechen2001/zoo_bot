@@ -12,7 +12,8 @@ def get_conn():
 
 def init_db():
     with get_conn() as conn:
-        conn.executescript("""
+        conn.executescript(
+            """
             CREATE TABLE IF NOT EXISTS users (
                 user_id            INTEGER PRIMARY KEY,
                 username           TEXT,
@@ -87,7 +88,8 @@ def init_db():
                 user_id     INTEGER REFERENCES users(user_id),
                 claimed_at  TEXT NOT NULL
             );
-        """)
+        """
+        )
         _seed_species(conn)
         # Backfill any animals that have no nickname with their species name
         conn.execute(
@@ -105,7 +107,13 @@ def _seed_species(conn):
         if existing:
             conn.execute(
                 "UPDATE species SET catch_rate=?, catch_cost=?, hunger_decay=?, breed_time_hrs=? WHERE species_id=?",
-                (s["catch_rate"], s["catch_cost"], s["hunger_decay"], s["breed_time_hrs"], existing["species_id"]),
+                (
+                    s["catch_rate"],
+                    s["catch_cost"],
+                    s["hunger_decay"],
+                    s["breed_time_hrs"],
+                    existing["species_id"],
+                ),
             )
         else:
             conn.execute(
@@ -116,6 +124,7 @@ def _seed_species(conn):
 
 
 # ── Users ─────────────────────────────────────────────────────────────────────
+
 
 def get_user(user_id):
     with get_conn() as conn:
@@ -156,12 +165,12 @@ def get_all_users_with_animals():
     """All users who have at least one animal (for stat decay)."""
     with get_conn() as conn:
         return conn.execute(
-            "SELECT DISTINCT u.* FROM users u "
-            "JOIN animals a ON a.user_id = u.user_id"
+            "SELECT DISTINCT u.* FROM users u " "JOIN animals a ON a.user_id = u.user_id"
         ).fetchall()
 
 
 # ── Species ───────────────────────────────────────────────────────────────────
+
 
 def get_species(species_id):
     with get_conn() as conn:
@@ -170,12 +179,11 @@ def get_species(species_id):
 
 def get_species_by_rarity(rarity):
     with get_conn() as conn:
-        return conn.execute(
-            "SELECT * FROM species WHERE rarity = ?", (rarity,)
-        ).fetchall()
+        return conn.execute("SELECT * FROM species WHERE rarity = ?", (rarity,)).fetchall()
 
 
 # ── Animals ───────────────────────────────────────────────────────────────────
+
 
 def get_animals(user_id):
     with get_conn() as conn:
@@ -215,6 +223,7 @@ def add_animal(animal_id, user_id, species_id, nickname=None):
 
 # ── Breeding ──────────────────────────────────────────────────────────────────
 
+
 def get_pending_breed(user_id):
     with get_conn() as conn:
         return conn.execute(
@@ -242,6 +251,7 @@ def get_ready_breeds():
 
 
 # ── Achievements ──────────────────────────────────────────────────────────────
+
 
 def get_user_achievements(user_id):
     with get_conn() as conn:

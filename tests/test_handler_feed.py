@@ -24,6 +24,7 @@ def _make_conn_mock():
 
 # ── Fix 4: multi-animal feed ──────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_feed_no_args_shows_usage():
     update = MagicMock()
@@ -51,9 +52,9 @@ async def test_feed_happy_path_single_animal():
     ctx = MagicMock()
     ctx.args = ["1"]
 
-    with patch("handlers.feed.db.get_user", return_value={"coins": 100}), \
-         patch("handlers.feed.db.get_animal_by_position", return_value=animal), \
-         patch("handlers.feed.db.get_conn", return_value=_make_conn_mock()):
+    with patch("handlers.feed.db.get_user", return_value={"coins": 100}), patch(
+        "handlers.feed.db.get_animal_by_position", return_value=animal
+    ), patch("handlers.feed.db.get_conn", return_value=_make_conn_mock()):
         await feed_command(update, ctx)
 
     reply = update.message.reply_text.call_args[0][0]
@@ -72,8 +73,9 @@ async def test_feed_skips_breeding_animal():
     ctx = MagicMock()
     ctx.args = ["1"]
 
-    with patch("handlers.feed.db.get_user", return_value={"coins": 100}), \
-         patch("handlers.feed.db.get_animal_by_position", return_value=animal):
+    with patch("handlers.feed.db.get_user", return_value={"coins": 100}), patch(
+        "handlers.feed.db.get_animal_by_position", return_value=animal
+    ):
         await feed_command(update, ctx)
 
     reply = update.message.reply_text.call_args[0][0]
@@ -95,9 +97,9 @@ async def test_feed_stops_when_coins_run_out():
     # initial check → has user; loop iter #1 → 10 coins (enough); loop iter #2 → 0 coins (break)
     users = [{"coins": 100}, {"coins": FEED_COST}, {"coins": 0}]
 
-    with patch("handlers.feed.db.get_user", side_effect=users), \
-         patch("handlers.feed.db.get_animal_by_position", return_value=animal), \
-         patch("handlers.feed.db.get_conn", return_value=_make_conn_mock()):
+    with patch("handlers.feed.db.get_user", side_effect=users), patch(
+        "handlers.feed.db.get_animal_by_position", return_value=animal
+    ), patch("handlers.feed.db.get_conn", return_value=_make_conn_mock()):
         await feed_command(update, ctx)
 
     reply = update.message.reply_text.call_args[0][0]
@@ -115,8 +117,9 @@ async def test_feed_missing_position_shows_not_found():
     ctx = MagicMock()
     ctx.args = ["99"]
 
-    with patch("handlers.feed.db.get_user", return_value={"coins": 100}), \
-         patch("handlers.feed.db.get_animal_by_position", return_value=None):
+    with patch("handlers.feed.db.get_user", return_value={"coins": 100}), patch(
+        "handlers.feed.db.get_animal_by_position", return_value=None
+    ):
         await feed_command(update, ctx)
 
     reply = update.message.reply_text.call_args[0][0]
@@ -134,9 +137,9 @@ async def test_feed_hunger_capped_at_100():
     ctx = MagicMock()
     ctx.args = ["1"]
 
-    with patch("handlers.feed.db.get_user", return_value={"coins": 100}), \
-         patch("handlers.feed.db.get_animal_by_position", return_value=animal), \
-         patch("handlers.feed.db.get_conn", return_value=_make_conn_mock()):
+    with patch("handlers.feed.db.get_user", return_value={"coins": 100}), patch(
+        "handlers.feed.db.get_animal_by_position", return_value=animal
+    ), patch("handlers.feed.db.get_conn", return_value=_make_conn_mock()):
         await feed_command(update, ctx)
 
     reply = update.message.reply_text.call_args[0][0]

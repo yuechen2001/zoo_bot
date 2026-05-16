@@ -1,7 +1,13 @@
 import datetime
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from handlers.trivia import trivia_command, trivia_callback, TRIVIA_COOLDOWN_HOURS, COINS_CORRECT, COINS_WRONG
+from handlers.trivia import (
+    trivia_command,
+    trivia_callback,
+    TRIVIA_COOLDOWN_HOURS,
+    COINS_CORRECT,
+    COINS_WRONG,
+)
 
 
 def _make_conn_mock(last_asked=None):
@@ -27,6 +33,7 @@ def _make_trivia_query(user_id: int, option: str = "B"):
 
 # ── trivia_command ─────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_trivia_rejects_group_chat():
     update = MagicMock()
@@ -48,8 +55,9 @@ async def test_trivia_rejects_unknown_user():
 
     ctx = MagicMock()
 
-    with patch("handlers.trivia.db.get_user", return_value=None), \
-         patch("handlers.trivia.db.get_conn", return_value=_make_conn_mock()[0]):
+    with patch("handlers.trivia.db.get_user", return_value=None), patch(
+        "handlers.trivia.db.get_conn", return_value=_make_conn_mock()[0]
+    ):
         await trivia_command(update, ctx)
 
     update.message.reply_text.assert_called_once_with("Use /start first!")
@@ -67,8 +75,9 @@ async def test_trivia_cooldown_blocks_early_repeat():
 
     ctx = MagicMock()
 
-    with patch("handlers.trivia.db.get_user", return_value={"coins": 100}), \
-         patch("handlers.trivia.db.get_conn", return_value=cm):
+    with patch("handlers.trivia.db.get_user", return_value={"coins": 100}), patch(
+        "handlers.trivia.db.get_conn", return_value=cm
+    ):
         await trivia_command(update, ctx)
 
     reply = update.message.reply_text.call_args[0][0]
@@ -77,7 +86,9 @@ async def test_trivia_cooldown_blocks_early_repeat():
 
 @pytest.mark.asyncio
 async def test_trivia_starts_after_cooldown():
-    old = (datetime.datetime.utcnow() - datetime.timedelta(hours=TRIVIA_COOLDOWN_HOURS + 1)).isoformat()
+    old = (
+        datetime.datetime.utcnow() - datetime.timedelta(hours=TRIVIA_COOLDOWN_HOURS + 1)
+    ).isoformat()
     cm, inner = _make_conn_mock(last_asked=old)
 
     update = MagicMock()
@@ -88,13 +99,16 @@ async def test_trivia_starts_after_cooldown():
     ctx = MagicMock()
     ctx.user_data = {}
 
-    with patch("handlers.trivia.db.get_user", return_value={"coins": 100}), \
-         patch("handlers.trivia.db.get_conn", return_value=cm), \
-         patch("handlers.trivia.random.choice", return_value={
-             "q": "What animal is fastest?",
-             "options": ["A) Cat", "B) Cheetah", "C) Horse", "D) Dog"],
-             "answer": "B",
-         }):
+    with patch("handlers.trivia.db.get_user", return_value={"coins": 100}), patch(
+        "handlers.trivia.db.get_conn", return_value=cm
+    ), patch(
+        "handlers.trivia.random.choice",
+        return_value={
+            "q": "What animal is fastest?",
+            "options": ["A) Cat", "B) Cheetah", "C) Horse", "D) Dog"],
+            "answer": "B",
+        },
+    ):
         await trivia_command(update, ctx)
 
     update.message.reply_text.assert_called_once()
@@ -104,6 +118,7 @@ async def test_trivia_starts_after_cooldown():
 
 
 # ── trivia_callback ────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_trivia_callback_rejects_wrong_user():

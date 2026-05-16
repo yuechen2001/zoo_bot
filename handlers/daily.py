@@ -9,7 +9,9 @@ DAILY_COOLDOWN_HOURS = 24
 
 async def daily_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type != "private":
-        await update.message.reply_text("🎮 Mini-games are only available in private chat with the bot.")
+        await update.message.reply_text(
+            "🎮 Mini-games are only available in private chat with the bot."
+        )
         return
 
     tg_id = update.effective_user.id
@@ -25,7 +27,9 @@ async def daily_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         ).fetchone()
 
     if last:
-        elapsed = (datetime.datetime.utcnow() - datetime.datetime.fromisoformat(last["claimed_at"])).total_seconds()
+        elapsed = (
+            datetime.datetime.utcnow() - datetime.datetime.fromisoformat(last["claimed_at"])
+        ).total_seconds()
         remaining_s = DAILY_COOLDOWN_HOURS * 3600 - elapsed
         if remaining_s > 0:
             remaining_h = int(remaining_s // 3600)

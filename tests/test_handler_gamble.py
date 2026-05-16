@@ -23,6 +23,7 @@ def _setup(coins=200, args=None, chat_type="private"):
 
 # ── validation ─────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_gamble_rejects_group_chat():
     update, ctx, user = _setup(chat_type="group")
@@ -78,12 +79,15 @@ async def test_gamble_insufficient_coins_rejected():
 
 # ── win / lose paths ──────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_gamble_win_adds_coins():
     update, ctx, user = _setup(coins=100, args=["50"])
-    with patch("handlers.gamble.db.get_user", return_value=user), \
-         patch("handlers.gamble.db.get_conn", return_value=_make_conn_mock()), \
-         patch("handlers.gamble.random.random", return_value=0.1):  # 0.1 < 0.5 → win
+    with patch("handlers.gamble.db.get_user", return_value=user), patch(
+        "handlers.gamble.db.get_conn", return_value=_make_conn_mock()
+    ), patch(
+        "handlers.gamble.random.random", return_value=0.1
+    ):  # 0.1 < 0.5 → win
         await gamble_command(update, ctx)
 
     reply = update.message.reply_text.call_args[0][0]
@@ -93,9 +97,11 @@ async def test_gamble_win_adds_coins():
 @pytest.mark.asyncio
 async def test_gamble_lose_deducts_coins():
     update, ctx, user = _setup(coins=100, args=["50"])
-    with patch("handlers.gamble.db.get_user", return_value=user), \
-         patch("handlers.gamble.db.get_conn", return_value=_make_conn_mock()), \
-         patch("handlers.gamble.random.random", return_value=0.9):  # 0.9 >= 0.5 → lose
+    with patch("handlers.gamble.db.get_user", return_value=user), patch(
+        "handlers.gamble.db.get_conn", return_value=_make_conn_mock()
+    ), patch(
+        "handlers.gamble.random.random", return_value=0.9
+    ):  # 0.9 >= 0.5 → lose
         await gamble_command(update, ctx)
 
     reply = update.message.reply_text.call_args[0][0]
@@ -109,5 +115,6 @@ def test_max_bet_constant():
 def test_gamble_distribution_is_50_50():
     """random.random() < 0.5 is the win condition — verify it's fair over many trials."""
     import random
+
     wins = sum(1 for _ in range(10_000) if random.random() < 0.5)
     assert 4500 < wins < 5500

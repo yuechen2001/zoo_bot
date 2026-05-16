@@ -39,9 +39,9 @@ class TestRollEncounter:
         for rarity, weight in ENCOUNTER_WEIGHTS.items():
             expected = weight / total_weight
             actual = counts[rarity] / n
-            assert abs(actual - expected) < 0.05, (
-                f"{rarity}: expected ~{expected:.2f}, got {actual:.2f}"
-            )
+            assert (
+                abs(actual - expected) < 0.05
+            ), f"{rarity}: expected ~{expected:.2f}, got {actual:.2f}"
 
 
 class TestPickSpecies:

@@ -34,8 +34,9 @@ async def test_daily_rejects_unknown_user():
     update.effective_user.id = 1
     update.message.reply_text = AsyncMock()
 
-    with patch("handlers.daily.db.get_user", return_value=None), \
-         patch("handlers.daily.db.get_conn", return_value=_make_conn_mock()):
+    with patch("handlers.daily.db.get_user", return_value=None), patch(
+        "handlers.daily.db.get_conn", return_value=_make_conn_mock()
+    ):
         await daily_command(update, MagicMock())
 
     update.message.reply_text.assert_called_once_with("Use /start first!")
@@ -51,8 +52,9 @@ async def test_daily_cooldown_blocks_early_claim():
     update.effective_user.id = 1
     update.message.reply_text = AsyncMock()
 
-    with patch("handlers.daily.db.get_user", return_value={"coins": 100}), \
-         patch("handlers.daily.db.get_conn", return_value=cm):
+    with patch("handlers.daily.db.get_user", return_value={"coins": 100}), patch(
+        "handlers.daily.db.get_conn", return_value=cm
+    ):
         await daily_command(update, MagicMock())
 
     reply = update.message.reply_text.call_args[0][0]
@@ -70,8 +72,9 @@ async def test_daily_grants_coins_on_first_claim():
 
     after_coins = {"coins": 100 + DAILY_COINS}
 
-    with patch("handlers.daily.db.get_user", side_effect=[{"coins": 100}, after_coins]), \
-         patch("handlers.daily.db.get_conn", return_value=cm):
+    with patch("handlers.daily.db.get_user", side_effect=[{"coins": 100}, after_coins]), patch(
+        "handlers.daily.db.get_conn", return_value=cm
+    ):
         await daily_command(update, MagicMock())
 
     reply = update.message.reply_text.call_args[0][0]
@@ -81,7 +84,9 @@ async def test_daily_grants_coins_on_first_claim():
 
 @pytest.mark.asyncio
 async def test_daily_grants_coins_after_cooldown_expires():
-    old = (datetime.datetime.utcnow() - datetime.timedelta(hours=DAILY_COOLDOWN_HOURS + 1)).isoformat()
+    old = (
+        datetime.datetime.utcnow() - datetime.timedelta(hours=DAILY_COOLDOWN_HOURS + 1)
+    ).isoformat()
     cm = _make_conn_mock(last_claimed=old)
 
     update = MagicMock()
@@ -91,8 +96,9 @@ async def test_daily_grants_coins_after_cooldown_expires():
 
     after_coins = {"coins": 200 + DAILY_COINS}
 
-    with patch("handlers.daily.db.get_user", side_effect=[{"coins": 200}, after_coins]), \
-         patch("handlers.daily.db.get_conn", return_value=cm):
+    with patch("handlers.daily.db.get_user", side_effect=[{"coins": 200}, after_coins]), patch(
+        "handlers.daily.db.get_conn", return_value=cm
+    ):
         await daily_command(update, MagicMock())
 
     reply = update.message.reply_text.call_args[0][0]

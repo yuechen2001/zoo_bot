@@ -13,6 +13,7 @@ def _make_conn_mock():
 
 # ── Fix 5: flat -10 encounter fee ─────────────────────────────────────────────
 
+
 def test_encounter_fee_is_10():
     assert ENCOUNTER_FEE == 10
 
@@ -47,8 +48,12 @@ async def test_catch_deducts_encounter_fee_upfront():
     inner.execute = MagicMock(side_effect=capture_execute)
 
     species = {
-        "species_id": 1, "name": "Mouse", "emoji": "🐭", "rarity": "common",
-        "catch_rate": 0.9, "catch_cost": 20,
+        "species_id": 1,
+        "name": "Mouse",
+        "emoji": "🐭",
+        "rarity": "common",
+        "catch_rate": 0.9,
+        "catch_cost": 20,
     }
 
     update = MagicMock()
@@ -58,17 +63,18 @@ async def test_catch_deducts_encounter_fee_upfront():
     ctx = MagicMock()
     ctx.user_data = {}
 
-    with patch("handlers.catch.db.get_user", side_effect=[{"coins": 100}, {"coins": 90}]), \
-         patch("handlers.catch.db.get_conn", return_value=cm), \
-         patch("handlers.catch.roll_encounter", return_value="common"), \
-         patch("handlers.catch.pick_species", return_value=species), \
-         patch("handlers.catch.catch_keyboard", return_value=MagicMock()):
+    with patch("handlers.catch.db.get_user", side_effect=[{"coins": 100}, {"coins": 90}]), patch(
+        "handlers.catch.db.get_conn", return_value=cm
+    ), patch("handlers.catch.roll_encounter", return_value="common"), patch(
+        "handlers.catch.pick_species", return_value=species
+    ), patch(
+        "handlers.catch.catch_keyboard", return_value=MagicMock()
+    ):
         await catch_command(update, ctx)
 
     # An UPDATE that deducts ENCOUNTER_FEE must have been executed
     fee_deductions = [
-        (q, p) for q, p in deducted
-        if "UPDATE users SET coins" in q and ENCOUNTER_FEE in p
+        (q, p) for q, p in deducted if "UPDATE users SET coins" in q and ENCOUNTER_FEE in p
     ]
     assert len(fee_deductions) >= 1, "ENCOUNTER_FEE was not deducted during /catch"
 
@@ -79,8 +85,12 @@ async def test_catch_stores_pending_catch_in_context():
     cm, _ = _make_conn_mock()
 
     species = {
-        "species_id": 3, "name": "Fox", "emoji": "🦊", "rarity": "rare",
-        "catch_rate": 0.6, "catch_cost": 60,
+        "species_id": 3,
+        "name": "Fox",
+        "emoji": "🦊",
+        "rarity": "rare",
+        "catch_rate": 0.6,
+        "catch_cost": 60,
     }
 
     update = MagicMock()
@@ -90,11 +100,13 @@ async def test_catch_stores_pending_catch_in_context():
     ctx = MagicMock()
     ctx.user_data = {}
 
-    with patch("handlers.catch.db.get_user", side_effect=[{"coins": 100}, {"coins": 90}]), \
-         patch("handlers.catch.db.get_conn", return_value=cm), \
-         patch("handlers.catch.roll_encounter", return_value="rare"), \
-         patch("handlers.catch.pick_species", return_value=species), \
-         patch("handlers.catch.catch_keyboard", return_value=MagicMock()):
+    with patch("handlers.catch.db.get_user", side_effect=[{"coins": 100}, {"coins": 90}]), patch(
+        "handlers.catch.db.get_conn", return_value=cm
+    ), patch("handlers.catch.roll_encounter", return_value="rare"), patch(
+        "handlers.catch.pick_species", return_value=species
+    ), patch(
+        "handlers.catch.catch_keyboard", return_value=MagicMock()
+    ):
         await catch_command(update, ctx)
 
     pending = ctx.user_data.get("pending_catch")

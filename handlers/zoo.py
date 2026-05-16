@@ -8,9 +8,9 @@ BORDER_A = "🌿"
 BORDER_B = "💧"
 
 RARITY_SQUARE = {
-    "common":    "⬜",
-    "rare":      "🟦",
-    "epic":      "🟪",
+    "common": "⬜",
+    "rare": "🟦",
+    "epic": "🟪",
     "legendary": "🟨",
 }
 

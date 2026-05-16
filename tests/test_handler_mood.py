@@ -22,6 +22,7 @@ def _make_update(query):
 
 # ── Fix 1: mood prompt ownership ──────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_mood_callback_rejects_wrong_user():
     query = _make_query(user_id=123)
@@ -68,6 +69,7 @@ async def test_mood_callback_rejects_double_tap():
 
 # ── Fix 2: admin-only pause/resume ────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_pause_rejects_non_admin():
     update = MagicMock()
@@ -106,9 +108,9 @@ async def test_pause_accepted_for_admin():
     mock_cm.__enter__ = MagicMock(return_value=mock_inner)
     mock_cm.__exit__ = MagicMock(return_value=False)
 
-    with patch("handlers.mood.ADMIN_IDS", {1}), \
-         patch("handlers.mood.db.get_user", return_value={"streak_windows": 0}), \
-         patch("handlers.mood.db.get_conn", return_value=mock_cm):
+    with patch("handlers.mood.ADMIN_IDS", {1}), patch(
+        "handlers.mood.db.get_user", return_value={"streak_windows": 0}
+    ), patch("handlers.mood.db.get_conn", return_value=mock_cm):
         await pause_command(update, ctx)
 
     update.message.reply_text.assert_called_once()
@@ -127,8 +129,9 @@ async def test_resume_accepted_for_admin():
     mock_cm.__enter__ = MagicMock(return_value=mock_inner)
     mock_cm.__exit__ = MagicMock(return_value=False)
 
-    with patch("handlers.mood.ADMIN_IDS", {1}), \
-         patch("handlers.mood.db.get_conn", return_value=mock_cm):
+    with patch("handlers.mood.ADMIN_IDS", {1}), patch(
+        "handlers.mood.db.get_conn", return_value=mock_cm
+    ):
         await resume_command(update, MagicMock())
 
     update.message.reply_text.assert_called_once()

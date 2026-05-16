@@ -11,9 +11,7 @@ def roll_encounter() -> str:
 
 def pick_species(rarity: str, conn) -> object:
     """Pick a random species of the given rarity from the DB."""
-    rows = conn.execute(
-        "SELECT * FROM species WHERE rarity = ?", (rarity,)
-    ).fetchall()
+    rows = conn.execute("SELECT * FROM species WHERE rarity = ?", (rarity,)).fetchall()
     return random.choice(rows) if rows else None
 
 

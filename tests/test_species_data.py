@@ -29,6 +29,7 @@ class TestGetBreedParams:
     def test_all_valid_rarity_pairs_are_in_table(self):
         from itertools import combinations_with_replacement
         from species_data import RARITY_ORDER
+
         for a, b in combinations_with_replacement(RARITY_ORDER, 2):
             result = get_breed_params(a, b)
             assert "cost" in result and "hours" in result
@@ -68,16 +69,28 @@ class TestSpeciesDataFix6:
         epics = [s for s in SPECIES if s["rarity"] == "epic"]
         assert len(epics) > 0
         for s in epics:
-            assert s["catch_cost"] == 80, f"{s['name']} has catch_cost={s['catch_cost']}, expected 80"
+            assert (
+                s["catch_cost"] == 80
+            ), f"{s['name']} has catch_cost={s['catch_cost']}, expected 80"
 
     def test_legendary_catch_cost_is_200(self):
         legendaries = [s for s in SPECIES if s["rarity"] == "legendary"]
         assert len(legendaries) > 0
         for s in legendaries:
-            assert s["catch_cost"] == 200, f"{s['name']} has catch_cost={s['catch_cost']}, expected 200"
+            assert (
+                s["catch_cost"] == 200
+            ), f"{s['name']} has catch_cost={s['catch_cost']}, expected 200"
 
     def test_all_species_have_required_fields(self):
-        required = {"name", "emoji", "rarity", "catch_rate", "catch_cost", "hunger_decay", "breed_time_hrs"}
+        required = {
+            "name",
+            "emoji",
+            "rarity",
+            "catch_rate",
+            "catch_cost",
+            "hunger_decay",
+            "breed_time_hrs",
+        }
         for s in SPECIES:
             missing = required - s.keys()
             assert not missing, f"{s['name']} is missing fields: {missing}"

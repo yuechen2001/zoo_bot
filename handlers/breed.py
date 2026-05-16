@@ -4,7 +4,12 @@ from telegram import Update
 from telegram.ext import ContextTypes
 import db
 from achievements import check_achievements
-from game.breed_engine import resolve_offspring, calc_breed_ready_at, calc_breed_cost, breed_duration_str
+from game.breed_engine import (
+    resolve_offspring,
+    calc_breed_ready_at,
+    calc_breed_cost,
+    breed_duration_str,
+)
 
 
 async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -72,9 +77,7 @@ async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     with db.get_conn() as conn:
         offspring_species_id = resolve_offspring(rarity_a, rarity_b, conn)
         ready_at = calc_breed_ready_at(rarity_a, rarity_b)
-        conn.execute(
-            "UPDATE users SET coins = coins - ? WHERE user_id = ?", (cost, tg_id)
-        )
+        conn.execute("UPDATE users SET coins = coins - ? WHERE user_id = ?", (cost, tg_id))
         conn.execute(
             "UPDATE animals SET is_breeding = 1 WHERE animal_id IN (?, ?)",
             (animal_a["animal_id"], animal_b["animal_id"]),
@@ -98,7 +101,9 @@ async def _collect_breed(update, tg_id, ctx=None):
     pending = db.get_pending_breed(tg_id)
 
     if not pending:
-        await update.message.reply_text("No breeding in progress! Use `/breed <a> <b>` to start one.")
+        await update.message.reply_text(
+            "No breeding in progress! Use `/breed <a> <b>` to start one."
+        )
         return
 
     ready_at = datetime.datetime.fromisoformat(pending["ready_at"])
@@ -107,7 +112,9 @@ async def _collect_breed(update, tg_id, ctx=None):
         hours, rem = divmod(int(remaining.total_seconds()), 3600)
         minutes = rem // 60
         time_str = f"{hours}h {minutes}m" if hours else f"{minutes}m"
-        await update.message.reply_text(f"⏳ Not ready yet! Come back in *{time_str}*.", parse_mode="Markdown")
+        await update.message.reply_text(
+            f"⏳ Not ready yet! Come back in *{time_str}*.", parse_mode="Markdown"
+        )
         return
 
     # Collect!
@@ -123,9 +130,7 @@ async def _collect_breed(update, tg_id, ctx=None):
             "UPDATE animals SET is_breeding = 0 WHERE animal_id IN (?, ?)",
             (pending["parent_a"], pending["parent_b"]),
         )
-        conn.execute(
-            "UPDATE breeding_queue SET collected = 1 WHERE id = ?", (pending["id"],)
-        )
+        conn.execute("UPDATE breeding_queue SET collected = 1 WHERE id = ?", (pending["id"],))
 
     await update.message.reply_text(
         f"🥚✨ Your egg has hatched!\n\n"

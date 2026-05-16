@@ -11,19 +11,25 @@ COINS_WRONG = 5
 
 
 def _trivia_keyboard(tg_id: int):
-    return InlineKeyboardMarkup([[
-        InlineKeyboardButton("A", callback_data=f"trivia_{tg_id}_A"),
-        InlineKeyboardButton("B", callback_data=f"trivia_{tg_id}_B"),
-        InlineKeyboardButton("C", callback_data=f"trivia_{tg_id}_C"),
-        InlineKeyboardButton("D", callback_data=f"trivia_{tg_id}_D"),
-    ]])
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("A", callback_data=f"trivia_{tg_id}_A"),
+                InlineKeyboardButton("B", callback_data=f"trivia_{tg_id}_B"),
+                InlineKeyboardButton("C", callback_data=f"trivia_{tg_id}_C"),
+                InlineKeyboardButton("D", callback_data=f"trivia_{tg_id}_D"),
+            ]
+        ]
+    )
 
 
 async def trivia_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     from game.trivia_data import QUESTIONS
 
     if update.effective_chat.type != "private":
-        await update.message.reply_text("🎮 Mini-games are only available in private chat with the bot.")
+        await update.message.reply_text(
+            "🎮 Mini-games are only available in private chat with the bot."
+        )
         return
 
     tg_id = update.effective_user.id
@@ -40,7 +46,9 @@ async def trivia_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         ).fetchone()
 
     if last:
-        elapsed = (datetime.datetime.utcnow() - datetime.datetime.fromisoformat(last["asked_at"])).total_seconds()
+        elapsed = (
+            datetime.datetime.utcnow() - datetime.datetime.fromisoformat(last["asked_at"])
+        ).total_seconds()
         remaining_s = TRIVIA_COOLDOWN_HOURS * 3600 - elapsed
         if remaining_s > 0:
             remaining_m = int(remaining_s // 60)
@@ -93,7 +101,9 @@ async def trivia_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     # Check window
-    elapsed = (datetime.datetime.utcnow() - datetime.datetime.fromisoformat(trivia["at"])).total_seconds()
+    elapsed = (
+        datetime.datetime.utcnow() - datetime.datetime.fromisoformat(trivia["at"])
+    ).total_seconds()
     if elapsed > TRIVIA_WINDOW_MINUTES * 60:
         ctx.user_data.pop("trivia", None)
         await query.answer("Too slow!")
