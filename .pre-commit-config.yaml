@@ -9,6 +9,9 @@ repos:
     rev: 25.1.0
     hooks:
       - id: black
+        args: [.]
+        pass_filenames: false
+        always_run: true
 
   - repo: local
     hooks:
