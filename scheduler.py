@@ -37,7 +37,7 @@ async def _send_mood_prompts(ctx):
                 try:
                     await ctx.bot.send_message(
                         group_chat_id or tg_id,
-                        f"💔 You missed 2 check-ins in a row — streak reset to 0!",
+                        "💔 You missed 2 check-ins in a row — streak reset to 0!",
                     )
                 except Exception:
                     pass

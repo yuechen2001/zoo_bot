@@ -5,7 +5,6 @@ from telegram.ext import ContextTypes
 import db
 from achievements import check_achievements
 from game.breed_engine import resolve_offspring, calc_breed_ready_at, calc_breed_cost, breed_duration_str
-from keyboards import breed_collect_keyboard
 
 
 async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

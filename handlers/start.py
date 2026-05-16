@@ -18,7 +18,6 @@ async def start_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     db.ensure_user(tg_id, username, chat.id)
-    existing = db.get_user(tg_id)
 
     animals = db.get_animals(tg_id)
     if animals:
