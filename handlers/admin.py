@@ -258,19 +258,36 @@ async def _cmd_pause(update, tg_id, args):
     amount, unit = int(match.group(1)), match.group(2)
     delta = datetime.timedelta(hours=amount) if unit == "h" else datetime.timedelta(minutes=amount)
     paused_until = (datetime.datetime.utcnow() + delta).isoformat()
+    user = db.get_user(tg_id)
+    group_chat_id = user["group_chat_id"]
     with db.get_conn() as conn:
-        conn.execute("UPDATE users SET paused_until = ? WHERE user_id = ?", (paused_until, tg_id))
+        if group_chat_id:
+            conn.execute(
+                "UPDATE users SET paused_until = ? WHERE group_chat_id = ?",
+                (paused_until, group_chat_id),
+            )
+        else:
+            conn.execute(
+                "UPDATE users SET paused_until = ? WHERE user_id = ?", (paused_until, tg_id)
+            )
     label = f"{amount}{'h' if unit == 'h' else 'm'}"
     await update.message.reply_text(
-        f"⏸ Paused for *{label}*. No prompts, streak frozen. Use /admin resume to end early.",
+        f"⏸ Paused for *{label}*. No prompts or streak changes for anyone in the group. Use /admin resume to end early.",
         parse_mode="Markdown",
     )
 
 
 async def _cmd_resume(update, tg_id):
+    user = db.get_user(tg_id)
+    group_chat_id = user["group_chat_id"]
     with db.get_conn() as conn:
-        conn.execute("UPDATE users SET paused_until = NULL WHERE user_id = ?", (tg_id,))
-    await update.message.reply_text("▶️ Resumed! Mood prompts are back on.")
+        if group_chat_id:
+            conn.execute(
+                "UPDATE users SET paused_until = NULL WHERE group_chat_id = ?", (group_chat_id,)
+            )
+        else:
+            conn.execute("UPDATE users SET paused_until = NULL WHERE user_id = ?", (tg_id,))
+    await update.message.reply_text("▶️ Resumed! Mood prompts are back on for everyone.")
 
 
 async def _cmd_reset(update, tg_id):
