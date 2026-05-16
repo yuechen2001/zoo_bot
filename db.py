@@ -91,6 +91,25 @@ def get_all_users_with_animals():
         ).fetchall()
 
 
+# ── Group state ───────────────────────────────────────────────────────────────
+
+
+def get_group_state(group_chat_id: int):
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT * FROM group_state WHERE group_chat_id = ?", (group_chat_id,)
+        ).fetchone()
+
+
+def set_group_last_prompt(group_chat_id: int, timestamp: str) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO group_state (group_chat_id, last_prompt_at) VALUES (?, ?) "
+            "ON CONFLICT(group_chat_id) DO UPDATE SET last_prompt_at = excluded.last_prompt_at",
+            (group_chat_id, timestamp),
+        )
+
+
 def set_autofeed(user_id: int, threshold: int | None, max_coins: int | None) -> None:
     with get_conn() as conn:
         conn.execute(
