@@ -31,6 +31,8 @@ RARITY_SQUARE = {
     "legendary": "🟨",
 }
 
+RARITY_ORDER = {"legendary": 0, "epic": 1, "rare": 2, "common": 3}
+
 
 def _render_habitat(animal_emoji: str, count: int, breeding_count: int) -> str:
     """Scatter animals randomly across the 9 tiles; breeding animals show 💤."""
@@ -93,17 +95,20 @@ def _render_habitat_section(
         f"{h_info['emoji']} *{h_info['name']}* \\[Lv {level}\\]  —  {total_in_habitat}/{capacity}"
     ]
 
-    for sid, members in species_groups.items():
+    sorted_groups = sorted(
+        species_groups.items(),
+        key=lambda item: (RARITY_ORDER.get(item[1][0]["rarity"], 99), item[1][0]["species_name"]),
+    )
+
+    for sid, members in sorted_groups:
         first = members[0]
         rarity_sq = RARITY_SQUARE.get(first["rarity"], "⬜")
         count = len(members)
-        breeding_in_group = sum(1 for a in members if a["animal_id"] in breeding_ids)
 
         count_tag = f"  ×{count}" if count > 1 else ""
         lines.append(f"  *{first['emoji']} {first['species_name']}*  {rarity_sq}{count_tag}")
-        lines.append(f"  {_render_habitat(first['emoji'], count, breeding_in_group)}")
 
-        for a in members:
+        for a in sorted(members, key=lambda x: x["animal_id"]):
             pos = position[a["animal_id"]]
             name = a["nickname"] or a["species_name"]
             lock = "  🔒" if a["animal_id"] in breeding_ids else ""
