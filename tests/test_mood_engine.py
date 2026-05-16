@@ -1,5 +1,4 @@
 import math
-import pytest
 from game.mood_engine import get_streak_multiplier, calc_coins, streak_label
 
 

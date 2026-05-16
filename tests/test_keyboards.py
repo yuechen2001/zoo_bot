@@ -1,4 +1,3 @@
-import pytest
 from keyboards import mood_keyboard, catch_keyboard, breed_collect_keyboard, MOOD_EMOJIS
 
 

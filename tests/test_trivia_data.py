@@ -1,4 +1,3 @@
-import pytest
 from game.trivia_data import QUESTIONS
 
 VALID_ANSWERS = {"A", "B", "C", "D"}

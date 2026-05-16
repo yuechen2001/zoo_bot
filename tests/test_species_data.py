@@ -1,5 +1,4 @@
-import pytest
-from species_data import SPECIES, RARITY_ORDER, ENCOUNTER_WEIGHTS, get_breed_params, BREED_TABLE
+from species_data import SPECIES, RARITY_ORDER, ENCOUNTER_WEIGHTS, get_breed_params
 
 
 class TestGetBreedParams:
