@@ -18,47 +18,49 @@ async def _send_mood_prompts(ctx):
 
     now_str = datetime.datetime.utcnow().isoformat()
 
-    for user in users:
-        tg_id = user["user_id"]
-        group_chat_id = user["group_chat_id"]
+    from collections import defaultdict
+    by_group = defaultdict(list)
+    for u in users:
+        by_group[u["group_chat_id"]].append(u)
 
-        # Track consecutive misses if user didn't respond to the last prompt
-        if user["last_prompt_at"] and (
-            not user["last_checkin_at"] or user["last_checkin_at"] < user["last_prompt_at"]
-        ):
-            new_misses = (user["consecutive_misses"] or 0) + 1
-            if new_misses >= 2:
-                # Reset streak
-                with db.get_conn() as conn:
-                    conn.execute(
-                        "UPDATE users SET consecutive_misses = 0, streak_windows = 0 WHERE user_id = ?",
-                        (tg_id,),
-                    )
-                try:
-                    await ctx.bot.send_message(
-                        group_chat_id or tg_id,
-                        "💔 You missed 2 check-ins in a row — streak reset to 0!",
-                    )
-                except Exception:
-                    pass
-            else:
-                with db.get_conn() as conn:
-                    conn.execute(
-                        "UPDATE users SET consecutive_misses = ? WHERE user_id = ?",
-                        (new_misses, tg_id),
-                    )
+    for group_chat_id, members in by_group.items():
+        for user in members:
+            tg_id = user["user_id"]
+            if user["last_prompt_at"] and (
+                not user["last_checkin_at"] or user["last_checkin_at"] < user["last_prompt_at"]
+            ):
+                new_misses = (user["consecutive_misses"] or 0) + 1
+                if new_misses >= 2:
+                    with db.get_conn() as conn:
+                        conn.execute(
+                            "UPDATE users SET consecutive_misses = 0, streak_windows = 0 WHERE user_id = ?",
+                            (tg_id,),
+                        )
+                    try:
+                        await ctx.bot.send_message(
+                            group_chat_id,
+                            "💔 You missed 2 check-ins in a row — streak reset to 0!",
+                        )
+                    except Exception:
+                        pass
+                else:
+                    with db.get_conn() as conn:
+                        conn.execute(
+                            "UPDATE users SET consecutive_misses = ? WHERE user_id = ?",
+                            (new_misses, tg_id),
+                        )
 
         try:
             await ctx.bot.send_message(
-                group_chat_id or tg_id,
+                group_chat_id,
                 "🕐 *Mood check-in!* How are you feeling right now?",
                 parse_mode="Markdown",
-                reply_markup=mood_keyboard(tg_id),
+                reply_markup=mood_keyboard(),
             )
             with db.get_conn() as conn:
-                conn.execute(
+                conn.executemany(
                     "UPDATE users SET last_prompt_at = ? WHERE user_id = ?",
-                    (now_str, tg_id),
+                    [(now_str, u["user_id"]) for u in members],
                 )
         except Exception:
             pass

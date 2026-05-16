@@ -6,7 +6,7 @@ from handlers.mood import mood_checkin_callback, pause_command, resume_command
 
 def _make_query(user_id: int, emoji: str = "🙂"):
     query = MagicMock()
-    query.data = f"mood_{user_id}_{emoji}"
+    query.data = f"mood_{emoji}"
     query.from_user.id = user_id
     query.from_user.first_name = "TestUser"
     query.answer = AsyncMock()
@@ -20,24 +20,36 @@ def _make_update(query):
     return update
 
 
-# ── Fix 1: mood prompt ownership ──────────────────────────────────────────────
+# ── Mood prompt shared group check-in ─────────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_mood_callback_rejects_wrong_user():
-    query = _make_query(user_id=123)
-    query.from_user.id = 456  # different from target_id in callback_data
-
+async def test_mood_callback_rejects_unregistered_user():
+    query = _make_query(user_id=456)
     update = _make_update(query)
-    await mood_checkin_callback(update, MagicMock())
 
-    query.answer.assert_called_once_with("This isn't your prompt!", show_alert=True)
+    with patch("handlers.mood.db.get_user", return_value=None):
+        await mood_checkin_callback(update, MagicMock())
+
+    query.answer.assert_called_once_with("Use /start first to join!", show_alert=True)
+
+
+@pytest.mark.asyncio
+async def test_mood_callback_rejects_non_opted_in_user():
+    query = _make_query(user_id=456)
+    update = _make_update(query)
+
+    user_data = {"opted_in": 0, "last_prompt_at": None, "last_checkin_at": None, "streak_windows": 0}
+    with patch("handlers.mood.db.get_user", return_value=user_data):
+        await mood_checkin_callback(update, MagicMock())
+
+    query.answer.assert_called_once_with("Use /moodstart to opt in to prompts first!", show_alert=True)
 
 
 @pytest.mark.asyncio
 async def test_mood_callback_window_closed():
     old_prompt = (datetime.datetime.utcnow() - datetime.timedelta(minutes=20)).isoformat()
-    user_data = {"last_prompt_at": old_prompt, "last_checkin_at": None, "streak_windows": 0}
+    user_data = {"opted_in": 1, "last_prompt_at": old_prompt, "last_checkin_at": None, "streak_windows": 0}
 
     query = _make_query(user_id=123)
     update = _make_update(query)
@@ -53,6 +65,7 @@ async def test_mood_callback_rejects_double_tap():
     prompt_time = (datetime.datetime.utcnow() - datetime.timedelta(minutes=2)).isoformat()
     checkin_time = (datetime.datetime.utcnow() - datetime.timedelta(minutes=1)).isoformat()
     user_data = {
+        "opted_in": 1,
         "last_prompt_at": prompt_time,
         "last_checkin_at": checkin_time,  # checkin AFTER prompt → already responded
         "streak_windows": 0,

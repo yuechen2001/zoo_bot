@@ -80,19 +80,17 @@ async def resume_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 async def mood_checkin_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    # data format: mood_{target_id}_{emoji}
-    parts = query.data.split("_", 2)
-    target_id = int(parts[1])
-    emoji = parts[2]
-
-    if query.from_user.id != target_id:
-        await query.answer("This isn't your prompt!", show_alert=True)
-        return
+    # data format: mood_{emoji}
+    emoji = query.data.split("_", 1)[1]
 
     tg_id = query.from_user.id
     user = db.get_user(tg_id)
     if not user:
-        await query.answer("Use /start first!")
+        await query.answer("Use /start first to join!", show_alert=True)
+        return
+
+    if not user["opted_in"]:
+        await query.answer("Use /moodstart to opt in to prompts first!", show_alert=True)
         return
 
     # Enforce response window
