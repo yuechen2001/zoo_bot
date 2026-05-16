@@ -41,6 +41,23 @@ def _bred_rarity(user_id, rarity):
         )
 
 
+def _owns_all_rarities(user_id):
+    with db.get_conn() as conn:
+        count = conn.execute(
+            "SELECT COUNT(DISTINCT s.rarity) FROM animals a "
+            "JOIN species s ON s.species_id = a.species_id WHERE a.user_id = ?",
+            (user_id,),
+        ).fetchone()[0]
+    return count >= 4
+
+
+def _distinct_species_count(user_id):
+    with db.get_conn() as conn:
+        return conn.execute(
+            "SELECT COUNT(DISTINCT species_id) FROM animals WHERE user_id = ?", (user_id,)
+        ).fetchone()[0]
+
+
 def _checkin_count(user_id):
     with db.get_conn() as conn:
         return conn.execute(
@@ -151,6 +168,81 @@ ACHIEVEMENTS = {
         "trigger": "breed",
         "check": lambda uid, u: _bred_rarity(uid, "legendary"),
     },
+    "epic_breed": {
+        "emoji": "💜",
+        "name": "Epic Lineage",
+        "desc": "Breed an epic offspring",
+        "trigger": "breed",
+        "check": lambda uid, u: _bred_rarity(uid, "epic"),
+    },
+    "breed_10": {
+        "emoji": "🐥",
+        "name": "Prolific",
+        "desc": "Collect 10 offspring",
+        "trigger": "breed",
+        "check": lambda uid, u: _breed_count(uid) >= 10,
+    },
+    # ── Zoo size & variety ────────────────────────────────────────────────────
+    "zoo_20": {
+        "emoji": "🐘",
+        "name": "Full House",
+        "desc": "Own 20 animals",
+        "trigger": "catch",
+        "check": lambda uid, u: _animal_count(uid) >= 20,
+    },
+    "all_rarities": {
+        "emoji": "🌈",
+        "name": "Collector",
+        "desc": "Own at least one animal of every rarity",
+        "trigger": "catch",
+        "check": lambda uid, u: _owns_all_rarities(uid),
+    },
+    "species_10": {
+        "emoji": "📚",
+        "name": "Variety Pack",
+        "desc": "Own 10 different species",
+        "trigger": "catch",
+        "check": lambda uid, u: _distinct_species_count(uid) >= 10,
+    },
+    # ── Mood milestones ───────────────────────────────────────────────────────
+    "checkin_50": {
+        "emoji": "🎭",
+        "name": "Mood Master",
+        "desc": "Complete 50 mood check-ins",
+        "trigger": "checkin",
+        "check": lambda uid, u: _checkin_count(uid) >= 50,
+    },
+    "coins_500": {
+        "emoji": "💰",
+        "name": "Coin Hoarder",
+        "desc": "Accumulate 500 coins",
+        "trigger": "checkin",
+        "check": lambda uid, u: (u["coins"] or 0) >= 500,
+    },
+    # ── Trading ───────────────────────────────────────────────────────────────
+    "first_trade": {
+        "emoji": "🤝",
+        "name": "Trader",
+        "desc": "Complete your first animal trade",
+        "trigger": "trade",
+        "check": lambda uid, u: True,
+    },
+    # ── Selling ───────────────────────────────────────────────────────────────
+    "first_sell": {
+        "emoji": "💸",
+        "name": "Merchant",
+        "desc": "Sell your first animal",
+        "trigger": "sell",
+        "check": lambda uid, u: True,
+    },
+    # ── Feeding ───────────────────────────────────────────────────────────────
+    "first_feed": {
+        "emoji": "🍽",
+        "name": "Caretaker",
+        "desc": "Feed an animal for the first time",
+        "trigger": "feed",
+        "check": lambda uid, u: True,
+    },
 }
 
 
@@ -172,9 +264,9 @@ async def check_achievements(user_id: int, trigger: str, ctx):
     if not newly_earned:
         return
 
-    name = user["username"] or "Someone"
+    name = user.get("username") or "Someone"
     for ach in newly_earned:
-        if user["group_chat_id"]:
+        if user.get("group_chat_id"):
             try:
                 await ctx.bot.send_message(
                     user["group_chat_id"],

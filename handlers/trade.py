@@ -5,6 +5,7 @@ import db
 from keyboards import trade_keyboard
 from config import TRADE_EXPIRY_MINUTES
 from species_data import RARITY_LABELS
+from achievements import check_achievements
 
 
 async def trade_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -117,7 +118,7 @@ async def trade_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     created = datetime.datetime.fromisoformat(trade["created_at"])
     elapsed = (
-        datetime.datetime.now(datetime.UTC).replace(tzinfo=None) - created
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) - created
     ).total_seconds() / 60
     if elapsed > TRADE_EXPIRY_MINUTES:
         db.resolve_trade(trade_id, "declined")
@@ -141,6 +142,9 @@ async def trade_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             f"📋 Zoo positions have changed — use /zoo to see the new order.",
             parse_mode="Markdown",
         )
+        trade = db.get_trade(trade_id)
+        await check_achievements(query.from_user.id, "trade", ctx)
+        await check_achievements(trade["proposer_id"], "trade", ctx)
     else:
         db.resolve_trade(trade_id, "declined")
         await query.answer("Trade declined.")

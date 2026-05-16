@@ -106,7 +106,9 @@ async def test_feed_stops_when_coins_run_out():
 
     with patch("handlers.feed.db.get_user", side_effect=users), patch(
         "handlers.feed.db.get_animal_by_position", return_value=animal
-    ), patch("handlers.feed.db.get_conn", return_value=_make_conn_mock()):
+    ), patch("handlers.feed.db.get_conn", return_value=_make_conn_mock()), patch(
+        "handlers.feed.check_achievements"
+    ):
         await feed_command(update, ctx)
 
     reply = update.message.reply_text.call_args[0][0]

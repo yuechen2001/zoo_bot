@@ -145,12 +145,15 @@ async def test_trade_callback_accept_calls_resolve():
         "created_at": now,
         "proposer_animal_id": "a1",
         "recipient_animal_id": "b1",
+        "proposer_id": 1,
     }
     with patch("handlers.trade.db.get_trade", return_value=trade), patch(
         "handlers.trade.db.resolve_trade"
     ) as mock_resolve, patch(
         "handlers.trade.db.get_animal",
         side_effect=[_make_animal("a1"), _make_animal("b1")],
+    ), patch(
+        "handlers.trade.check_achievements"
     ):
         await trade_callback(update, MagicMock())
     mock_resolve.assert_called_once_with(1, "accepted")
@@ -170,6 +173,7 @@ async def test_trade_callback_decline_calls_resolve():
         "created_at": now,
         "proposer_animal_id": "a1",
         "recipient_animal_id": "b1",
+        "proposer_id": 1,
     }
     with patch("handlers.trade.db.get_trade", return_value=trade), patch(
         "handlers.trade.db.resolve_trade"
@@ -193,6 +197,7 @@ async def test_trade_callback_expired_trade():
         "created_at": old_time,
         "proposer_animal_id": "a1",
         "recipient_animal_id": "b1",
+        "proposer_id": 1,
     }
     with patch("handlers.trade.db.get_trade", return_value=trade), patch(
         "handlers.trade.db.resolve_trade"

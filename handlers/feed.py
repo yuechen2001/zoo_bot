@@ -1,6 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
+from achievements import check_achievements
 
 FEED_COST_BY_RARITY = {"common": 5, "rare": 10, "epic": 15, "legendary": 20}
 FEED_HUNGER = 40
@@ -59,3 +60,5 @@ async def feed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
 
     await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
+    if any("🍖" in line for line in lines):
+        await check_achievements(tg_id, "feed", ctx)

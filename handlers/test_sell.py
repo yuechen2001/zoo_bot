@@ -115,6 +115,8 @@ async def test_sell_low_hunger_reduces_price():
         "handlers.sell.db.delete_animal"
     ), patch(
         "handlers.sell.db.get_conn", return_value=_make_conn_mock()
+    ), patch(
+        "handlers.sell.check_achievements"
     ):
         await sell_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]
@@ -133,6 +135,8 @@ async def test_sell_legendary_full_hunger():
         "handlers.sell.db.delete_animal"
     ), patch(
         "handlers.sell.db.get_conn", return_value=_make_conn_mock()
+    ), patch(
+        "handlers.sell.check_achievements"
     ):
         await sell_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]
