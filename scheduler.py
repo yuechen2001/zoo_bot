@@ -152,6 +152,13 @@ async def _check_starved_animals(ctx):
 async def _check_breed_completions(ctx):
     ready = db.get_ready_breeds()
     for breed in ready:
+        # Release parents from breeding lock so they can starve/be used again
+        with db.get_conn() as conn:
+            conn.execute(
+                "UPDATE animals SET is_breeding = 0 WHERE animal_id IN (?, ?)",
+                (breed["parent_a"], breed["parent_b"]),
+            )
+
         group_chat_id = breed["group_chat_id"]
         if not group_chat_id:
             continue

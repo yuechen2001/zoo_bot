@@ -22,6 +22,15 @@ def init_db():
             "UPDATE animals SET nickname = (SELECT name FROM species WHERE species_id = animals.species_id) "
             "WHERE nickname IS NULL OR nickname = ''"
         )
+        # Clear is_breeding on animals with no active (uncollected, not-yet-ready) breed session
+        conn.execute(
+            "UPDATE animals SET is_breeding = 0 "
+            "WHERE is_breeding = 1 AND animal_id NOT IN ("
+            "  SELECT parent_a FROM breeding_queue WHERE collected = 0 AND ready_at > datetime('now')"
+            "  UNION"
+            "  SELECT parent_b FROM breeding_queue WHERE collected = 0 AND ready_at > datetime('now')"
+            ")"
+        )
         # Backfill starter enclosures for existing users
         from species_data import HABITATS
 
