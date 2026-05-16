@@ -2,13 +2,6 @@ from telegram import Update
 from telegram.ext import ContextTypes
 import db
 
-SELL_BASE_PRICE = {
-    "common": 20,
-    "rare": 60,
-    "epic": 180,
-    "legendary": 500,
-}
-
 
 async def sell_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     tg_id = update.effective_user.id
@@ -37,7 +30,7 @@ async def sell_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    base = SELL_BASE_PRICE.get(animal["rarity"], 20)
+    base = animal["catch_cost"] // 2
     sell_price = max(1, round(base * animal["hunger"] / 100))
 
     db.delete_animal(animal["animal_id"])

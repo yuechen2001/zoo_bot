@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from handlers.sell import sell_command, SELL_BASE_PRICE
+from handlers.sell import sell_command
 
 
 def _make_update(user_id=1):
@@ -16,13 +16,14 @@ def _make_ctx(args=None):
     return ctx
 
 
-def _make_animal(rarity="common", hunger=100, is_breeding=0, nickname="Mouse", emoji="🐭"):
+def _make_animal(catch_cost=20, hunger=100, is_breeding=0, nickname="Mouse", emoji="🐭"):
     return {
         "animal_id": "a1",
         "species_name": "Mouse",
         "nickname": nickname,
         "emoji": emoji,
-        "rarity": rarity,
+        "rarity": "common",
+        "catch_cost": catch_cost,
         "hunger": hunger,
         "is_breeding": is_breeding,
     }
@@ -72,10 +73,10 @@ async def test_sell_blocked_for_breeding_animal():
 
 
 @pytest.mark.asyncio
-async def test_sell_full_hunger_earns_base_price():
+async def test_sell_full_hunger_earns_half_catch_cost():
     update = _make_update()
     ctx = _make_ctx(args=["1"])
-    animal = _make_animal(rarity="common", hunger=100)
+    animal = _make_animal(catch_cost=20, hunger=100)
     with patch("handlers.sell.db.get_user", return_value={"coins": 100}), patch(
         "handlers.sell.db.get_animal_by_position", return_value=animal
     ), patch("handlers.sell.db.delete_animal") as mock_delete, patch(
@@ -83,16 +84,16 @@ async def test_sell_full_hunger_earns_base_price():
     ):
         await sell_command(update, ctx)
     mock_delete.assert_called_once_with("a1")
-    expected = SELL_BASE_PRICE["common"]
+    # base = catch_cost // 2 = 10; hunger 100 → price = 10
     reply = update.message.reply_text.call_args[0][0]
-    assert str(expected) in reply
+    assert "10" in reply
 
 
 @pytest.mark.asyncio
 async def test_sell_low_hunger_reduces_price():
     update = _make_update()
     ctx = _make_ctx(args=["1"])
-    animal = _make_animal(rarity="rare", hunger=50)
+    animal = _make_animal(catch_cost=40, hunger=50)
     with patch("handlers.sell.db.get_user", return_value={"coins": 100}), patch(
         "handlers.sell.db.get_animal_by_position", return_value=animal
     ), patch("handlers.sell.db.delete_animal"), patch(
@@ -100,16 +101,15 @@ async def test_sell_low_hunger_reduces_price():
     ):
         await sell_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]
-    full_price = SELL_BASE_PRICE["rare"]
-    half_price = max(1, round(full_price * 50 / 100))
-    assert str(half_price) in reply
+    # base = 40 // 2 = 20; hunger 50 → price = max(1, round(20 * 50/100)) = 10
+    assert "10" in reply
 
 
 @pytest.mark.asyncio
 async def test_sell_legendary_full_hunger():
     update = _make_update()
     ctx = _make_ctx(args=["1"])
-    animal = _make_animal(rarity="legendary", hunger=100, nickname="Drgn", emoji="🐉")
+    animal = _make_animal(catch_cost=200, hunger=100, nickname="Drgn", emoji="🐉")
     with patch("handlers.sell.db.get_user", return_value={"coins": 100}), patch(
         "handlers.sell.db.get_animal_by_position", return_value=animal
     ), patch("handlers.sell.db.delete_animal"), patch(
@@ -117,4 +117,5 @@ async def test_sell_legendary_full_hunger():
     ):
         await sell_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]
-    assert str(SELL_BASE_PRICE["legendary"]) in reply
+    # base = 200 // 2 = 100; hunger 100 → price = 100
+    assert "100" in reply
