@@ -103,6 +103,16 @@ def init_db():
         )
         conn.executescript(
             """
+            CREATE TABLE IF NOT EXISTS prompt_responses (
+                group_chat_id INTEGER NOT NULL,
+                prompt_sent_at TEXT NOT NULL,
+                user_id INTEGER NOT NULL REFERENCES users(user_id),
+                PRIMARY KEY (group_chat_id, prompt_sent_at, user_id)
+            );
+            """
+        )
+        conn.executescript(
+            """
             CREATE TABLE IF NOT EXISTS investments (
                 id           INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id      INTEGER REFERENCES users(user_id),
@@ -113,9 +123,20 @@ def init_db():
             );
             """
         )
+        conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS user_enclosures (
+                user_id  INTEGER REFERENCES users(user_id),
+                habitat  TEXT NOT NULL,
+                level    INTEGER NOT NULL DEFAULT 1,
+                PRIMARY KEY (user_id, habitat)
+            );
+            """
+        )
         # Add new columns to existing tables (idempotent)
         for stmt in [
             "ALTER TABLE animals ADD COLUMN hunger_alerted INTEGER DEFAULT NULL",
+            "ALTER TABLE species ADD COLUMN habitat TEXT",
         ]:
             try:
                 conn.execute(stmt)
@@ -137,19 +158,20 @@ def _seed_species(conn):
         ).fetchone()
         if existing:
             conn.execute(
-                "UPDATE species SET catch_rate=?, catch_cost=?, hunger_decay=?, breed_time_hrs=? WHERE species_id=?",
+                "UPDATE species SET catch_rate=?, catch_cost=?, hunger_decay=?, breed_time_hrs=?, habitat=? WHERE species_id=?",
                 (
                     s["catch_rate"],
                     s["catch_cost"],
                     s["hunger_decay"],
                     s["breed_time_hrs"],
+                    s["habitat"],
                     existing["species_id"],
                 ),
             )
         else:
             conn.execute(
-                "INSERT INTO species (name, emoji, rarity, catch_rate, catch_cost, hunger_decay, breed_time_hrs) "
-                "VALUES (:name, :emoji, :rarity, :catch_rate, :catch_cost, :hunger_decay, :breed_time_hrs)",
+                "INSERT INTO species (name, emoji, rarity, catch_rate, catch_cost, hunger_decay, breed_time_hrs, habitat) "
+                "VALUES (:name, :emoji, :rarity, :catch_rate, :catch_cost, :hunger_decay, :breed_time_hrs, :habitat)",
                 s,
             )
 
@@ -219,7 +241,7 @@ def get_species_by_rarity(rarity):
 def get_animals(user_id):
     with get_conn() as conn:
         return conn.execute(
-            "SELECT a.*, s.name AS species_name, s.emoji, s.rarity, s.hunger_decay "
+            "SELECT a.*, s.name AS species_name, s.emoji, s.rarity, s.hunger_decay, s.catch_cost, s.habitat "
             "FROM animals a JOIN species s ON s.species_id = a.species_id "
             "WHERE a.user_id = ? ORDER BY a.caught_at",
             (user_id,),
@@ -229,7 +251,7 @@ def get_animals(user_id):
 def get_animal(animal_id):
     with get_conn() as conn:
         return conn.execute(
-            "SELECT a.*, s.name AS species_name, s.emoji, s.rarity, s.hunger_decay, s.breed_time_hrs "
+            "SELECT a.*, s.name AS species_name, s.emoji, s.rarity, s.hunger_decay, s.breed_time_hrs, s.habitat "
             "FROM animals a JOIN species s ON s.species_id = a.species_id "
             "WHERE a.animal_id = ?",
             (animal_id,),
@@ -379,17 +401,33 @@ def expire_old_trades() -> list:
     return expired
 
 
-def all_group_members_checked_in(group_chat_id: int, prompt_time_str: str) -> bool:
-    """True if every opted-in, non-paused member of the group has checked in since the prompt."""
+def record_prompt_response(group_chat_id: int, prompt_sent_at: str, user_id: int) -> bool:
+    """Insert a prompt response. Returns True if inserted (first response), False if duplicate."""
     with get_conn() as conn:
-        row = conn.execute(
-            "SELECT COUNT(*) AS total, "
-            "SUM(CASE WHEN last_checkin_at >= ? THEN 1 ELSE 0 END) AS checked_in "
-            "FROM users WHERE group_chat_id = ? AND opted_in = 1 "
+        cur = conn.execute(
+            "INSERT OR IGNORE INTO prompt_responses (group_chat_id, prompt_sent_at, user_id) "
+            "VALUES (?, ?, ?)",
+            (group_chat_id, prompt_sent_at, user_id),
+        )
+    return cur.rowcount == 1
+
+
+def all_group_members_checked_in(group_chat_id: int, prompt_time_str: str) -> bool:
+    """True if every opted-in, non-paused member of the group has responded to this prompt."""
+    with get_conn() as conn:
+        total = conn.execute(
+            "SELECT COUNT(*) FROM users WHERE group_chat_id = ? AND opted_in = 1 "
             "AND (paused_until IS NULL OR paused_until < datetime('now'))",
-            (prompt_time_str, group_chat_id),
-        ).fetchone()
-    return bool(row and row["total"] > 0 and row["total"] == row["checked_in"])
+            (group_chat_id,),
+        ).fetchone()[0]
+        if not total:
+            return False
+        responded = conn.execute(
+            "SELECT COUNT(*) FROM prompt_responses "
+            "WHERE group_chat_id = ? AND prompt_sent_at = ?",
+            (group_chat_id, prompt_time_str),
+        ).fetchone()[0]
+    return responded >= total
 
 
 # ── Animals (extra helpers) ───────────────────────────────────────────────────
@@ -440,3 +478,90 @@ def create_investment(user_id: int, amount: int, return_amount: int):
 def collect_investment(investment_id: int):
     with get_conn() as conn:
         conn.execute("UPDATE investments SET collected = 1 WHERE id = ?", (investment_id,))
+
+
+# ── Coins (general) ───────────────────────────────────────────────────────────
+
+
+def add_coins(user_id: int, amount: int):
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET coins = coins + ? WHERE user_id = ?", (amount, user_id))
+
+
+# ── Enclosures ────────────────────────────────────────────────────────────────
+
+
+def give_starter_enclosures(user_id: int):
+    from species_data import HABITATS
+
+    with get_conn() as conn:
+        for habitat in HABITATS:
+            conn.execute(
+                "INSERT OR IGNORE INTO user_enclosures (user_id, habitat, level) VALUES (?, ?, 1)",
+                (user_id, habitat),
+            )
+
+
+def get_enclosures(user_id: int) -> dict:
+    """Return {habitat: level} for all enclosures the user owns."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT habitat, level FROM user_enclosures WHERE user_id = ?", (user_id,)
+        ).fetchall()
+    return {r["habitat"]: r["level"] for r in rows}
+
+
+def get_enclosure_level(user_id: int, habitat: str) -> int:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT level FROM user_enclosures WHERE user_id = ? AND habitat = ?",
+            (user_id, habitat),
+        ).fetchone()
+    return row["level"] if row else 1
+
+
+def get_animal_count_by_habitat(user_id: int, habitat: str) -> int:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS cnt FROM animals a "
+            "JOIN species s ON s.species_id = a.species_id "
+            "WHERE a.user_id = ? AND s.habitat = ?",
+            (user_id, habitat),
+        ).fetchone()
+    return row["cnt"] if row else 0
+
+
+def get_species_habitat(species_id: int) -> str:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT habitat FROM species WHERE species_id = ?", (species_id,)
+        ).fetchone()
+    return row["habitat"] if row else "woodland"
+
+
+def upgrade_enclosure(user_id: int, habitat: str) -> str:
+    """Increment enclosure level and deduct upgrade cost atomically.
+
+    Returns 'ok', 'max_level', or 'insufficient_coins'.
+    """
+    from species_data import ENCLOSURE_LEVELS, MAX_ENCLOSURE_LEVEL
+
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT level FROM user_enclosures WHERE user_id = ? AND habitat = ?",
+            (user_id, habitat),
+        ).fetchone()
+        current = row["level"] if row else 1
+        if current >= MAX_ENCLOSURE_LEVEL:
+            return "max_level"
+        cost = ENCLOSURE_LEVELS[current + 1]["upgrade_cost"]
+        user = conn.execute("SELECT coins FROM users WHERE user_id = ?", (user_id,)).fetchone()
+        if not user or user["coins"] < cost:
+            return "insufficient_coins"
+        conn.execute("UPDATE users SET coins = coins - ? WHERE user_id = ?", (cost, user_id))
+        conn.execute(
+            "INSERT INTO user_enclosures (user_id, habitat, level) VALUES (?, ?, ?) "
+            "ON CONFLICT(user_id, habitat) DO UPDATE SET level = level + 1",
+            (user_id, habitat, 2),
+        )
+    return "ok"
