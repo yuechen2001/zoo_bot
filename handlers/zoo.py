@@ -1,3 +1,4 @@
+import random
 from telegram import Update
 from telegram.ext import ContextTypes
 import datetime
@@ -30,19 +31,23 @@ RARITY_SQUARE = {
 
 
 def _render_habitat(animal_emoji: str, count: int, breeding_count: int) -> str:
-    """Fill tiles left-to-right: breeding animals show 💤, then normal, then borders."""
-    tiles = []
-    placed = 0
+    """Scatter animals randomly across the 9 tiles; breeding animals show 💤."""
+    n = min(count, ROW_LEN)
+    positions = random.sample(range(ROW_LEN), n)
+    breeding_pos = set(positions[:breeding_count])
+    normal_pos = set(positions[breeding_count:])
+
+    border_idx = 0
+    result = []
     for i in range(ROW_LEN):
-        if placed < breeding_count:
-            tiles.append("💤")
-            placed += 1
-        elif placed < count:
-            tiles.append(animal_emoji)
-            placed += 1
+        if i in breeding_pos:
+            result.append("💤")
+        elif i in normal_pos:
+            result.append(animal_emoji)
         else:
-            tiles.append(BORDER_A if i % 2 == 0 else BORDER_B)
-    return "".join(tiles)
+            result.append(BORDER_A if border_idx % 2 == 0 else BORDER_B)
+            border_idx += 1
+    return "".join(result)
 
 
 def render_zoo(username: str, animals: list, coins: int, streak: int) -> str:

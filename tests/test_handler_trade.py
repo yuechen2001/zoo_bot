@@ -152,6 +152,9 @@ async def test_trade_callback_accept_calls_resolve():
         await trade_callback(update, MagicMock())
     mock_resolve.assert_called_once_with(1, "accepted")
     query.answer.assert_called_once()
+    # Accepted message should remind both parties that positions changed
+    reply = query.edit_message_text.call_args[0][0]
+    assert "position" in reply.lower() or "/zoo" in reply
 
 
 @pytest.mark.asyncio

@@ -61,6 +61,7 @@ async def test_mood_callback_window_closed():
         "last_prompt_at": old_prompt,
         "last_checkin_at": None,
         "streak_windows": 0,
+        "group_chat_id": None,
     }
 
     query = _make_query(user_id=123)
@@ -69,7 +70,87 @@ async def test_mood_callback_window_closed():
     with patch("handlers.mood.db.get_user", return_value=user_data):
         await mood_checkin_callback(update, MagicMock())
 
-    query.answer.assert_called_with("Window closed!")
+    # Window-closed now uses show_alert popup, NOT edit_message_text
+    query.answer.assert_called_once()
+    args, kwargs = query.answer.call_args
+    assert kwargs.get("show_alert") is True
+    assert "closed" in args[0].lower()
+    query.edit_message_text.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_mood_callback_second_player_can_respond():
+    """After player A responds, player B's click should still earn coins (not be blocked)."""
+    prompt_time = (datetime.datetime.utcnow() - datetime.timedelta(minutes=2)).isoformat()
+
+    def _user(user_id, checked_in=False):
+        return {
+            "user_id": user_id,
+            "opted_in": 1,
+            "last_prompt_at": prompt_time,
+            "last_checkin_at": (
+                (datetime.datetime.utcnow() - datetime.timedelta(minutes=1)).isoformat()
+                if checked_in
+                else None
+            ),
+            "streak_windows": 0,
+            "group_chat_id": -100,
+        }
+
+    mock_conn = MagicMock()
+    mock_conn.__enter__ = MagicMock(return_value=MagicMock())
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    # Player B has not yet checked in
+    query = _make_query(user_id=2)
+    update = _make_update(query)
+
+    with patch("handlers.mood.db.get_user", return_value=_user(2, checked_in=False)), patch(
+        "handlers.mood.db.get_conn", return_value=mock_conn
+    ), patch("handlers.mood.db.all_group_members_checked_in", return_value=False), patch(
+        "handlers.mood.check_achievements"
+    ):
+        await mood_checkin_callback(update, MagicMock())
+
+    # Player B should receive a coins popup
+    query.answer.assert_called_once()
+    args, kwargs = query.answer.call_args
+    assert "coins" in args[0].lower()
+    assert kwargs.get("show_alert") is True
+    # Group message must NOT be edited (keyboard preserved for others)
+    query.edit_message_text.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_mood_callback_collapses_when_all_checked_in():
+    """When everyone in the group has responded, the message should be edited to summary."""
+    prompt_time = (datetime.datetime.utcnow() - datetime.timedelta(minutes=2)).isoformat()
+    user_data = {
+        "opted_in": 1,
+        "last_prompt_at": prompt_time,
+        "last_checkin_at": None,
+        "streak_windows": 0,
+        "group_chat_id": -100,
+    }
+
+    mock_conn = MagicMock()
+    mock_conn.__enter__ = MagicMock(return_value=MagicMock())
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    query = _make_query(user_id=1)
+    update = _make_update(query)
+
+    with patch("handlers.mood.db.get_user", return_value=user_data), patch(
+        "handlers.mood.db.get_conn", return_value=mock_conn
+    ), patch("handlers.mood.db.all_group_members_checked_in", return_value=True), patch(
+        "handlers.mood.check_achievements"
+    ):
+        await mood_checkin_callback(update, MagicMock())
+
+    # Message should be collapsed to summary
+    query.edit_message_text.assert_called_once()
+    args = query.edit_message_text.call_args[0]
+    assert "everyone" in args[0].lower() or "✅" in args[0]
 
 
 @pytest.mark.asyncio

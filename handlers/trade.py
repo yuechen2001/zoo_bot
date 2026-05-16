@@ -135,7 +135,8 @@ async def trade_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             f"✅ *Trade complete!*\n\n"
             f"{proposer_animal['emoji']} {p_name} → @{query.from_user.username}\n"
-            f"{recipient_animal['emoji']} {r_name} → other player",
+            f"{recipient_animal['emoji']} {r_name} → other player\n\n"
+            f"📋 Zoo positions have changed — use /zoo to see the new order.",
             parse_mode="Markdown",
         )
     else:

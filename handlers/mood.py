@@ -99,11 +99,7 @@ async def mood_checkin_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         prompt_time = datetime.datetime.fromisoformat(last_prompt)
         elapsed_min = (datetime.datetime.utcnow() - prompt_time).total_seconds() / 60
         if elapsed_min > CHECKIN_WINDOW_MINUTES:
-            await query.answer("Window closed!")
-            await query.edit_message_text(
-                f"⏰ Too late — the {CHECKIN_WINDOW_MINUTES}-min window closed.\n"
-                f"Wait for the next prompt!"
-            )
+            await query.answer("⏰ Window closed — wait for the next prompt!", show_alert=True)
             return
     else:
         elapsed_min = 0
@@ -138,13 +134,25 @@ async def mood_checkin_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         mult = get_streak_multiplier(new_streak)
         multiplier_note = f" ({mult}x streak bonus)"
 
-    await query.edit_message_text(
-        f"{emoji} *{query.from_user.first_name}* — {label}\n\n"
-        f"💰 +{coins} coins{multiplier_note}\n"
-        f"🔥 Streak: {new_streak} window{'s' if new_streak != 1 else ''}",
-        parse_mode="Markdown",
+    # Respond with a private popup — keep the group message keyboard intact for others
+    await query.answer(
+        f"{emoji} {label} — +{coins} coins!{multiplier_note}\n🔥 Streak: {new_streak}",
+        show_alert=True,
     )
-    await query.answer(f"+{coins} coins!")
+
+    # Collapse the prompt once everyone in the group has responded
+    if (
+        user["group_chat_id"]
+        and last_prompt
+        and db.all_group_members_checked_in(user["group_chat_id"], last_prompt)
+    ):
+        try:
+            await query.edit_message_text(
+                "✅ *Everyone checked in!* See you next round.",
+                parse_mode="Markdown",
+            )
+        except Exception:
+            pass
 
     await check_achievements(tg_id, "checkin", ctx)
 
@@ -163,7 +171,10 @@ async def help_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "/daily — claim +50 coins once per day\n"
         "/trivia — animal trivia (+40 correct, +5 wrong, 4h cooldown)\n"
         "/gamble <amount> — coin flip bet (max 100 🪙)\n"
-        "/slots — spin the slot machine (10 🪙 per spin)\n\n"
+        "/slots — spin the slot machine (10 🪙 per spin)\n"
+        "/trade @username <your pos> <their pos> — offer a trade\n"
+        "/invest <amount> — invest coins (25% return after 24h)\n"
+        "/sell <number> — sell an animal for coins\n\n"
         "*Mood prompts:*\n"
         "/moodstart — opt in to prompts\n"
         "/moodstop — opt out (resets streak)\n\n"

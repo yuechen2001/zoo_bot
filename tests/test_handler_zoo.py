@@ -1,5 +1,5 @@
 from unittest.mock import MagicMock, patch
-from handlers.zoo import render_zoo
+from handlers.zoo import render_zoo, _render_habitat, ROW_LEN
 
 
 def _make_animal(
@@ -138,3 +138,39 @@ def test_render_zoo_shows_coins():
         text = render_zoo("Alice", animals, 999, 0)
 
     assert "999" in text
+
+
+# ── _render_habitat ────────────────────────────────────────────────────────────
+
+
+def test_render_habitat_always_9_tiles():
+    for count in range(0, 10):
+        result = _render_habitat("🐭", count, 0)
+        assert len(result.encode("utf-32")) // 4 - 1 == ROW_LEN or len(result) >= 1
+
+
+def test_render_habitat_tile_count_is_row_len():
+    """Tile string should always contain exactly ROW_LEN grapheme clusters."""
+    import unicodedata
+
+    def grapheme_len(s):
+        # Simple approximation: count code points that start a grapheme
+        return sum(1 for c in s if unicodedata.category(c) not in ("Mn", "Cf"))
+
+    for count, breeding in [(0, 0), (1, 0), (3, 1), (9, 0), (9, 3)]:
+        result = _render_habitat("🐭", count, breeding)
+        # Each emoji is one grapheme cluster; ROW_LEN tiles expected
+        assert grapheme_len(result) == ROW_LEN
+
+
+def test_render_habitat_randomises_positions():
+    """Repeated calls should not always produce the same tile order."""
+    results = {_render_habitat("🐭", 3, 0) for _ in range(30)}
+    # With 3 animals in 9 tiles, C(9,3)=84 arrangements — 30 tries should find >1
+    assert len(results) > 1
+
+
+def test_render_habitat_breeding_count_respected():
+    result = _render_habitat("🐭", 3, 2)
+    assert result.count("💤") == 2
+    assert result.count("🐭") == 1

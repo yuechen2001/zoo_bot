@@ -1,3 +1,4 @@
+import datetime
 import sqlite3
 from config import DATABASE_PATH
 from species_data import SPECIES
@@ -100,6 +101,26 @@ def init_db():
             );
         """
         )
+        conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS investments (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id      INTEGER REFERENCES users(user_id),
+                amount       INTEGER NOT NULL,
+                return_amount INTEGER NOT NULL,
+                invested_at  TEXT DEFAULT (datetime('now')),
+                collected    INTEGER NOT NULL DEFAULT 0
+            );
+            """
+        )
+        # Add new columns to existing tables (idempotent)
+        for stmt in [
+            "ALTER TABLE animals ADD COLUMN hunger_alerted INTEGER DEFAULT NULL",
+        ]:
+            try:
+                conn.execute(stmt)
+            except Exception:
+                pass
         _seed_species(conn)
         # Backfill any animals that have no nickname with their species name
         conn.execute(
@@ -326,12 +347,96 @@ def resolve_trade(trade_id: int, status: str):
     with get_conn() as conn:
         trade = conn.execute("SELECT * FROM trades WHERE id = ?", (trade_id,)).fetchone()
         if status == "accepted":
+            now_str = datetime.datetime.utcnow().isoformat()
             conn.execute(
-                "UPDATE animals SET user_id = ? WHERE animal_id = ?",
-                (trade["recipient_id"], trade["proposer_animal_id"]),
+                "UPDATE animals SET user_id = ?, caught_at = ? WHERE animal_id = ?",
+                (trade["recipient_id"], now_str, trade["proposer_animal_id"]),
             )
             conn.execute(
-                "UPDATE animals SET user_id = ? WHERE animal_id = ?",
-                (trade["proposer_id"], trade["recipient_animal_id"]),
+                "UPDATE animals SET user_id = ?, caught_at = ? WHERE animal_id = ?",
+                (trade["proposer_id"], now_str, trade["recipient_animal_id"]),
             )
         conn.execute("UPDATE trades SET status = ? WHERE id = ?", (status, trade_id))
+
+
+def expire_old_trades() -> list:
+    """Mark pending trades older than TRADE_EXPIRY_MINUTES as expired. Returns the affected rows."""
+    from config import TRADE_EXPIRY_MINUTES
+
+    cutoff = (
+        datetime.datetime.utcnow() - datetime.timedelta(minutes=TRADE_EXPIRY_MINUTES)
+    ).isoformat()
+    with get_conn() as conn:
+        expired = conn.execute(
+            "SELECT * FROM trades WHERE status = 'pending' AND created_at < ?",
+            (cutoff,),
+        ).fetchall()
+        if expired:
+            conn.execute(
+                "UPDATE trades SET status = 'expired' WHERE status = 'pending' AND created_at < ?",
+                (cutoff,),
+            )
+    return expired
+
+
+def all_group_members_checked_in(group_chat_id: int, prompt_time_str: str) -> bool:
+    """True if every opted-in, non-paused member of the group has checked in since the prompt."""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS total, "
+            "SUM(CASE WHEN last_checkin_at >= ? THEN 1 ELSE 0 END) AS checked_in "
+            "FROM users WHERE group_chat_id = ? AND opted_in = 1 "
+            "AND (paused_until IS NULL OR paused_until < datetime('now'))",
+            (prompt_time_str, group_chat_id),
+        ).fetchone()
+    return bool(row and row["total"] > 0 and row["total"] == row["checked_in"])
+
+
+# ── Animals (extra helpers) ───────────────────────────────────────────────────
+
+
+def delete_animal(animal_id: str):
+    with get_conn() as conn:
+        conn.execute("DELETE FROM animals WHERE animal_id = ?", (animal_id,))
+
+
+def reset_hunger_alerted(animal_id: str):
+    with get_conn() as conn:
+        conn.execute("UPDATE animals SET hunger_alerted = NULL WHERE animal_id = ?", (animal_id,))
+
+
+def get_low_hunger_animals():
+    """Animals with hunger ≤ 20 that need an alert, joined with owner group_chat_id."""
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT a.animal_id, a.user_id, a.nickname, a.hunger, a.hunger_alerted, "
+            "s.name, s.emoji, u.group_chat_id "
+            "FROM animals a "
+            "JOIN species s ON s.species_id = a.species_id "
+            "JOIN users u ON u.user_id = a.user_id "
+            "WHERE a.hunger <= 20 AND a.is_breeding = 0",
+        ).fetchall()
+
+
+# ── Investments ───────────────────────────────────────────────────────────────
+
+
+def get_active_investment(user_id: int):
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT * FROM investments WHERE user_id = ? AND collected = 0",
+            (user_id,),
+        ).fetchone()
+
+
+def create_investment(user_id: int, amount: int, return_amount: int):
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO investments (user_id, amount, return_amount) VALUES (?, ?, ?)",
+            (user_id, amount, return_amount),
+        )
+
+
+def collect_investment(investment_id: int):
+    with get_conn() as conn:
+        conn.execute("UPDATE investments SET collected = 1 WHERE id = ?", (investment_id,))

@@ -4,7 +4,7 @@ from telegram.ext import Application, CallbackQueryHandler, CommandHandler
 
 from config import BOT_TOKEN, PROMPT_INTERVAL_MINUTES
 from db import init_db
-from scheduler import tick
+from scheduler import tick, cleanup
 from handlers import (
     achievements_command,
     admin_command,
@@ -29,6 +29,8 @@ from handlers import (
     slots_command,
     trade_command,
     trade_callback,
+    invest_command,
+    sell_command,
 )
 
 logging.basicConfig(
@@ -56,6 +58,8 @@ async def post_init(application):
             BotCommand("daily", "Claim your daily coin reward"),
             BotCommand("slots", "Spin the slot machine (10 coins)"),
             BotCommand("trade", "Offer an animal trade to another player"),
+            BotCommand("invest", "Invest coins for a 25% return after 24h"),
+            BotCommand("sell", "Sell an animal for coins"),
             BotCommand("help", "Show all commands"),
         ]
     )
@@ -100,6 +104,8 @@ def main():
     app.add_handler(CommandHandler("daily", daily_command))
     app.add_handler(CommandHandler("slots", slots_command))
     app.add_handler(CommandHandler("trade", trade_command))
+    app.add_handler(CommandHandler("invest", invest_command))
+    app.add_handler(CommandHandler("sell", sell_command))
     app.add_handler(CallbackQueryHandler(handle_callback))
 
     app.job_queue.run_repeating(
@@ -107,6 +113,12 @@ def main():
         interval=PROMPT_INTERVAL_MINUTES * 60,
         first=30,
         job_kwargs={"misfire_grace_time": 60},
+    )
+    app.job_queue.run_repeating(
+        cleanup,
+        interval=60,
+        first=10,
+        job_kwargs={"misfire_grace_time": 30},
     )
 
     print(f"🦁 Zoo Bot is running! Mood prompts every {PROMPT_INTERVAL_MINUTES} min.")

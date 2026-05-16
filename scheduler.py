@@ -1,14 +1,22 @@
 import datetime
 import db
+from config import CHECKIN_WINDOW_MINUTES
 from keyboards import mood_keyboard
 
 
 async def tick(ctx):
-    """Runs every 30 minutes. Sends mood prompts, decays stats, checks breeding."""
+    """Runs every PROMPT_INTERVAL_MINUTES. Sends mood prompts, decays stats, checks breeding."""
     await _send_mood_prompts(ctx)
     await _decay_stats()
     await _check_starved_animals(ctx)
     await _check_breed_completions(ctx)
+    await _check_hunger_alerts(ctx)
+
+
+async def cleanup(ctx):
+    """Runs every minute. Expires stale trades and closes expired prompt windows."""
+    await _cleanup_expired_trades(ctx)
+    await _cleanup_expired_prompts(ctx)
 
 
 async def _send_mood_prompts(ctx):
@@ -52,12 +60,16 @@ async def _send_mood_prompts(ctx):
                         )
 
         try:
-            await ctx.bot.send_message(
+            msg = await ctx.bot.send_message(
                 group_chat_id,
                 "🕐 *Mood check-in!* How are you feeling right now?",
                 parse_mode="Markdown",
                 reply_markup=mood_keyboard(),
             )
+            ctx.bot_data.setdefault("prompt_messages", {})[group_chat_id] = {
+                "message_id": msg.message_id,
+                "sent_at": now_str,
+            }
             with db.get_conn() as conn:
                 conn.executemany(
                     "UPDATE users SET last_prompt_at = ? WHERE user_id = ?",
@@ -121,3 +133,67 @@ async def _check_breed_completions(ctx):
             )
         except Exception:
             pass
+
+
+async def _check_hunger_alerts(ctx):
+    animals = db.get_low_hunger_animals()
+    for animal in animals:
+        hunger = animal["hunger"]
+        alerted = animal["hunger_alerted"]
+        chat_id = animal["group_chat_id"] or animal["user_id"]
+        name = animal["nickname"] or animal["name"]
+
+        if hunger <= 10 and alerted != 10:
+            msg = f"🚨 *{animal['emoji']} {name}* is starving! (hunger: {hunger})\nFeed them now with /feed!"
+            threshold = 10
+        elif hunger <= 20 and alerted is None:
+            msg = f"⚠️ *{animal['emoji']} {name}* is getting hungry. (hunger: {hunger})\nUse /feed to top them up!"
+            threshold = 20
+        else:
+            continue
+
+        try:
+            await ctx.bot.send_message(chat_id, msg, parse_mode="Markdown")
+        except Exception:
+            pass
+        with db.get_conn() as conn:
+            conn.execute(
+                "UPDATE animals SET hunger_alerted = ? WHERE animal_id = ?",
+                (threshold, animal["animal_id"]),
+            )
+
+
+async def _cleanup_expired_trades(ctx):
+    expired = db.expire_old_trades()
+    for trade in expired:
+        proposer = db.get_user(trade["proposer_id"])
+        if not proposer:
+            continue
+        chat_id = proposer["group_chat_id"] or proposer["user_id"]
+        try:
+            await ctx.bot.send_message(
+                chat_id,
+                "⏰ Your trade offer expired — no response in time.",
+            )
+        except Exception:
+            pass
+
+
+async def _cleanup_expired_prompts(ctx):
+    prompt_messages = ctx.bot_data.get("prompt_messages", {})
+    now = datetime.datetime.utcnow()
+    to_remove = []
+    for group_chat_id, info in list(prompt_messages.items()):
+        sent_at = datetime.datetime.fromisoformat(info["sent_at"])
+        if (now - sent_at).total_seconds() / 60 > CHECKIN_WINDOW_MINUTES:
+            try:
+                await ctx.bot.edit_message_reply_markup(
+                    chat_id=group_chat_id,
+                    message_id=info["message_id"],
+                    reply_markup=None,
+                )
+            except Exception:
+                pass
+            to_remove.append(group_chat_id)
+    for g in to_remove:
+        del prompt_messages[g]

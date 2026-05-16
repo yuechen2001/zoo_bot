@@ -39,6 +39,28 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
     user = db.get_user(tg_id)
 
+    # Invalidate any previous encounter so its "Attempt" button can't catch the new species
+    old = ctx.user_data.get("pending_catch")
+    if old and old.get("message_id"):
+        try:
+            await ctx.bot.edit_message_text(
+                chat_id=update.effective_chat.id,
+                message_id=old["message_id"],
+                text="🌿 The previous encounter fled — you started a new search.",
+            )
+        except Exception:
+            pass
+
+    msg = await update.message.reply_text(
+        f"🌿 A wild *{species['emoji']} {species['name']}* appeared!\n"
+        f"{RARITY_LABELS.get(rarity, rarity.title())}\n\n"
+        f"Catch rate: {int(species['catch_rate'] * 100)}%\n"
+        f"Your coins: *{user['coins']}* 🪙\n\n"
+        f"_You have {CATCH_EXPIRY_MINUTES} min to decide._",
+        parse_mode="Markdown",
+        reply_markup=catch_keyboard(species["species_id"], species["catch_cost"]),
+    )
+
     ctx.user_data["pending_catch"] = {
         "species_id": species["species_id"],
         "catch_rate": species["catch_rate"],
@@ -47,18 +69,8 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "name": species["name"],
         "emoji": species["emoji"],
         "at": datetime.datetime.utcnow().isoformat(),
+        "message_id": msg.message_id,
     }
-
-    rarity_label = RARITY_LABELS.get(rarity, rarity.title())
-    await update.message.reply_text(
-        f"🌿 A wild *{species['emoji']} {species['name']}* appeared!\n"
-        f"{rarity_label}\n\n"
-        f"Catch rate: {int(species['catch_rate'] * 100)}%\n"
-        f"Your coins: *{user['coins']}* 🪙\n\n"
-        f"_You have {CATCH_EXPIRY_MINUTES} min to decide._",
-        parse_mode="Markdown",
-        reply_markup=catch_keyboard(species["species_id"], species["catch_cost"]),
-    )
 
 
 async def catch_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -73,9 +85,17 @@ async def catch_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     # catch_attempt_<species_id>
+    _, __, species_id_str = data.partition("catch_attempt_")
     pending = ctx.user_data.get("pending_catch")
     if not pending:
         await query.answer("No active catch — use /catch to find one.")
+        return
+
+    # Guard against clicking an old message after a new /catch was issued
+    if str(pending["species_id"]) != species_id_str:
+        await query.answer(
+            "This encounter is outdated — use /catch for a fresh one.", show_alert=True
+        )
         return
 
     # Check expiry
