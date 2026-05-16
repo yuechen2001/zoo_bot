@@ -77,7 +77,7 @@ python main.py
 | Command | Description |
 |---|---|
 | `/start` | Join and receive a starter animal |
-| `/zoo` | View your zoo, grouped by habitat |
+| `/zoo` | View your zoo, one habitat per page — tap ◀ ▶ to browse |
 | `/catch` | Search for a wild animal |
 | `/feed <numbers>` | Feed animal(s) — 10 🪙 each |
 | `/breed <a> <b>` | Breed two animals together |

@@ -1,4 +1,5 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from species_data import HABITATS
 
 MOOD_EMOJIS = ["😢", "😐", "🙂", "😄", "🤩"]
 
@@ -39,6 +40,24 @@ def enclosure_upgrade_keyboard(habitats_with_cost: list[tuple[str, int]]):
         for habitat, cost in habitats_with_cost
     ]
     return InlineKeyboardMarkup(buttons)
+
+
+def zoo_page_keyboard(owner_id: int, page: int, habitat_keys: list[str]) -> InlineKeyboardMarkup:
+    buttons = []
+    if page > 0:
+        prev_emoji = HABITATS[habitat_keys[page - 1]]["emoji"]
+        buttons.append(
+            InlineKeyboardButton(f"◀ {prev_emoji}", callback_data=f"zoo_page_{owner_id}_{page - 1}")
+        )
+    buttons.append(
+        InlineKeyboardButton(f"{page + 1} / {len(habitat_keys)}", callback_data="zoo_noop")
+    )
+    if page < len(habitat_keys) - 1:
+        next_emoji = HABITATS[habitat_keys[page + 1]]["emoji"]
+        buttons.append(
+            InlineKeyboardButton(f"{next_emoji} ▶", callback_data=f"zoo_page_{owner_id}_{page + 1}")
+        )
+    return InlineKeyboardMarkup([buttons])
 
 
 def trade_keyboard(trade_id: int, recipient_id: int):

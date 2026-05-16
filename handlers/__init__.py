@@ -1,7 +1,7 @@
 from .achievements import achievements_command
 from .admin import admin_command
 from .start import start_command
-from .zoo import zoo_command
+from .zoo import zoo_command, zoo_page_callback
 from .catch import catch_command, catch_callback
 from .feed import feed_command
 from .breed import breed_command, breed_collect_callback
@@ -27,6 +27,7 @@ from .directory import directory_command
 __all__ = [
     "start_command",
     "zoo_command",
+    "zoo_page_callback",
     "catch_command",
     "catch_callback",
     "feed_command",

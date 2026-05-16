@@ -10,6 +10,7 @@ from handlers import (
     admin_command,
     start_command,
     zoo_command,
+    zoo_page_callback,
     catch_command,
     catch_callback,
     feed_command,
@@ -84,6 +85,10 @@ async def handle_callback(update, ctx):
         await trade_callback(update, ctx)
     elif data.startswith("enc_upgrade_"):
         await enclosure_upgrade_callback(update, ctx)
+    elif data.startswith("zoo_page_"):
+        await zoo_page_callback(update, ctx)
+    elif data == "zoo_noop":
+        await update.callback_query.answer()
     else:
         await update.callback_query.answer("Unknown action")
 

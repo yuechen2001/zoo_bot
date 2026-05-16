@@ -1,5 +1,5 @@
 from unittest.mock import MagicMock, patch
-from handlers.zoo import render_zoo, _render_habitat, ROW_LEN
+from handlers.zoo import render_zoo, render_zoo_page, _render_habitat, ROW_LEN
 
 
 def _make_animal(
@@ -176,3 +176,76 @@ def test_render_habitat_breeding_count_respected():
     result = _render_habitat("🐭", 3, 2)
     assert result.count("💤") == 2
     assert result.count("🐭") == 1
+
+
+# ── render_zoo_page pagination ─────────────────────────────────────────────────
+
+
+def test_render_zoo_page_returns_inhabited_keys():
+    animals = [
+        _make_animal(animal_id="a1", habitat="woodland"),
+        _make_animal(
+            animal_id="a2", species_id=2, species_name="Duck", emoji="🦆", habitat="aquatic"
+        ),
+    ]
+    with patch("handlers.zoo.db.get_conn", return_value=_mock_breed_conn()):
+        with patch("handlers.zoo.db.get_enclosures", return_value={}):
+            _, inhabited = render_zoo_page("Alice", animals, 100, 0, page=0)
+
+    assert inhabited == ["woodland", "aquatic"]
+
+
+def test_render_zoo_page_shows_only_requested_habitat():
+    woodland_animal = _make_animal(
+        animal_id="a1", habitat="woodland", species_name="Mouse", emoji="🐭"
+    )
+    aquatic_animal = _make_animal(
+        animal_id="a2", species_id=2, species_name="Duck", emoji="🦆", habitat="aquatic"
+    )
+    animals = [woodland_animal, aquatic_animal]
+
+    with patch("handlers.zoo.db.get_conn", return_value=_mock_breed_conn()):
+        with patch("handlers.zoo.db.get_enclosures", return_value={}):
+            text0, _ = render_zoo_page("Alice", animals, 100, 0, page=0)
+            text1, _ = render_zoo_page("Alice", animals, 100, 0, page=1)
+
+    assert "Mouse" in text0
+    assert "Duck" not in text0
+    assert "Duck" in text1
+    assert "Mouse" not in text1
+
+
+def test_render_zoo_page_position_numbers_global():
+    """Position numbers reflect index across all animals, not just the page."""
+    woodland_animal = _make_animal(animal_id="a1", habitat="woodland", nickname="First")
+    aquatic_animal = _make_animal(
+        animal_id="a2",
+        species_id=2,
+        species_name="Duck",
+        emoji="🦆",
+        habitat="aquatic",
+        nickname="Second",
+    )
+    animals = [woodland_animal, aquatic_animal]
+
+    with patch("handlers.zoo.db.get_conn", return_value=_mock_breed_conn()):
+        with patch("handlers.zoo.db.get_enclosures", return_value={}):
+            text1, _ = render_zoo_page("Alice", animals, 100, 0, page=1)
+
+    assert "#2 Second" in text1
+
+
+def test_render_zoo_page_out_of_range_clamped():
+    animals = [_make_animal(animal_id="a1", habitat="woodland")]
+    with patch("handlers.zoo.db.get_conn", return_value=_mock_breed_conn()):
+        with patch("handlers.zoo.db.get_enclosures", return_value={}):
+            text, inhabited = render_zoo_page("Alice", animals, 100, 0, page=99)
+
+    assert len(inhabited) == 1
+    assert "Mouse" in text
+
+
+def test_render_zoo_page_empty_returns_empty_list():
+    text, inhabited = render_zoo_page("Alice", [], 100, 0, page=0)
+    assert inhabited == []
+    assert "Empty" in text
