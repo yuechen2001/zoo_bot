@@ -93,6 +93,17 @@ async def mood_checkin_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await query.answer("Use /moodstart to opt in to prompts first!", show_alert=True)
         return
 
+    # Sync group_chat_id from the message so users who never ran /start in
+    # this group still get counted correctly in all_group_members_checked_in
+    msg_chat_id = query.message.chat_id
+    if query.message.chat.type in ("group", "supergroup") and user["group_chat_id"] != msg_chat_id:
+        with db.get_conn() as conn:
+            conn.execute(
+                "UPDATE users SET group_chat_id = ? WHERE user_id = ?",
+                (msg_chat_id, tg_id),
+            )
+        user = db.get_user(tg_id)
+
     # Enforce response window
     last_prompt = user["last_prompt_at"]
     if last_prompt:
@@ -161,7 +172,7 @@ async def help_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "🦁 *Zoo Bot — Commands*\n\n"
         "*Your zoo:*\n"
         "/start — join and get your starter animal\n"
-        "/zoo — view your zoo, grouped by habitat\n"
+        "/zoo — view your zoo, one habitat per page (tap ◀ ▶ to browse)\n"
         "/catch — search for a wild animal\n"
         "/feed <numbers> — feed animal(s) (10 🪙 each)\n"
         "/name <number> <name> — nickname an animal\n"
