@@ -148,6 +148,15 @@ def init_db():
             "UPDATE animals SET nickname = (SELECT name FROM species WHERE species_id = animals.species_id) "
             "WHERE nickname IS NULL OR nickname = ''"
         )
+        # Backfill starter enclosures for any existing users who don't have them yet
+        from species_data import HABITATS
+
+        for row in conn.execute("SELECT user_id FROM users").fetchall():
+            for habitat in HABITATS:
+                conn.execute(
+                    "INSERT OR IGNORE INTO user_enclosures (user_id, habitat, level) VALUES (?, ?, 1)",
+                    (row["user_id"], habitat),
+                )
 
 
 def _seed_species(conn):
