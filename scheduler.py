@@ -1,7 +1,7 @@
 import datetime
 import logging
 import db
-from config import CHECKIN_WINDOW_MINUTES
+from config import CHECKIN_WINDOW_MINUTES, PROMPT_INTERVAL_MINUTES
 from keyboards import mood_keyboard
 from species_data import ENCLOSURE_LEVELS
 
@@ -79,13 +79,16 @@ async def _send_mood_prompts(ctx):
             except Exception:
                 logger.exception("Failed to send streak-reset message to %s", group_chat_id)
 
-        # Don't send a new prompt if the last one is still within the checkin window
-        last_sent = ctx.bot_data.get("prompt_messages", {}).get(group_chat_id)
-        if last_sent:
+        # Don't send a new prompt if one was sent recently — use DB so this survives restarts
+        most_recent_prompt = max(
+            (u["last_prompt_at"] for u in members if u["last_prompt_at"]),
+            default=None,
+        )
+        if most_recent_prompt:
             elapsed = (
-                datetime.datetime.utcnow() - datetime.datetime.fromisoformat(last_sent["sent_at"])
+                datetime.datetime.utcnow() - datetime.datetime.fromisoformat(most_recent_prompt)
             ).total_seconds() / 60
-            if elapsed < CHECKIN_WINDOW_MINUTES:
+            if elapsed < PROMPT_INTERVAL_MINUTES:
                 continue
 
         try:
