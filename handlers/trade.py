@@ -54,12 +54,16 @@ async def trade_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     if my_animal["is_breeding"]:
         name = my_animal["nickname"] or my_animal["species_name"]
-        await update.message.reply_text(f"{my_animal['emoji']} {name} is currently breeding — can't trade!")
+        await update.message.reply_text(
+            f"{my_animal['emoji']} {name} is currently breeding — can't trade!"
+        )
         return
 
     if their_animal["is_breeding"]:
         name = their_animal["nickname"] or their_animal["species_name"]
-        await update.message.reply_text(f"{their_animal['emoji']} {name} is currently breeding — can't trade!")
+        await update.message.reply_text(
+            f"{their_animal['emoji']} {name} is currently breeding — can't trade!"
+        )
         return
 
     if db.has_pending_trade_for_animal(my_animal["animal_id"]):
@@ -68,7 +72,9 @@ async def trade_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     if db.has_pending_trade_for_animal(their_animal["animal_id"]):
         name = their_animal["nickname"] or their_animal["species_name"]
-        await update.message.reply_text(f"{their_animal['emoji']} {name} already has a pending trade.")
+        await update.message.reply_text(
+            f"{their_animal['emoji']} {name} already has a pending trade."
+        )
         return
 
     trade_id = db.create_trade(
@@ -95,7 +101,7 @@ async def trade_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     # format: trade_accept_{trade_id}_{recipient_id}  or  trade_decline_{...}
     parts = query.data.split("_")
-    action = parts[1]           # "accept" or "decline"
+    action = parts[1]  # "accept" or "decline"
     trade_id = int(parts[2])
     recipient_id = int(parts[3])
 

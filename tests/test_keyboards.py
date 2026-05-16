@@ -15,7 +15,7 @@ class TestMoodKeyboard:
     def test_callback_data_contains_emoji(self):
         kb = mood_keyboard()
         for btn in kb.inline_keyboard[0]:
-            emoji = btn.callback_data[len("mood_"):]
+            emoji = btn.callback_data[len("mood_") :]
             assert emoji in MOOD_EMOJIS
 
     def test_five_buttons(self):

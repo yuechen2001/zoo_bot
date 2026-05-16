@@ -39,17 +39,29 @@ async def test_mood_callback_rejects_non_opted_in_user():
     query = _make_query(user_id=456)
     update = _make_update(query)
 
-    user_data = {"opted_in": 0, "last_prompt_at": None, "last_checkin_at": None, "streak_windows": 0}
+    user_data = {
+        "opted_in": 0,
+        "last_prompt_at": None,
+        "last_checkin_at": None,
+        "streak_windows": 0,
+    }
     with patch("handlers.mood.db.get_user", return_value=user_data):
         await mood_checkin_callback(update, MagicMock())
 
-    query.answer.assert_called_once_with("Use /moodstart to opt in to prompts first!", show_alert=True)
+    query.answer.assert_called_once_with(
+        "Use /moodstart to opt in to prompts first!", show_alert=True
+    )
 
 
 @pytest.mark.asyncio
 async def test_mood_callback_window_closed():
     old_prompt = (datetime.datetime.utcnow() - datetime.timedelta(minutes=20)).isoformat()
-    user_data = {"opted_in": 1, "last_prompt_at": old_prompt, "last_checkin_at": None, "streak_windows": 0}
+    user_data = {
+        "opted_in": 1,
+        "last_prompt_at": old_prompt,
+        "last_checkin_at": None,
+        "streak_windows": 0,
+    }
 
     query = _make_query(user_id=123)
     update = _make_update(query)

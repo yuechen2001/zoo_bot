@@ -300,9 +300,7 @@ def award_achievement(user_id, key):
 
 def get_user_by_username(username: str):
     with get_conn() as conn:
-        return conn.execute(
-            "SELECT * FROM users WHERE username = ?", (username,)
-        ).fetchone()
+        return conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
 
 
 def create_trade(proposer_id, recipient_id, proposer_animal_id, recipient_animal_id) -> int:

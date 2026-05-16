@@ -19,6 +19,7 @@ async def _send_mood_prompts(ctx):
     now_str = datetime.datetime.utcnow().isoformat()
 
     from collections import defaultdict
+
     by_group = defaultdict(list)
     for u in users:
         by_group[u["group_chat_id"]].append(u)
