@@ -113,3 +113,84 @@ async def test_catch_stores_pending_catch_in_context():
     assert pending is not None
     assert pending["species_id"] == 3
     assert pending["rarity"] == "rare"
+
+
+class TestCatchCapacityGate:
+    def _make_pending(self, species_id=1):
+        import datetime
+
+        return {
+            "species_id": species_id,
+            "catch_rate": 0.9,
+            "catch_cost": 20,
+            "rarity": "common",
+            "name": "Mouse",
+            "emoji": "🐭",
+            "at": datetime.datetime.utcnow().isoformat(),
+            "message_id": 42,
+        }
+
+    @pytest.mark.asyncio
+    async def test_catch_blocked_when_enclosure_full(self):
+        from handlers.catch import catch_callback
+
+        query = MagicMock()
+        query.from_user.id = 1
+        query.data = "catch_attempt_1"
+        query.answer = AsyncMock()
+        query.edit_message_text = AsyncMock()
+
+        update = MagicMock()
+        update.callback_query = query
+
+        ctx = MagicMock()
+        ctx.user_data = {"pending_catch": self._make_pending(species_id=1)}
+
+        with patch("handlers.catch.db.get_user", return_value={"coins": 500}), patch(
+            "handlers.catch.db.get_conn"
+        ), patch("handlers.catch.roll_catch", return_value=True), patch(
+            "handlers.catch.db.get_species_habitat", return_value="woodland"
+        ), patch(
+            "handlers.catch.db.get_animal_count_by_habitat", return_value=3
+        ), patch(
+            "handlers.catch.db.get_enclosure_level", return_value=1
+        ):
+            await catch_callback(update, ctx)
+
+        # Should show enclosure full message, not a successful catch
+        query.edit_message_text.assert_called_once()
+        msg = query.edit_message_text.call_args[0][0]
+        assert "full" in msg.lower() or "enclosure" in msg.lower()
+
+    @pytest.mark.asyncio
+    async def test_catch_succeeds_when_space_available(self):
+        from handlers.catch import catch_callback
+
+        query = MagicMock()
+        query.from_user.id = 1
+        query.data = "catch_attempt_1"
+        query.answer = AsyncMock()
+        query.edit_message_text = AsyncMock()
+
+        update = MagicMock()
+        update.callback_query = query
+
+        ctx = MagicMock()
+        ctx.user_data = {"pending_catch": self._make_pending(species_id=1)}
+
+        cm, inner = _make_conn_mock()
+
+        with patch("handlers.catch.db.get_user", return_value={"coins": 500}), patch(
+            "handlers.catch.db.get_conn", return_value=cm
+        ), patch("handlers.catch.roll_catch", return_value=True), patch(
+            "handlers.catch.db.get_species_habitat", return_value="woodland"
+        ), patch(
+            "handlers.catch.db.get_animal_count_by_habitat", return_value=1
+        ), patch(
+            "handlers.catch.db.get_enclosure_level", return_value=1
+        ), patch(
+            "handlers.catch.check_achievements", new_callable=AsyncMock
+        ):
+            await catch_callback(update, ctx)
+
+        query.answer.assert_called_with("Caught!")

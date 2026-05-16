@@ -235,6 +235,19 @@ def get_species_by_rarity(rarity):
         return conn.execute("SELECT * FROM species WHERE rarity = ?", (rarity,)).fetchall()
 
 
+def get_all_species():
+    with get_conn() as conn:
+        return conn.execute("SELECT * FROM species").fetchall()
+
+
+def get_owned_species_ids(user_id: int) -> set:
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT DISTINCT species_id FROM animals WHERE user_id = ?", (user_id,)
+        ).fetchall()
+    return {r["species_id"] for r in rows}
+
+
 # ── Animals ───────────────────────────────────────────────────────────────────
 
 

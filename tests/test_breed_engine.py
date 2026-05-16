@@ -113,6 +113,42 @@ class TestCalcBreedReadyAt:
         assert dt_empty > dt_full
 
 
+class TestHabitatBonus:
+    def test_bonus_reduces_breed_time(self):
+        import datetime
+
+        ts_no_bonus = calc_breed_ready_at("rare", "rare", 100, 100, habitat_bonus=0.0)
+        ts_with_bonus = calc_breed_ready_at("rare", "rare", 100, 100, habitat_bonus=0.15)
+        dt_no = datetime.datetime.fromisoformat(ts_no_bonus)
+        dt_with = datetime.datetime.fromisoformat(ts_with_bonus)
+        assert dt_with < dt_no
+
+    def test_zero_bonus_no_change(self):
+        import datetime
+
+        ts1 = calc_breed_ready_at("common", "common", 100, 100, habitat_bonus=0.0)
+        ts2 = calc_breed_ready_at("common", "common", 100, 100)
+        dt1 = datetime.datetime.fromisoformat(ts1)
+        dt2 = datetime.datetime.fromisoformat(ts2)
+        assert abs((dt1 - dt2).total_seconds()) < 1
+
+    def test_duration_str_reflects_bonus(self):
+        def to_minutes(s):
+            h = m = 0
+            if "h" in s:
+                parts = s.split("h")
+                h = int(parts[0].strip())
+                if parts[1].strip():
+                    m = int(parts[1].replace("m", "").strip())
+            else:
+                m = int(s.replace("m", "").strip())
+            return h * 60 + m
+
+        no_bonus = breed_duration_str("rare", "rare", 100, 100, habitat_bonus=0.0)
+        with_bonus = breed_duration_str("rare", "rare", 100, 100, habitat_bonus=0.40)
+        assert to_minutes(with_bonus) < to_minutes(no_bonus)
+
+
 class TestResolveOffspring:
     def test_no_bump_picks_higher_rarity(self, conn):
         # random[0]=0.5 → no bump (>0.10); random[1]=0.3 → picks higher (< 0.7)

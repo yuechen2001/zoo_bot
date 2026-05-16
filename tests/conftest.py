@@ -18,7 +18,14 @@ def conn():
             catch_rate     REAL NOT NULL,
             catch_cost     INTEGER NOT NULL,
             hunger_decay   INTEGER NOT NULL DEFAULT 5,
-            breed_time_hrs INTEGER NOT NULL DEFAULT 24
+            breed_time_hrs INTEGER NOT NULL DEFAULT 24,
+            habitat        TEXT
+        );
+        CREATE TABLE user_enclosures (
+            user_id  INTEGER,
+            habitat  TEXT NOT NULL,
+            level    INTEGER NOT NULL DEFAULT 1,
+            PRIMARY KEY (user_id, habitat)
         );
         CREATE TABLE users (
             user_id            INTEGER PRIMARY KEY,
@@ -66,8 +73,8 @@ def conn():
     )
     for s in SPECIES:
         c.execute(
-            "INSERT INTO species (name, emoji, rarity, catch_rate, catch_cost, hunger_decay, breed_time_hrs) "
-            "VALUES (:name, :emoji, :rarity, :catch_rate, :catch_cost, :hunger_decay, :breed_time_hrs)",
+            "INSERT INTO species (name, emoji, rarity, catch_rate, catch_cost, hunger_decay, breed_time_hrs, habitat) "
+            "VALUES (:name, :emoji, :rarity, :catch_rate, :catch_cost, :hunger_decay, :breed_time_hrs, :habitat)",
             s,
         )
     c.commit()
