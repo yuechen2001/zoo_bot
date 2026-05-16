@@ -42,6 +42,9 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             ./venv/bin/pip install -r requirements.txt --quiet
+            # Append any missing env vars with their defaults
+            grep -q "^INVESTMENT_HOURS=" .env || echo "INVESTMENT_HOURS=24" >> .env
+            grep -q "^INVESTMENT_RETURN_RATE=" .env || echo "INVESTMENT_RETURN_RATE=0.25" >> .env
             sudo systemctl restart zoobot
             sleep 2
             sudo systemctl is-active --quiet zoobot && echo "Bot restarted successfully" || (echo "Bot failed to start" && sudo journalctl -u zoobot -n 20 && exit 1)
