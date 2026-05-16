@@ -34,6 +34,9 @@ def _make_animal(animal_id, rarity="common", is_breeding=0):
             "nickname": None,
             "species_name": "Frog",
             "emoji": "🐸",
+            "habitat": "woodland",
+            "catch_cost": 20,
+            "hunger": 80,
         }.get(k)
     )
     return a

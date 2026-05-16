@@ -27,6 +27,9 @@ def _make_animal(animal_id="a1", rarity="common", is_breeding=0, nickname="Mouse
         "emoji": emoji,
         "rarity": rarity,
         "is_breeding": is_breeding,
+        "habitat": "woodland",
+        "catch_cost": 20,
+        "hunger": 80,
     }
 
 

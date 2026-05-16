@@ -16,6 +16,8 @@ def _make_animal(
         "is_breeding": is_breeding,
         "hunger": hunger,
         "rarity": rarity,
+        "habitat": "woodland",
+        "catch_cost": 20,
     }
 
 
