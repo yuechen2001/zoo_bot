@@ -2,6 +2,7 @@ import datetime
 import db
 from config import CHECKIN_WINDOW_MINUTES
 from keyboards import mood_keyboard
+from species_data import ENCLOSURE_LEVELS
 
 
 async def tick(ctx):
@@ -17,6 +18,11 @@ async def cleanup(ctx):
     """Runs every minute. Expires stale trades and closes expired prompt windows."""
     await _cleanup_expired_trades(ctx)
     await _cleanup_expired_prompts(ctx)
+
+
+async def enclosure_income(ctx):
+    """Runs every hour. Awards passive coin income from enclosures."""
+    await _tick_enclosure_income()
 
 
 async def _send_mood_prompts(ctx):
@@ -161,6 +167,21 @@ async def _check_hunger_alerts(ctx):
                 "UPDATE animals SET hunger_alerted = ? WHERE animal_id = ?",
                 (threshold, animal["animal_id"]),
             )
+
+
+async def _tick_enclosure_income():
+    for user in db.get_all_users_with_animals():
+        uid = user["user_id"]
+        enclosures = db.get_enclosures(uid)
+        total_coins = 0
+        for habitat, level in enclosures.items():
+            rate = ENCLOSURE_LEVELS[level]["coins_per_animal_hr"]
+            if rate == 0:
+                continue
+            count = db.get_animal_count_by_habitat(uid, habitat)
+            total_coins += rate * count
+        if total_coins > 0:
+            db.add_coins(uid, total_coins)
 
 
 async def _cleanup_expired_trades(ctx):
