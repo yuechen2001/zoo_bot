@@ -100,9 +100,8 @@ python main.py
 | `/invest <amount>` | Invest coins (25% return after 24h) |
 | `/moodstart` | Opt in to mood prompts |
 | `/moodstop` | Opt out (resets streak) |
-| `/pause <duration>` | Freeze streak — e.g. `/pause 8h` or `/pause 30m` |
-| `/resume` | End pause early |
 | `/help` | Show all commands |
+| `/admin help` | List all admin & mod commands (pause, resume, give, reset…) |
 
 ---
 

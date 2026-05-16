@@ -9,6 +9,8 @@ Usage:
   /admin giveuser <username> <species> — add an animal to another user's zoo
   /admin listanimals <username>        — show all animals owned by a user
   /admin hunger <number> <value>       — set animal #N hunger (0–100)
+  /admin pause <duration>              — freeze your streak (e.g. 8h or 30m)
+  /admin resume                        — end pause early
   /admin tick                          — manually trigger the scheduler tick
   /admin prompt                        — send a mood prompt to yourself right now
   /admin reset                         — wipe your own data and start fresh
@@ -16,6 +18,8 @@ Usage:
   /admin stats                         — show DB summary
 """
 
+import datetime
+import re
 import uuid
 from telegram import Update
 from telegram.ext import ContextTypes
@@ -62,6 +66,12 @@ async def admin_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     elif sub == "hunger":
         await _cmd_set_stat(update, tg_id, args, "hunger")
+
+    elif sub == "pause":
+        await _cmd_pause(update, tg_id, args)
+
+    elif sub == "resume":
+        await _cmd_resume(update, tg_id)
 
     elif sub == "tick":
         from scheduler import tick
@@ -237,6 +247,32 @@ async def _cmd_listanimals(update, args):
     await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
 
 
+async def _cmd_pause(update, tg_id, args):
+    if not args:
+        await update.message.reply_text("Usage: /admin pause 8h  or  /admin pause 30m")
+        return
+    match = re.fullmatch(r"(\d+)([hm])", args[0].lower())
+    if not match:
+        await update.message.reply_text("Format: /admin pause 8h  or  /admin pause 30m")
+        return
+    amount, unit = int(match.group(1)), match.group(2)
+    delta = datetime.timedelta(hours=amount) if unit == "h" else datetime.timedelta(minutes=amount)
+    paused_until = (datetime.datetime.utcnow() + delta).isoformat()
+    with db.get_conn() as conn:
+        conn.execute("UPDATE users SET paused_until = ? WHERE user_id = ?", (paused_until, tg_id))
+    label = f"{amount}{'h' if unit == 'h' else 'm'}"
+    await update.message.reply_text(
+        f"⏸ Paused for *{label}*. No prompts, streak frozen. Use /admin resume to end early.",
+        parse_mode="Markdown",
+    )
+
+
+async def _cmd_resume(update, tg_id):
+    with db.get_conn() as conn:
+        conn.execute("UPDATE users SET paused_until = NULL WHERE user_id = ?", (tg_id,))
+    await update.message.reply_text("▶️ Resumed! Mood prompts are back on.")
+
+
 async def _cmd_reset(update, tg_id):
     with db.get_conn() as conn:
         animal_ids = [
@@ -332,6 +368,8 @@ def _help_text() -> str:
         "`/admin giveuser <username> <species>` — add animal to another user's zoo\n"
         "`/admin listanimals <username>` — show all animals owned by a user\n"
         "`/admin hunger <#> <val>` — set animal hunger (0–100)\n"
+        "`/admin pause <duration>` — freeze streak (e.g. 8h or 30m)\n"
+        "`/admin resume` — end pause early\n"
         "`/admin tick` — fire the scheduler manually\n"
         "`/admin prompt` — send yourself a mood prompt now\n"
         "`/admin reset` — wipe your own data and start fresh\n"

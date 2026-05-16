@@ -1,4 +1,5 @@
 import logging
+from logging.handlers import RotatingFileHandler
 from telegram import BotCommand
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler
 
@@ -20,8 +21,6 @@ from handlers import (
     name_command,
     moodstart_command,
     moodstop_command,
-    pause_command,
-    resume_command,
     mood_checkin_callback,
     help_command,
     trivia_command,
@@ -38,16 +37,24 @@ from handlers import (
     directory_command,
 )
 
+_log_fmt = logging.Formatter("%(asctime)s  %(name)s  %(levelname)s  %(message)s")
+_file_handler = RotatingFileHandler("zoo_bot.log", maxBytes=5 * 1024 * 1024, backupCount=3)
+_file_handler.setFormatter(_log_fmt)
+
 logging.basicConfig(
     format="%(asctime)s  %(name)s  %(levelname)s  %(message)s",
     level=logging.INFO,
+    handlers=[logging.StreamHandler(), _file_handler],
 )
 logging.getLogger("httpx").setLevel(logging.WARNING)
+
+logger = logging.getLogger(__name__)
 
 
 async def post_init(application):
     await application.bot.set_my_commands(
         [
+            BotCommand("admin", "Admin & mod tools — /admin help for full list"),
             BotCommand("start", "Join and get your starter animal"),
             BotCommand("zoo", "See your zoo"),
             BotCommand("catch", "Search for a wild animal"),
@@ -56,7 +63,6 @@ async def post_init(application):
             BotCommand("name", "Give an animal a nickname"),
             BotCommand("moodstart", "Opt in to mood prompts"),
             BotCommand("moodstop", "Opt out of prompts"),
-            BotCommand("resume", "End pause early"),
             BotCommand("achievements", "View achievements"),
             BotCommand("trivia", "Answer animal trivia for coins"),
             BotCommand("gamble", "Bet coins on a coin flip"),
@@ -71,6 +77,10 @@ async def post_init(application):
             BotCommand("help", "Show all commands"),
         ]
     )
+
+
+async def error_handler(_update, ctx):
+    logger.exception("Unhandled exception in handler", exc_info=ctx.error)
 
 
 async def handle_callback(update, ctx):
@@ -108,8 +118,6 @@ def main():
     app.add_handler(CommandHandler("name", name_command))
     app.add_handler(CommandHandler("moodstart", moodstart_command))
     app.add_handler(CommandHandler("moodstop", moodstop_command))
-    app.add_handler(CommandHandler("pause", pause_command))
-    app.add_handler(CommandHandler("resume", resume_command))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("admin", admin_command))
     app.add_handler(CommandHandler("achievements", achievements_command))
@@ -124,6 +132,7 @@ def main():
     app.add_handler(CommandHandler("directory", directory_command))
     app.add_handler(CommandHandler("autofeed", autofeed_command))
     app.add_handler(CallbackQueryHandler(handle_callback))
+    app.add_error_handler(error_handler)
 
     app.job_queue.run_repeating(
         tick,
@@ -144,7 +153,7 @@ def main():
         job_kwargs={"misfire_grace_time": 300},
     )
 
-    print(f"🦁 Zoo Bot is running! Mood prompts every {PROMPT_INTERVAL_MINUTES} min.")
+    logger.info("Zoo Bot is running! Mood prompts every %d min.", PROMPT_INTERVAL_MINUTES)
     app.run_polling(drop_pending_updates=True, allowed_updates=["message", "callback_query"])
 
 

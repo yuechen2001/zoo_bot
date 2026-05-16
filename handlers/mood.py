@@ -196,9 +196,9 @@ async def help_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "/invest <amount> — invest coins (25% return after 24h)\n\n"
         "*Mood prompts:*\n"
         "/moodstart — opt in to prompts\n"
-        "/moodstop — opt out (resets streak)\n"
-        "/pause <duration> — freeze streak, e.g. /pause 8h or /pause 30m\n"
-        "/resume — end pause early\n\n"
+        "/moodstop — opt out (resets streak)\n\n"
+        "*Admin:*\n"
+        "/admin help — full list of admin commands\n\n"
         "⏱ Respond within *15 min* of a prompt to earn coins!\n"
         "🔥 Longer streaks = coin multiplier (up to 3×)",
         parse_mode="Markdown",
