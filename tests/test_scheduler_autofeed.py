@@ -48,7 +48,7 @@ def _make_conn_mock():
 async def test_autofeed_feeds_hungry_animals():
     ctx = _make_ctx()
     user = _make_user(coins=200, threshold=50, max_coins=100)
-    animal = _make_animal(hunger=30, rarity="common")  # cost 10
+    animal = _make_animal(hunger=30, rarity="common")  # cost 5
 
     with patch("scheduler.db.get_autofeed_users", return_value=[user]), patch(
         "scheduler.db.get_animals_below_hunger", return_value=[animal]
@@ -60,7 +60,7 @@ async def test_autofeed_feeds_hungry_animals():
     ctx.bot.send_message.assert_called_once()
     msg = ctx.bot.send_message.call_args[0][1]
     assert "Auto-fed 1 animal" in msg
-    assert "10" in msg  # spent
+    assert "5" in msg  # spent
 
 
 @pytest.mark.asyncio
@@ -94,12 +94,12 @@ async def test_autofeed_skips_when_no_coins():
 
 @pytest.mark.asyncio
 async def test_autofeed_respects_max_coins_cap():
-    """With max_coins=15 and cost 10 per animal, only 1 of 2 animals should be fed."""
+    """With max_coins=8 and cost 5 per animal, only 1 of 2 animals should be fed."""
     ctx = _make_ctx()
-    user = _make_user(coins=200, threshold=50, max_coins=15)
+    user = _make_user(coins=200, threshold=50, max_coins=8)
     animals = [
-        _make_animal(animal_id="a1", hunger=10, rarity="common"),  # cost 10
-        _make_animal(animal_id="a2", hunger=20, rarity="common"),  # cost 10 → exceeds remaining 5
+        _make_animal(animal_id="a1", hunger=10, rarity="common"),  # cost 5
+        _make_animal(animal_id="a2", hunger=20, rarity="common"),  # cost 5 → exceeds remaining 3
     ]
 
     with patch("scheduler.db.get_autofeed_users", return_value=[user]), patch(
@@ -111,7 +111,7 @@ async def test_autofeed_respects_max_coins_cap():
 
     msg = ctx.bot.send_message.call_args[0][1]
     assert "Auto-fed 1 animal" in msg
-    assert "10" in msg  # spent only 10, not 20
+    assert "5" in msg  # spent only 5, not 10
 
 
 @pytest.mark.asyncio
@@ -153,7 +153,7 @@ async def test_autofeed_send_failure_does_not_raise():
 async def test_autofeed_balance_shown_correctly():
     ctx = _make_ctx()
     user = _make_user(coins=150, threshold=50, max_coins=100)
-    animal = _make_animal(hunger=30, rarity="common")  # cost 10
+    animal = _make_animal(hunger=30, rarity="common")  # cost 5
 
     with patch("scheduler.db.get_autofeed_users", return_value=[user]), patch(
         "scheduler.db.get_animals_below_hunger", return_value=[animal]
@@ -163,4 +163,4 @@ async def test_autofeed_balance_shown_correctly():
         await _autofeed(ctx)
 
     msg = ctx.bot.send_message.call_args[0][1]
-    assert "140" in msg  # 150 - 10 = 140 remaining
+    assert "145" in msg  # 150 - 5 = 145 remaining

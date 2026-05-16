@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 import db
 
-FEED_COST_BY_RARITY = {"common": 10, "rare": 20, "epic": 40, "legendary": 80}
+FEED_COST_BY_RARITY = {"common": 5, "rare": 10, "epic": 15, "legendary": 20}
 FEED_HUNGER = 40
 
 
