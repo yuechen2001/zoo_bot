@@ -26,9 +26,14 @@ async def feed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             lines.append(f"#{position}: no animal found")
             continue
 
+        name = animal["nickname"] or animal["species_name"]
+
         if animal["is_breeding"]:
-            name = animal["nickname"] or animal["species_name"]
             lines.append(f"#{position}: {animal['emoji']} *{name}* is breeding, skipped")
+            continue
+
+        if animal["hunger"] >= 100:
+            lines.append(f"#{position}: {animal['emoji']} *{name}* is already full!")
             continue
 
         user = db.get_user(tg_id)
@@ -44,11 +49,10 @@ async def feed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 (FEED_COST, tg_id),
             )
             conn.execute(
-                "UPDATE animals SET hunger = ? WHERE animal_id = ?",
+                "UPDATE animals SET hunger = ?, hunger_alerted = NULL WHERE animal_id = ?",
                 (new_hunger, animal["animal_id"]),
             )
 
-        name = animal["nickname"] or animal["species_name"]
         lines.append(
             f"🍖 {animal['emoji']} *{name}*: hunger {animal['hunger']}→{new_hunger} (-{FEED_COST} 🪙)"
         )

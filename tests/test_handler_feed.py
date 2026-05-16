@@ -144,3 +144,25 @@ async def test_feed_hunger_capped_at_100():
 
     reply = update.message.reply_text.call_args[0][0]
     assert "90→100" in reply  # hunger: 90 + 40 capped at 100
+
+
+@pytest.mark.asyncio
+async def test_feed_blocked_when_already_full():
+    animal = _make_animal(hunger=100)
+
+    update = MagicMock()
+    update.effective_user.id = 1
+    update.message.reply_text = AsyncMock()
+
+    ctx = MagicMock()
+    ctx.args = ["1"]
+
+    with patch("handlers.feed.db.get_user", return_value={"coins": 100}), patch(
+        "handlers.feed.db.get_animal_by_position", return_value=animal
+    ):
+        await feed_command(update, ctx)
+
+    reply = update.message.reply_text.call_args[0][0]
+    assert "full" in reply.lower()
+    # No coin deduction should happen
+    assert "🍖" not in reply

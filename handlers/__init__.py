@@ -19,6 +19,8 @@ from .gamble import gamble_command
 from .daily import daily_command
 from .slots import slots_command
 from .trade import trade_command, trade_callback
+from .invest import invest_command
+from .sell import sell_command
 
 __all__ = [
     "start_command",
@@ -44,4 +46,6 @@ __all__ = [
     "slots_command",
     "trade_command",
     "trade_callback",
+    "invest_command",
+    "sell_command",
 ]

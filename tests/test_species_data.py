@@ -3,22 +3,22 @@ from species_data import SPECIES, RARITY_ORDER, ENCOUNTER_WEIGHTS, get_breed_par
 
 class TestGetBreedParams:
     def test_common_common(self):
-        assert get_breed_params("common", "common") == {"cost": 50, "hours": 6}
+        assert get_breed_params("common", "common") == {"cost": 50, "hours": 0.5}
 
     def test_common_rare(self):
-        assert get_breed_params("common", "rare") == {"cost": 120, "hours": 12}
+        assert get_breed_params("common", "rare") == {"cost": 120, "hours": 0.75}
 
     def test_rare_rare(self):
-        assert get_breed_params("rare", "rare") == {"cost": 200, "hours": 18}
+        assert get_breed_params("rare", "rare") == {"cost": 200, "hours": 1.0}
 
     def test_common_epic(self):
-        assert get_breed_params("common", "epic") == {"cost": 350, "hours": 28}
+        assert get_breed_params("common", "epic") == {"cost": 250, "hours": 1.25}
 
     def test_epic_epic(self):
-        assert get_breed_params("epic", "epic") == {"cost": 500, "hours": 36}
+        assert get_breed_params("epic", "epic") == {"cost": 400, "hours": 2.0}
 
     def test_legendary_legendary(self):
-        assert get_breed_params("legendary", "legendary") == {"cost": 800, "hours": 48}
+        assert get_breed_params("legendary", "legendary") == {"cost": 800, "hours": 2.0}
 
     def test_symmetry_rare_common(self):
         assert get_breed_params("rare", "common") == get_breed_params("common", "rare")

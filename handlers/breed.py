@@ -69,7 +69,7 @@ async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     rarity_a = animal_a["rarity"]
     rarity_b = animal_b["rarity"]
     cost = calc_breed_cost(rarity_a, rarity_b)
-    duration = breed_duration_str(rarity_a, rarity_b)
+    duration = breed_duration_str(rarity_a, rarity_b, animal_a["hunger"], animal_b["hunger"])
 
     if user["coins"] < cost:
         await update.message.reply_text(
@@ -82,7 +82,7 @@ async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     with db.get_conn() as conn:
         offspring_species_id = resolve_offspring(rarity_a, rarity_b, conn)
-        ready_at = calc_breed_ready_at(rarity_a, rarity_b)
+        ready_at = calc_breed_ready_at(rarity_a, rarity_b, animal_a["hunger"], animal_b["hunger"])
         conn.execute("UPDATE users SET coins = coins - ? WHERE user_id = ?", (cost, tg_id))
         conn.execute(
             "UPDATE animals SET is_breeding = 1 WHERE animal_id IN (?, ?)",
