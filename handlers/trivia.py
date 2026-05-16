@@ -4,7 +4,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 import db
 
-TRIVIA_COOLDOWN_HOURS = 4
+TRIVIA_COOLDOWN_MINUTES = 15
 TRIVIA_WINDOW_MINUTES = 10
 COINS_CORRECT = 40
 COINS_WRONG = 5
@@ -43,7 +43,7 @@ async def trivia_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         elapsed = (
             datetime.datetime.utcnow() - datetime.datetime.fromisoformat(last["asked_at"])
         ).total_seconds()
-        remaining_s = TRIVIA_COOLDOWN_HOURS * 3600 - elapsed
+        remaining_s = TRIVIA_COOLDOWN_MINUTES * 60 - elapsed
         if remaining_s > 0:
             remaining_m = int(remaining_s // 60)
             await update.message.reply_text(

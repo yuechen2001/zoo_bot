@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from handlers.trivia import (
     trivia_command,
     trivia_callback,
-    TRIVIA_COOLDOWN_HOURS,
+    TRIVIA_COOLDOWN_MINUTES,
     COINS_CORRECT,
     COINS_WRONG,
 )
@@ -53,7 +53,7 @@ async def test_trivia_rejects_unknown_user():
 
 @pytest.mark.asyncio
 async def test_trivia_cooldown_blocks_early_repeat():
-    recent = (datetime.datetime.utcnow() - datetime.timedelta(hours=1)).isoformat()
+    recent = (datetime.datetime.utcnow() - datetime.timedelta(minutes=5)).isoformat()
     cm, _ = _make_conn_mock(last_asked=recent)
 
     update = MagicMock()
@@ -75,7 +75,7 @@ async def test_trivia_cooldown_blocks_early_repeat():
 @pytest.mark.asyncio
 async def test_trivia_starts_after_cooldown():
     old = (
-        datetime.datetime.utcnow() - datetime.timedelta(hours=TRIVIA_COOLDOWN_HOURS + 1)
+        datetime.datetime.utcnow() - datetime.timedelta(minutes=TRIVIA_COOLDOWN_MINUTES + 1)
     ).isoformat()
     cm, inner = _make_conn_mock(last_asked=old)
 

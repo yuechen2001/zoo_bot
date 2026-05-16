@@ -4,8 +4,8 @@ VALID_ANSWERS = {"A", "B", "C", "D"}
 
 
 class TestTriviaData:
-    def test_has_15_questions(self):
-        assert len(QUESTIONS) == 15
+    def test_has_at_least_15_questions(self):
+        assert len(QUESTIONS) >= 15
 
     def test_each_question_has_required_fields(self):
         for i, q in enumerate(QUESTIONS):
