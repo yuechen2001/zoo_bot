@@ -3,6 +3,10 @@ testpaths = ["handlers", "game", "tests"]
 pythonpath = ["."]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    "ignore::DeprecationWarning:pytest_asyncio",
+    "ignore::DeprecationWarning:asyncio",
+]
 
 [tool.ruff]
 line-length = 100
