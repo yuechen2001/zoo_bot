@@ -6,14 +6,17 @@ A Telegram bot for couples. Build your own virtual zoo by catching and breeding 
 
 ## Features
 
-- **Mood check-ins** — bot prompts you every 30 min, earn coins for responding
+- **Mood check-ins** — bot prompts every 30 min, earn coins for responding
 - **Streak multiplier** — longer streaks = more coins per check-in (up to 3×)
 - **Catch system** — roll for random animals by rarity, pay coins to attempt
-- **Breeding** — pair two animals and wait for an offspring
-- **Hunger & happiness** — animals decay over time, feed them to keep them healthy
+- **Habitat enclosures** — 6 typed enclosures (Woodland, Savanna, Tropical, Aquatic, Tundra, Mythic); upgrade for higher capacity, passive income, and breeding bonuses
+- **Breeding** — pair two animals and wait for an offspring; same-habitat pairs get a time reduction
+- **Hunger** — animals decay over time, feed them before they run away
 - **Achievements** — 14 milestones across catching, breeding, and streaks
 - **Daily & trivia** — extra ways to earn coins
 - **Gamble & slots** — risk your coins for more
+- **Trading** — swap animals with your partner
+- **Investments** — park coins for a 25% return after 24h
 - **Admin commands** — debug tools for the bot owner
 
 ---
@@ -63,9 +66,9 @@ python main.py
 ## Getting started in Telegram
 
 1. Add the bot to a group with your partner
-2. Both send `/start` — each person gets a random starter animal
+2. Both send `/start` — each person gets a random starter animal and a level-1 enclosure in every habitat
 3. Respond to mood prompts to earn coins
-4. Use `/catch` to grow your zoo
+4. Use `/catch` to grow your zoo, `/enclosures` to expand capacity
 
 ---
 
@@ -74,17 +77,22 @@ python main.py
 | Command | Description |
 |---|---|
 | `/start` | Join and receive a starter animal |
-| `/zoo` | View your zoo |
+| `/zoo` | View your zoo, grouped by habitat |
 | `/catch` | Search for a wild animal |
-| `/feed <number>` | Feed animal(s) — 10 🪙 each |
+| `/feed <numbers>` | Feed animal(s) — 10 🪙 each |
 | `/breed <a> <b>` | Breed two animals together |
 | `/breed collect` | Claim your finished offspring |
+| `/breed status` | Check time remaining on active breed |
 | `/name <number> <name>` | Give an animal a nickname |
+| `/sell <number>` | Sell an animal for coins |
+| `/trade @user <yours> <theirs>` | Offer an animal swap |
+| `/enclosures` | View and upgrade your habitat enclosures |
 | `/achievements` | View your achievements |
 | `/daily` | Claim +50 coins once per day |
 | `/trivia` | Animal trivia — +40 correct, +5 wrong, 4h cooldown |
 | `/gamble <amount>` | Coin flip bet (max 100 🪙) |
 | `/slots` | Spin the slot machine (10 🪙 per spin) |
+| `/invest <amount>` | Invest coins (25% return after 24h) |
 | `/moodstart` | Opt in to mood prompts |
 | `/moodstop` | Opt out (resets streak) |
 | `/pause <duration>` | Freeze streak — e.g. `/pause 8h` or `/pause 30m` |
@@ -111,27 +119,60 @@ You have **15 minutes** to respond after a prompt. Missing 2 prompts in a row re
 
 ## Animals
 
-| Rarity | Encounter | Catch rate | Cost |
+40 species across 4 rarities:
+
+| Rarity | Encounter | Catch rate | Catch cost |
 |---|---|---|---|
 | Common ⬜ | 60% | 90% | 20 🪙 |
 | Rare 🟦 | 25% | 60% | 60 🪙 |
 | Epic 🟪 | 12% | 35% | 80 🪙 |
 | Legendary 🟨 | 3% | 10% | 200 🪙 |
 
-Skipping a catch costs half the attempt price. Failed catches lose the full cost — no refund.
+Each search costs 10 🪙 upfront. Failed catches lose the attempt cost — no refund.
+
+---
+
+## Enclosures
+
+Every player starts with a level-1 enclosure in all 6 habitats. Upgrade with `/enclosures`.
+
+| Habitat | Animals |
+|---|---|
+| 🌲 Woodland | Mouse, Snail, Bunny, Fox, Owl, Deer, Hedgehog, Raccoon, Bear, Ladybug |
+| 🌾 Savanna | Hamster, Sheep, Chicken, Pig, Cat, Dog, Lion, Giraffe, Elephant |
+| 🌴 Tropical | Frog, Parrot, Panda, Koala, Tiger, Gorilla, Peacock |
+| 🐠 Aquatic | Duck, Fish, Hippo, Crocodile, Flamingo, Whale, Shark |
+| ❄️ Tundra | Penguin, Wolf, Eagle, Mammoth |
+| ✨ Mythic | Unicorn, Dragon, T-Rex |
+
+| Level | Capacity | Coins/hr per animal | Breed bonus | Upgrade cost |
+|---|---|---|---|---|
+| 1 | 3 | — | — | Free |
+| 2 | 6 | 1 🪙 | −5% breed time | 300 🪙 |
+| 3 | 10 | 2 🪙 | −15% breed time | 800 🪙 |
+| 4 | 15 | 4 🪙 | −25% breed time | 2,000 🪙 |
+| 5 | 21 | 7 🪙 | −40% breed time | 5,000 🪙 |
+
+Breed bonus applies when both parents share the same habitat.
 
 ---
 
 ## Breeding
 
-| Pair | Time | Cost |
+Times shown at full hunger (100). Low hunger can double the wait.
+
+| Pair | Base time | Cost |
 |---|---|---|
-| Common × Common | 6h | 50 🪙 |
-| Common × Rare | 12h | 120 🪙 |
-| Rare × Rare | 18h | 200 🪙 |
-| Common/Rare × Epic | 28h | 350 🪙 |
-| Epic × Epic | 36h | 500 🪙 |
-| Any × Legendary | 48h | 800 🪙 |
+| Common × Common | 30m | 50 🪙 |
+| Common × Rare | 45m | 120 🪙 |
+| Rare × Rare | 1h | 200 🪙 |
+| Common × Epic | 1h 15m | 250 🪙 |
+| Rare × Epic | 1h 30m | 300 🪙 |
+| Epic × Epic | 2h | 400 🪙 |
+| Common × Legendary | 1h 15m | 500 🪙 |
+| Rare × Legendary | 1h 30m | 600 🪙 |
+| Epic × Legendary | 2h | 700 🪙 |
+| Legendary × Legendary | 2h | 800 🪙 |
 
 Offspring inherits one parent's rarity, with a **10% chance** of bumping up one tier.
 

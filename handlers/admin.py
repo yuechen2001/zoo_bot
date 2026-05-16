@@ -228,10 +228,10 @@ def _help_text() -> str:
         "🔧 *Admin Commands*\n\n"
         "`/admin coins <amount>` — add/remove your own coins\n"
         "`/admin givecoin <username> <amount>` — give coins to another user\n"
-        "`/admin give <species>` — add animal to zoo\n"
-        "`/admin hunger <#> <val>` — set animal hunger\n"
+        "`/admin give <species>` — add animal to your zoo\n"
+        "`/admin hunger <#> <val>` — set animal hunger (0–100)\n"
         "`/admin tick` — fire the scheduler manually\n"
         "`/admin prompt` — send yourself a mood prompt now\n"
         "`/admin reset` — wipe your data and start fresh\n"
-        "`/admin stats` — DB summary"
+        "`/admin stats` — DB summary (users, animals, check-ins)"
     )
