@@ -47,6 +47,7 @@ jobs:
               [[ -z "$key" || "$key" == \#* ]] && continue
               grep -q "^${key}=" .env || echo "${key}=${value}" >> .env
             done < .env.example
+            ./venv/bin/python migrate.py up
             sudo systemctl restart zoobot
             sleep 2
             sudo systemctl is-active --quiet zoobot && echo "Bot restarted successfully" || (echo "Bot failed to start" && sudo journalctl -u zoobot -n 20 && exit 1)
