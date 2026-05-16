@@ -1,13 +1,20 @@
 import datetime
+import logging
 import db
 from config import CHECKIN_WINDOW_MINUTES
 from keyboards import mood_keyboard
 from species_data import ENCLOSURE_LEVELS
 
+logger = logging.getLogger(__name__)
 
-async def tick(ctx):
-    """Runs every PROMPT_INTERVAL_MINUTES. Sends mood prompts, decays stats, checks breeding."""
+
+async def prompt_tick(ctx):
+    """Runs every PROMPT_INTERVAL_MINUTES. Sends mood prompts."""
     await _send_mood_prompts(ctx)
+
+
+async def job_tick(ctx):
+    """Runs every JOB_INTERVAL_MINUTES. Decays stats, checks breeding, autofeeds."""
     await _decay_stats()
     await _check_starved_animals(ctx)
     await _check_breed_completions(ctx)
@@ -40,6 +47,7 @@ async def _send_mood_prompts(ctx):
         by_group[u["group_chat_id"]].append(u)
 
     for group_chat_id, members in by_group.items():
+        reset_names = []
         for user in members:
             tg_id = user["user_id"]
             last_prompt = user["last_prompt_at"]
@@ -52,19 +60,24 @@ async def _send_mood_prompts(ctx):
                             "UPDATE users SET consecutive_misses = 0, streak_windows = 0 WHERE user_id = ?",
                             (tg_id,),
                         )
-                    try:
-                        await ctx.bot.send_message(
-                            group_chat_id,
-                            "💔 You missed 2 check-ins in a row — streak reset to 0!",
-                        )
-                    except Exception:
-                        pass
+                    reset_names.append(user["username"] or f"user {tg_id}")
                 else:
                     with db.get_conn() as conn:
                         conn.execute(
                             "UPDATE users SET consecutive_misses = ? WHERE user_id = ?",
                             (new_misses, tg_id),
                         )
+
+        if reset_names:
+            if len(reset_names) == 1:
+                msg = f"💔 *{reset_names[0]}* missed 2 check-ins in a row — streak reset to 0!"
+            else:
+                names = " & ".join(f"*{n}*" for n in reset_names)
+                msg = f"💔 {names} both missed 2 check-ins in a row — streaks reset to 0!"
+            try:
+                await ctx.bot.send_message(group_chat_id, msg, parse_mode="Markdown")
+            except Exception:
+                logger.exception("Failed to send streak-reset message to %s", group_chat_id)
 
         # Don't send a new prompt if the last one is still within the checkin window
         last_sent = ctx.bot_data.get("prompt_messages", {}).get(group_chat_id)
@@ -92,7 +105,7 @@ async def _send_mood_prompts(ctx):
                     [(now_str, u["user_id"]) for u in members],
                 )
         except Exception:
-            pass
+            logger.exception("Failed to send mood prompt to %s", group_chat_id)
 
 
 async def _decay_stats():
@@ -127,7 +140,7 @@ async def _check_starved_animals(ctx):
                 parse_mode="Markdown",
             )
         except Exception:
-            pass
+            logger.exception("Failed to send starved-animal message to %s", chat_id)
         with db.get_conn() as conn:
             conn.execute("DELETE FROM animals WHERE animal_id = ?", (animal["animal_id"],))
 
@@ -148,7 +161,7 @@ async def _check_breed_completions(ctx):
                 parse_mode="Markdown",
             )
         except Exception:
-            pass
+            logger.exception("Failed to send breed-complete message to %s", group_chat_id)
 
 
 async def _check_hunger_alerts(ctx):
@@ -171,7 +184,7 @@ async def _check_hunger_alerts(ctx):
         try:
             await ctx.bot.send_message(chat_id, msg, parse_mode="Markdown")
         except Exception:
-            pass
+            logger.exception("Failed to send hunger alert to %s", chat_id)
         with db.get_conn() as conn:
             conn.execute(
                 "UPDATE animals SET hunger_alerted = ? WHERE animal_id = ?",
@@ -207,7 +220,7 @@ async def _cleanup_expired_trades(ctx):
                 "⏰ Your trade offer expired — no response in time.",
             )
         except Exception:
-            pass
+            logger.exception("Failed to send trade-expiry message to %s", chat_id)
 
 
 async def _autofeed(ctx):
@@ -259,7 +272,7 @@ async def _autofeed(ctx):
                     f"🍖 Auto-fed {fed_count} animal{plural} — spent {spent} 🪙 (balance: {remaining} 🪙)",
                 )
         except Exception:
-            pass
+            logger.exception("Failed to send autofeed message to %s", chat_id)
 
 
 async def _cleanup_expired_prompts(ctx):
@@ -276,7 +289,7 @@ async def _cleanup_expired_prompts(ctx):
                     reply_markup=None,
                 )
             except Exception:
-                pass
+                logger.exception("Failed to remove prompt markup in %s", group_chat_id)
             to_remove.append(group_chat_id)
     for g in to_remove:
         del prompt_messages[g]
