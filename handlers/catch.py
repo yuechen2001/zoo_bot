@@ -5,7 +5,7 @@ from telegram.ext import ContextTypes
 import db
 from game.catch_engine import roll_encounter, pick_species, roll_catch
 from keyboards import catch_keyboard
-from species_data import RARITY_LABELS
+from species_data import RARITY_LABELS, HABITATS, ENCLOSURE_LEVELS
 from config import CATCH_EXPIRY_MINUTES
 from achievements import check_achievements
 
@@ -123,6 +123,20 @@ async def catch_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     ctx.user_data.pop("pending_catch", None)
 
     if success:
+        habitat = db.get_species_habitat(pending["species_id"])
+        used = db.get_animal_count_by_habitat(tg_id, habitat)
+        enc_level = db.get_enclosure_level(tg_id, habitat)
+        capacity = ENCLOSURE_LEVELS[enc_level]["capacity"]
+        if used >= capacity:
+            h = HABITATS[habitat]
+            await query.edit_message_text(
+                f"🎉 You caught the {pending['emoji']} *{pending['name']}*... "
+                f"but your {h['emoji']} *{h['name']}* enclosure is full! (Lv {enc_level}, {used}/{capacity})\n\n"
+                f"Use /enclosures to upgrade before catching another one.",
+                parse_mode="Markdown",
+            )
+            return
+
         animal_id = str(uuid.uuid4())
         with db.get_conn() as conn:
             conn.execute(
