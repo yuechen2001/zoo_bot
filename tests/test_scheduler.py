@@ -217,7 +217,7 @@ async def test_expired_trade_notifies_proposer(temp_db):
                 (species_id,),
             )
             old_time = (
-                datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
                 - datetime.timedelta(minutes=30)
             ).isoformat()
             conn.execute(

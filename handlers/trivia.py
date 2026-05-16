@@ -41,7 +41,7 @@ async def trivia_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     if last:
         elapsed = (
-            datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             - datetime.datetime.fromisoformat(last["asked_at"])
         ).total_seconds()
         remaining_s = TRIVIA_COOLDOWN_MINUTES * 60 - elapsed
@@ -56,11 +56,11 @@ async def trivia_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     q = random.choice(QUESTIONS)
     ctx.user_data["trivia"] = {
         "answer": q["answer"],
-        "at": datetime.datetime.now(datetime.UTC).replace(tzinfo=None).isoformat(),
+        "at": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat(),
         "answered": False,
     }
 
-    now_str = datetime.datetime.now(datetime.UTC).replace(tzinfo=None).isoformat()
+    now_str = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
     with db.get_conn() as conn:
         conn.execute(
             "INSERT INTO trivia_log (user_id, asked_at) VALUES (?, ?)",
@@ -97,7 +97,7 @@ async def trivia_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     # Check window
     elapsed = (
-        datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         - datetime.datetime.fromisoformat(trivia["at"])
     ).total_seconds()
     if elapsed > TRIVIA_WINDOW_MINUTES * 60:

@@ -56,7 +56,8 @@ async def test_mood_callback_rejects_non_opted_in_user():
 @pytest.mark.asyncio
 async def test_mood_callback_window_closed():
     old_prompt = (
-        datetime.datetime.now(datetime.UTC).replace(tzinfo=None) - datetime.timedelta(minutes=20)
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        - datetime.timedelta(minutes=20)
     ).isoformat()
     user_data = {
         "opted_in": 1,
@@ -84,7 +85,8 @@ async def test_mood_callback_window_closed():
 async def test_mood_callback_second_player_can_respond():
     """After player A responds, player B's click should still earn coins (not be blocked)."""
     prompt_time = (
-        datetime.datetime.now(datetime.UTC).replace(tzinfo=None) - datetime.timedelta(minutes=2)
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        - datetime.timedelta(minutes=2)
     ).isoformat()
 
     def _user(user_id, checked_in=False):
@@ -94,7 +96,7 @@ async def test_mood_callback_second_player_can_respond():
             "last_prompt_at": prompt_time,
             "last_checkin_at": (
                 (
-                    datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                    datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
                     - datetime.timedelta(minutes=1)
                 ).isoformat()
                 if checked_in
@@ -134,7 +136,8 @@ async def test_mood_callback_second_player_can_respond():
 async def test_mood_callback_collapses_when_all_checked_in():
     """When everyone in the group has responded, the message should be edited to summary."""
     prompt_time = (
-        datetime.datetime.now(datetime.UTC).replace(tzinfo=None) - datetime.timedelta(minutes=2)
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        - datetime.timedelta(minutes=2)
     ).isoformat()
     user_data = {
         "opted_in": 1,
@@ -169,7 +172,8 @@ async def test_mood_callback_collapses_when_all_checked_in():
 @pytest.mark.asyncio
 async def test_mood_callback_rejects_double_tap():
     prompt_time = (
-        datetime.datetime.now(datetime.UTC).replace(tzinfo=None) - datetime.timedelta(minutes=2)
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        - datetime.timedelta(minutes=2)
     ).isoformat()
     user_data = {
         "opted_in": 1,

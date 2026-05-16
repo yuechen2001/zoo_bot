@@ -83,7 +83,7 @@ async def _status(update, tg_id):
 
     invested_at = datetime.datetime.fromisoformat(inv["invested_at"])
     ready_at = invested_at + datetime.timedelta(hours=INVESTMENT_HOURS)
-    remaining = ready_at - datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+    remaining = ready_at - datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
     if remaining.total_seconds() <= 0:
         time_str = "ready! Use `/invest collect`"
@@ -112,8 +112,8 @@ async def _collect(update, tg_id, user):
 
     invested_at = datetime.datetime.fromisoformat(inv["invested_at"])
     ready_at = invested_at + datetime.timedelta(hours=INVESTMENT_HOURS)
-    if datetime.datetime.now(datetime.UTC).replace(tzinfo=None) < ready_at:
-        remaining = ready_at - datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+    if datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) < ready_at:
+        remaining = ready_at - datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         hours, rem = divmod(int(remaining.total_seconds()), 3600)
         minutes = rem // 60
         time_str = f"{hours}h {minutes}m" if hours else f"{minutes}m"

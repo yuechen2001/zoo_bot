@@ -87,7 +87,9 @@ async def test_invest_collect_too_early():
         "id": 1,
         "amount": 100,
         "return_amount": 125,
-        "invested_at": datetime.datetime.now(datetime.UTC).replace(tzinfo=None).isoformat(),
+        "invested_at": datetime.datetime.now(datetime.timezone.utc)
+        .replace(tzinfo=None)
+        .isoformat(),
     }
     with patch("handlers.invest.db.get_user", return_value=_make_user()), patch(
         "handlers.invest.db.get_active_investment", return_value=inv
@@ -102,7 +104,8 @@ async def test_invest_collect_success():
     update = _make_update()
     ctx = _make_ctx(args=["collect"])
     past = (
-        datetime.datetime.now(datetime.UTC).replace(tzinfo=None) - datetime.timedelta(hours=25)
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        - datetime.timedelta(hours=25)
     ).isoformat()
     inv = {"id": 1, "amount": 100, "return_amount": 125, "invested_at": past}
     with patch("handlers.invest.db.get_user", return_value=_make_user()), patch(
@@ -125,7 +128,9 @@ async def test_invest_status_shows_remaining_time():
         "id": 1,
         "amount": 100,
         "return_amount": 125,
-        "invested_at": datetime.datetime.now(datetime.UTC).replace(tzinfo=None).isoformat(),
+        "invested_at": datetime.datetime.now(datetime.timezone.utc)
+        .replace(tzinfo=None)
+        .isoformat(),
     }
     with patch("handlers.invest.db.get_user", return_value=_make_user()), patch(
         "handlers.invest.db.get_active_investment", return_value=inv

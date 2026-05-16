@@ -10,7 +10,7 @@ from keyboards import zoo_page_keyboard
 
 def _time_remaining(ready_at_str: str) -> str:
     ready = datetime.datetime.fromisoformat(ready_at_str)
-    delta = ready - datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+    delta = ready - datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
     if delta.total_seconds() <= 0:
         return "ready!"
     hours, rem = divmod(int(delta.total_seconds()), 3600)

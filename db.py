@@ -298,7 +298,7 @@ def resolve_trade(trade_id: int, status: str):
     with get_conn() as conn:
         trade = conn.execute("SELECT * FROM trades WHERE id = ?", (trade_id,)).fetchone()
         if status == "accepted":
-            now_str = datetime.datetime.now(datetime.UTC).replace(tzinfo=None).isoformat()
+            now_str = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
             conn.execute(
                 "UPDATE animals SET user_id = ?, caught_at = ? WHERE animal_id = ?",
                 (trade["recipient_id"], now_str, trade["proposer_animal_id"]),
@@ -315,7 +315,7 @@ def expire_old_trades() -> list:
     from config import TRADE_EXPIRY_MINUTES
 
     cutoff = (
-        datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         - datetime.timedelta(minutes=TRADE_EXPIRY_MINUTES)
     ).isoformat()
     with get_conn() as conn:

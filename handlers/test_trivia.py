@@ -54,7 +54,8 @@ async def test_trivia_rejects_unknown_user():
 @pytest.mark.asyncio
 async def test_trivia_cooldown_blocks_early_repeat():
     recent = (
-        datetime.datetime.now(datetime.UTC).replace(tzinfo=None) - datetime.timedelta(minutes=5)
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        - datetime.timedelta(minutes=5)
     ).isoformat()
     cm, _ = _make_conn_mock(last_asked=recent)
 
@@ -77,7 +78,7 @@ async def test_trivia_cooldown_blocks_early_repeat():
 @pytest.mark.asyncio
 async def test_trivia_starts_after_cooldown():
     old = (
-        datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         - datetime.timedelta(minutes=TRIVIA_COOLDOWN_MINUTES + 1)
     ).isoformat()
     cm, inner = _make_conn_mock(last_asked=old)
@@ -152,7 +153,7 @@ async def test_trivia_callback_correct_answer_gives_coins():
     ctx.user_data = {
         "trivia": {
             "answer": "B",
-            "at": datetime.datetime.now(datetime.UTC).replace(tzinfo=None).isoformat(),
+            "at": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat(),
             "answered": False,
         }
     }
@@ -179,7 +180,7 @@ async def test_trivia_callback_wrong_answer_gives_consolation_coins():
     ctx.user_data = {
         "trivia": {
             "answer": "B",
-            "at": datetime.datetime.now(datetime.UTC).replace(tzinfo=None).isoformat(),
+            "at": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat(),
             "answered": False,
         }
     }
@@ -201,7 +202,7 @@ async def test_trivia_callback_rejects_double_answer():
     ctx.user_data = {
         "trivia": {
             "answer": "B",
-            "at": datetime.datetime.now(datetime.UTC).replace(tzinfo=None).isoformat(),
+            "at": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat(),
             "answered": True,  # already answered
         }
     }
@@ -214,7 +215,8 @@ async def test_trivia_callback_rejects_double_answer():
 @pytest.mark.asyncio
 async def test_trivia_callback_window_expired():
     old_time = (
-        datetime.datetime.now(datetime.UTC).replace(tzinfo=None) - datetime.timedelta(minutes=15)
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        - datetime.timedelta(minutes=15)
     ).isoformat()
 
     query = _make_trivia_query(user_id=1, option="B")
