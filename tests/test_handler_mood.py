@@ -107,7 +107,9 @@ async def test_mood_callback_second_player_can_respond():
 
     with patch("handlers.mood.db.get_user", return_value=_user(2, checked_in=False)), patch(
         "handlers.mood.db.get_conn", return_value=mock_conn
-    ), patch("handlers.mood.db.all_group_members_checked_in", return_value=False), patch(
+    ), patch("handlers.mood.db.record_prompt_response", return_value=True), patch(
+        "handlers.mood.db.all_group_members_checked_in", return_value=False
+    ), patch(
         "handlers.mood.check_achievements"
     ):
         await mood_checkin_callback(update, MagicMock())
@@ -142,7 +144,9 @@ async def test_mood_callback_collapses_when_all_checked_in():
 
     with patch("handlers.mood.db.get_user", return_value=user_data), patch(
         "handlers.mood.db.get_conn", return_value=mock_conn
-    ), patch("handlers.mood.db.all_group_members_checked_in", return_value=True), patch(
+    ), patch("handlers.mood.db.record_prompt_response", return_value=True), patch(
+        "handlers.mood.db.all_group_members_checked_in", return_value=True
+    ), patch(
         "handlers.mood.check_achievements"
     ):
         await mood_checkin_callback(update, MagicMock())
@@ -156,18 +160,21 @@ async def test_mood_callback_collapses_when_all_checked_in():
 @pytest.mark.asyncio
 async def test_mood_callback_rejects_double_tap():
     prompt_time = (datetime.datetime.utcnow() - datetime.timedelta(minutes=2)).isoformat()
-    checkin_time = (datetime.datetime.utcnow() - datetime.timedelta(minutes=1)).isoformat()
     user_data = {
         "opted_in": 1,
         "last_prompt_at": prompt_time,
-        "last_checkin_at": checkin_time,  # checkin AFTER prompt → already responded
+        "last_checkin_at": None,
         "streak_windows": 0,
+        "group_chat_id": None,
     }
 
     query = _make_query(user_id=123)
     update = _make_update(query)
 
-    with patch("handlers.mood.db.get_user", return_value=user_data):
+    # record_prompt_response returns False → user already responded
+    with patch("handlers.mood.db.get_user", return_value=user_data), patch(
+        "handlers.mood.db.record_prompt_response", return_value=False
+    ):
         await mood_checkin_callback(update, MagicMock())
 
     query.answer.assert_called_with("Already checked in for this prompt!")

@@ -104,9 +104,8 @@ async def mood_checkin_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     else:
         elapsed_min = 0
 
-    # Prevent double-tapping same prompt
-    last_checkin = user["last_checkin_at"]
-    if last_checkin and last_prompt and last_checkin >= last_prompt:
+    # Block duplicate responses via the prompt_responses table (atomic INSERT OR IGNORE)
+    if not db.record_prompt_response(user["group_chat_id"] or 0, last_prompt, tg_id):
         await query.answer("Already checked in for this prompt!")
         return
 
