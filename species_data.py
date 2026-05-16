@@ -13,18 +13,20 @@ SPECIES = [
     {"name": "Fox",     "emoji": "🦊", "rarity": "rare",      "catch_rate": 0.60, "catch_cost": 60,  "hunger_decay": 5,  "breed_time_hrs": 12},
     {"name": "Penguin", "emoji": "🐧", "rarity": "rare",      "catch_rate": 0.60, "catch_cost": 60,  "hunger_decay": 5,  "breed_time_hrs": 12},
 
-    # Epic — encounter 12%, catch 35%, cost 150, decay 7/tick
-    {"name": "Panda",   "emoji": "🐼", "rarity": "epic",      "catch_rate": 0.35, "catch_cost": 150, "hunger_decay": 7,  "breed_time_hrs": 28},
-    {"name": "Bear",    "emoji": "🐻", "rarity": "epic",      "catch_rate": 0.35, "catch_cost": 150, "hunger_decay": 7,  "breed_time_hrs": 28},
-    {"name": "Koala",   "emoji": "🐨", "rarity": "epic",      "catch_rate": 0.35, "catch_cost": 150, "hunger_decay": 7,  "breed_time_hrs": 28},
-    {"name": "Lion",    "emoji": "🦁", "rarity": "epic",      "catch_rate": 0.35, "catch_cost": 150, "hunger_decay": 7,  "breed_time_hrs": 28},
-    {"name": "Tiger",   "emoji": "🐯", "rarity": "epic",      "catch_rate": 0.35, "catch_cost": 150, "hunger_decay": 7,  "breed_time_hrs": 28},
+    # Epic — encounter 12%, catch 35%, cost 80, decay 7/tick
+    {"name": "Panda",   "emoji": "🐼", "rarity": "epic",      "catch_rate": 0.35, "catch_cost": 80,  "hunger_decay": 7,  "breed_time_hrs": 28},
+    {"name": "Bear",    "emoji": "🐻", "rarity": "epic",      "catch_rate": 0.35, "catch_cost": 80,  "hunger_decay": 7,  "breed_time_hrs": 28},
+    {"name": "Koala",   "emoji": "🐨", "rarity": "epic",      "catch_rate": 0.35, "catch_cost": 80,  "hunger_decay": 7,  "breed_time_hrs": 28},
+    {"name": "Lion",    "emoji": "🦁", "rarity": "epic",      "catch_rate": 0.35, "catch_cost": 80,  "hunger_decay": 7,  "breed_time_hrs": 28},
+    {"name": "Tiger",   "emoji": "🐯", "rarity": "epic",      "catch_rate": 0.35, "catch_cost": 80,  "hunger_decay": 7,  "breed_time_hrs": 28},
 
-    # Legendary — encounter 3%, catch 10%, cost 400, decay 10/tick
-    {"name": "Unicorn", "emoji": "🦄", "rarity": "legendary", "catch_rate": 0.10, "catch_cost": 400, "hunger_decay": 10, "breed_time_hrs": 48},
-    {"name": "Dragon",  "emoji": "🐉", "rarity": "legendary", "catch_rate": 0.10, "catch_cost": 400, "hunger_decay": 10, "breed_time_hrs": 48},
-    {"name": "Peacock", "emoji": "🦚", "rarity": "legendary", "catch_rate": 0.10, "catch_cost": 400, "hunger_decay": 10, "breed_time_hrs": 48},
-    {"name": "Eagle",   "emoji": "🦅", "rarity": "legendary", "catch_rate": 0.10, "catch_cost": 400, "hunger_decay": 10, "breed_time_hrs": 48},
+    # Legendary — encounter 3%, catch 10%, cost 200, decay 10/tick
+    {"name": "Unicorn",  "emoji": "🦄", "rarity": "legendary", "catch_rate": 0.10, "catch_cost": 200, "hunger_decay": 10, "breed_time_hrs": 48},
+    {"name": "Dragon",   "emoji": "🐉", "rarity": "legendary", "catch_rate": 0.10, "catch_cost": 200, "hunger_decay": 10, "breed_time_hrs": 48},
+    {"name": "Peacock",  "emoji": "🦚", "rarity": "legendary", "catch_rate": 0.10, "catch_cost": 200, "hunger_decay": 10, "breed_time_hrs": 48},
+    {"name": "Eagle",    "emoji": "🦅", "rarity": "legendary", "catch_rate": 0.10, "catch_cost": 200, "hunger_decay": 10, "breed_time_hrs": 48},
+    {"name": "Giraffe",  "emoji": "🦒", "rarity": "legendary", "catch_rate": 0.10, "catch_cost": 200, "hunger_decay": 10, "breed_time_hrs": 48},
+    {"name": "Elephant", "emoji": "🐘", "rarity": "legendary", "catch_rate": 0.10, "catch_cost": 200, "hunger_decay": 10, "breed_time_hrs": 48},
 ]
 
 # Weighted encounter probabilities per rarity

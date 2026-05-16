@@ -9,6 +9,8 @@ from species_data import RARITY_LABELS
 from config import CATCH_EXPIRY_MINUTES
 from achievements import check_achievements
 
+ENCOUNTER_FEE = 10
+
 
 async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     tg_id = update.effective_user.id
@@ -16,6 +18,10 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     if not user:
         await update.message.reply_text("Use /start first!")
+        return
+
+    if user["coins"] < ENCOUNTER_FEE:
+        await update.message.reply_text(f"Not enough coins! Searching costs {ENCOUNTER_FEE} 🪙.")
         return
 
     with db.get_conn() as conn:
@@ -26,7 +32,13 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("No animals found... try again!")
         return
 
-    # Store the pending catch in context so callback can verify it hasn't expired
+    with db.get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET coins = coins - ? WHERE user_id = ?",
+            (ENCOUNTER_FEE, tg_id),
+        )
+    user = db.get_user(tg_id)
+
     ctx.user_data["pending_catch"] = {
         "species_id": species["species_id"],
         "catch_rate": species["catch_rate"],
@@ -43,7 +55,7 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         f"{rarity_label}\n\n"
         f"Catch rate: {int(species['catch_rate'] * 100)}%\n"
         f"Your coins: *{user['coins']}* 🪙\n\n"
-        f"_Skip costs {species['catch_cost'] // 2} coins. You have {CATCH_EXPIRY_MINUTES} min._",
+        f"_You have {CATCH_EXPIRY_MINUTES} min to decide._",
         parse_mode="Markdown",
         reply_markup=catch_keyboard(species["species_id"], species["catch_cost"]),
     )
@@ -55,19 +67,9 @@ async def catch_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     data = query.data
 
     if data == "catch_skip":
-        pending = ctx.user_data.pop("pending_catch", None)
-        skip_cost = (pending["catch_cost"] // 2) if pending else 0
-        if skip_cost:
-            with db.get_conn() as conn:
-                conn.execute(
-                    "UPDATE users SET coins = MAX(0, coins - ?) WHERE user_id = ?",
-                    (skip_cost, tg_id),
-                )
-        await query.answer(f"-{skip_cost} coins for skipping")
-        await query.edit_message_text(
-            f"You let it go. 🌿\n_{skip_cost} coins lost._",
-            parse_mode="Markdown",
-        )
+        ctx.user_data.pop("pending_catch", None)
+        await query.answer("Skipped")
+        await query.edit_message_text("You let it go. 🌿", parse_mode="Markdown")
         return
 
     # catch_attempt_<species_id>
@@ -91,7 +93,6 @@ async def catch_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await query.answer(f"Not enough coins! Need {cost}.")
         return
 
-    # Deduct coins regardless of outcome
     with db.get_conn() as conn:
         conn.execute(
             "UPDATE users SET coins = coins - ? WHERE user_id = ?",

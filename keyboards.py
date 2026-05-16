@@ -3,9 +3,9 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 MOOD_EMOJIS = ["😢", "😐", "🙂", "😄", "🤩"]
 
 
-def mood_keyboard():
+def mood_keyboard(tg_id: int):
     return InlineKeyboardMarkup([[
-        InlineKeyboardButton(e, callback_data=f"mood_{e}") for e in MOOD_EMOJIS
+        InlineKeyboardButton(e, callback_data=f"mood_{tg_id}_{e}") for e in MOOD_EMOJIS
     ]])
 
 

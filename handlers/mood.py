@@ -3,8 +3,8 @@ import re
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
-from game.mood_engine import calc_coins, EMOJI_LABELS, EMOJI_HAPPINESS_DELTA
-from config import CHECKIN_WINDOW_MINUTES
+from game.mood_engine import calc_coins, EMOJI_LABELS
+from config import CHECKIN_WINDOW_MINUTES, ADMIN_IDS
 from achievements import check_achievements
 
 
@@ -35,6 +35,10 @@ async def moodstop_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 async def pause_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     tg_id = update.effective_user.id
+    if tg_id not in ADMIN_IDS:
+        await update.message.reply_text("❌ Only admins can use /pause.")
+        return
+
     user = db.get_user(tg_id)
     if not user:
         await update.message.reply_text("Use /start first!")
@@ -66,6 +70,9 @@ async def pause_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 async def resume_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     tg_id = update.effective_user.id
+    if tg_id not in ADMIN_IDS:
+        await update.message.reply_text("❌ Only admins can use /resume.")
+        return
     with db.get_conn() as conn:
         conn.execute("UPDATE users SET paused_until = NULL WHERE user_id = ?", (tg_id,))
     await update.message.reply_text("▶️ Resumed! Mood prompts are back on.")
@@ -73,9 +80,16 @@ async def resume_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 async def mood_checkin_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    tg_id = query.from_user.id
-    emoji = query.data[len("mood_"):]
+    # data format: mood_{target_id}_{emoji}
+    parts = query.data.split("_", 2)
+    target_id = int(parts[1])
+    emoji = parts[2]
 
+    if query.from_user.id != target_id:
+        await query.answer("This isn't your prompt!", show_alert=True)
+        return
+
+    tg_id = query.from_user.id
     user = db.get_user(tg_id)
     if not user:
         await query.answer("Use /start first!")
@@ -117,14 +131,6 @@ async def mood_checkin_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             "INSERT INTO mood_checkins (user_id, emoji, coins_earned, streak_window) VALUES (?, ?, ?, ?)",
             (tg_id, emoji, coins, new_streak),
         )
-        # Apply mood to all non-breeding animals
-        delta = EMOJI_HAPPINESS_DELTA.get(emoji, 0)
-        if delta != 0:
-            conn.execute(
-                "UPDATE animals SET happiness = MAX(0, MIN(100, happiness + ?)) "
-                "WHERE user_id = ? AND is_breeding = 0",
-                (delta, tg_id),
-            )
 
     label = EMOJI_LABELS.get(emoji, emoji)
     multiplier_note = ""
@@ -150,15 +156,18 @@ async def help_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "/start — join and get your starter animal\n"
         "/zoo — see your zoo\n"
         "/catch — search for a wild animal\n"
-        "/feed <number> — feed an animal (10 🪙)\n"
+        "/feed <number> — feed animal(s) (10 🪙 each)\n"
         "/breed <a> <b> — breed two animals\n"
         "/breed collect — claim your offspring\n"
         "/name <number> <name> — nickname an animal\n\n"
+        "*Earn coins (private chat only):*\n"
+        "/daily — claim +50 coins once per day\n"
+        "/trivia — animal trivia (+40 correct, +5 wrong, 4h cooldown)\n"
+        "/gamble <amount> — coin flip bet (max 100 🪙)\n"
+        "/slots — spin the slot machine (10 🪙 per spin)\n\n"
         "*Mood prompts:*\n"
         "/moodstart — opt in to prompts\n"
-        "/moodstop — opt out (resets streak)\n"
-        "/pause 8h — freeze streak for a duration\n"
-        "/resume — end pause early\n\n"
+        "/moodstop — opt out (resets streak)\n\n"
         "⏱ Respond within *15 min* of a prompt to earn coins!\n"
         "🔥 Longer streaks = coin multiplier (up to 3×)",
         parse_mode="Markdown",
