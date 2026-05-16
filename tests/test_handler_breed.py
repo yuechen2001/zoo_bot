@@ -15,22 +15,27 @@ def _make_update(args=None):
 
 def _make_user(coins=500):
     user = MagicMock()
-    user.__getitem__ = MagicMock(side_effect=lambda k: {
-        "coins": coins, "user_id": 1,
-    }.get(k))
+    user.__getitem__ = MagicMock(
+        side_effect=lambda k: {
+            "coins": coins,
+            "user_id": 1,
+        }.get(k)
+    )
     return user
 
 
 def _make_animal(animal_id, rarity="common", is_breeding=0):
     a = MagicMock()
-    a.__getitem__ = MagicMock(side_effect=lambda k: {
-        "animal_id": animal_id,
-        "rarity": rarity,
-        "is_breeding": is_breeding,
-        "nickname": None,
-        "species_name": "Frog",
-        "emoji": "🐸",
-    }.get(k))
+    a.__getitem__ = MagicMock(
+        side_effect=lambda k: {
+            "animal_id": animal_id,
+            "rarity": rarity,
+            "is_breeding": is_breeding,
+            "nickname": None,
+            "species_name": "Frog",
+            "emoji": "🐸",
+        }.get(k)
+    )
     return a
 
 
@@ -40,8 +45,9 @@ def _make_animal(animal_id, rarity="common", is_breeding=0):
 @pytest.mark.asyncio
 async def test_breed_status_no_breeding():
     update, ctx = _make_update(args=["status"])
-    with patch("handlers.breed.db.get_user", return_value=_make_user()), \
-         patch("handlers.breed.db.get_pending_breed", return_value=None):
+    with patch("handlers.breed.db.get_user", return_value=_make_user()), patch(
+        "handlers.breed.db.get_pending_breed", return_value=None
+    ):
         await breed_command(update, ctx)
     update.message.reply_text.assert_called_once_with("No breeding in progress.")
 
@@ -52,18 +58,26 @@ async def test_breed_status_shows_time_remaining():
     future = (datetime.datetime.utcnow() + datetime.timedelta(hours=2, minutes=30)).isoformat()
 
     pending = MagicMock()
-    pending.__getitem__ = MagicMock(side_effect=lambda k: {
-        "parent_a": "a1", "parent_b": "a2", "ready_at": future,
-    }.get(k))
+    pending.__getitem__ = MagicMock(
+        side_effect=lambda k: {
+            "parent_a": "a1",
+            "parent_b": "a2",
+            "ready_at": future,
+        }.get(k)
+    )
 
     parent = MagicMock()
-    parent.__getitem__ = MagicMock(side_effect=lambda k: {
-        "nickname": None, "name": "Frog", "emoji": "🐸",
-    }.get(k))
+    parent.__getitem__ = MagicMock(
+        side_effect=lambda k: {
+            "nickname": None,
+            "name": "Frog",
+            "emoji": "🐸",
+        }.get(k)
+    )
 
-    with patch("handlers.breed.db.get_user", return_value=_make_user()), \
-         patch("handlers.breed.db.get_pending_breed", return_value=pending), \
-         patch("handlers.breed.db.get_conn") as mock_conn:
+    with patch("handlers.breed.db.get_user", return_value=_make_user()), patch(
+        "handlers.breed.db.get_pending_breed", return_value=pending
+    ), patch("handlers.breed.db.get_conn") as mock_conn:
         inner = MagicMock()
         inner.execute.return_value.fetchone.return_value = parent
         mock_conn.return_value.__enter__ = MagicMock(return_value=inner)
@@ -81,18 +95,26 @@ async def test_breed_status_shows_ready_when_past():
     past = (datetime.datetime.utcnow() - datetime.timedelta(minutes=5)).isoformat()
 
     pending = MagicMock()
-    pending.__getitem__ = MagicMock(side_effect=lambda k: {
-        "parent_a": "a1", "parent_b": "a2", "ready_at": past,
-    }.get(k))
+    pending.__getitem__ = MagicMock(
+        side_effect=lambda k: {
+            "parent_a": "a1",
+            "parent_b": "a2",
+            "ready_at": past,
+        }.get(k)
+    )
 
     parent = MagicMock()
-    parent.__getitem__ = MagicMock(side_effect=lambda k: {
-        "nickname": None, "name": "Frog", "emoji": "🐸",
-    }.get(k))
+    parent.__getitem__ = MagicMock(
+        side_effect=lambda k: {
+            "nickname": None,
+            "name": "Frog",
+            "emoji": "🐸",
+        }.get(k)
+    )
 
-    with patch("handlers.breed.db.get_user", return_value=_make_user()), \
-         patch("handlers.breed.db.get_pending_breed", return_value=pending), \
-         patch("handlers.breed.db.get_conn") as mock_conn:
+    with patch("handlers.breed.db.get_user", return_value=_make_user()), patch(
+        "handlers.breed.db.get_pending_breed", return_value=pending
+    ), patch("handlers.breed.db.get_conn") as mock_conn:
         inner = MagicMock()
         inner.execute.return_value.fetchone.return_value = parent
         mock_conn.return_value.__enter__ = MagicMock(return_value=inner)

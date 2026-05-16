@@ -16,6 +16,7 @@ def _time_remaining(ready_at_str: str) -> str:
         return f"{hours}h {minutes}m"
     return f"{minutes}m"
 
+
 ROW_LEN = 9
 BORDER_A = "🌿"
 BORDER_B = "💧"
