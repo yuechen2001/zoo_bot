@@ -3,9 +3,9 @@ from logging.handlers import RotatingFileHandler
 from telegram import BotCommand
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler
 
-from config import BOT_TOKEN, JOB_INTERVAL_MINUTES, PROMPT_INTERVAL_MINUTES
+from config import BOT_TOKEN, HUNGER_INTERVAL_MINUTES, JOB_INTERVAL_MINUTES, PROMPT_INTERVAL_MINUTES
 from db import init_db
-from scheduler import prompt_tick, job_tick, cleanup, enclosure_income
+from scheduler import prompt_tick, hunger_tick, job_tick, cleanup, enclosure_income
 from handlers import (
     achievements_command,
     admin_command,
@@ -141,6 +141,12 @@ def main():
         job_kwargs={"misfire_grace_time": 60},
     )
     app.job_queue.run_repeating(
+        hunger_tick,
+        interval=HUNGER_INTERVAL_MINUTES * 60,
+        first=HUNGER_INTERVAL_MINUTES * 60,
+        job_kwargs={"misfire_grace_time": 60},
+    )
+    app.job_queue.run_repeating(
         job_tick,
         interval=JOB_INTERVAL_MINUTES * 60,
         first=10,
@@ -160,8 +166,9 @@ def main():
     )
 
     logger.info(
-        "Zoo Bot is running! Mood prompts every %d min, job tick every %d min.",
+        "Zoo Bot is running! Prompts every %d min, hunger every %d min, job tick every %d min.",
         PROMPT_INTERVAL_MINUTES,
+        HUNGER_INTERVAL_MINUTES,
         JOB_INTERVAL_MINUTES,
     )
     app.run_polling(drop_pending_updates=True, allowed_updates=["message", "callback_query"])

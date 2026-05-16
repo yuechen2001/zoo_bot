@@ -13,9 +13,13 @@ async def prompt_tick(ctx):
     await _send_mood_prompts(ctx)
 
 
-async def job_tick(ctx):
-    """Runs every JOB_INTERVAL_MINUTES. Decays stats, checks breeding, autofeeds."""
+async def hunger_tick(ctx):
+    """Runs every HUNGER_INTERVAL_MINUTES. Decays animal hunger."""
     await _decay_stats()
+
+
+async def job_tick(ctx):
+    """Runs every JOB_INTERVAL_MINUTES. Checks starvation, breeding, alerts, autofeed."""
     await _check_starved_animals(ctx)
     await _check_breed_completions(ctx)
     await _check_hunger_alerts(ctx)
