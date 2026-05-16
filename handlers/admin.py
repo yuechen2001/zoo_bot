@@ -7,7 +7,6 @@ Usage:
   /admin givecoin <username> <amt>   — give coins to another user by username
   /admin give <species_name>         — add an animal directly to your zoo
   /admin hunger <number> <value>     — set animal #N hunger (0–100)
-  /admin happiness <number> <value>  — set animal #N happiness (0–100)
   /admin tick                        — manually trigger the scheduler tick
   /admin prompt                      — send a mood prompt to yourself right now
   /admin reset                       — wipe your own data and start fresh
@@ -54,9 +53,6 @@ async def admin_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     elif sub == "hunger":
         await _cmd_set_stat(update, tg_id, args, "hunger")
-
-    elif sub == "happiness":
-        await _cmd_set_stat(update, tg_id, args, "happiness")
 
     elif sub == "tick":
         from scheduler import tick
@@ -234,7 +230,6 @@ def _help_text() -> str:
         "`/admin givecoin <username> <amount>` — give coins to another user\n"
         "`/admin give <species>` — add animal to zoo\n"
         "`/admin hunger <#> <val>` — set animal hunger\n"
-        "`/admin happiness <#> <val>` — set animal happiness\n"
         "`/admin tick` — fire the scheduler manually\n"
         "`/admin prompt` — send yourself a mood prompt now\n"
         "`/admin reset` — wipe your data and start fresh\n"
