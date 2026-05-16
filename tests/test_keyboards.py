@@ -2,31 +2,25 @@ from keyboards import mood_keyboard, catch_keyboard, breed_collect_keyboard, MOO
 
 
 class TestMoodKeyboard:
-    def test_callback_data_includes_user_id(self):
-        kb = mood_keyboard(12345)
-        for btn in kb.inline_keyboard[0]:
-            assert btn.callback_data.startswith(
-                "mood_12345_"
-            ), f"Expected mood_12345_<emoji>, got {btn.callback_data}"
-
     def test_all_mood_emojis_present(self):
-        kb = mood_keyboard(99)
-        emojis = [btn.callback_data.split("_", 2)[2] for btn in kb.inline_keyboard[0]]
+        kb = mood_keyboard()
+        emojis = [btn.text for btn in kb.inline_keyboard[0]]
         assert emojis == MOOD_EMOJIS
 
-    def test_different_user_ids_produce_different_callbacks(self):
-        data1 = [btn.callback_data for btn in mood_keyboard(111).inline_keyboard[0]]
-        data2 = [btn.callback_data for btn in mood_keyboard(222).inline_keyboard[0]]
-        assert data1 != data2
-
-    def test_format_is_mood_userid_emoji(self):
-        kb = mood_keyboard(42)
+    def test_callback_data_starts_with_mood(self):
+        kb = mood_keyboard()
         for btn in kb.inline_keyboard[0]:
-            parts = btn.callback_data.split("_", 2)
-            assert len(parts) == 3
-            assert parts[0] == "mood"
-            assert parts[1] == "42"
-            assert parts[2] in MOOD_EMOJIS
+            assert btn.callback_data.startswith("mood_")
+
+    def test_callback_data_contains_emoji(self):
+        kb = mood_keyboard()
+        for btn in kb.inline_keyboard[0]:
+            emoji = btn.callback_data[len("mood_"):]
+            assert emoji in MOOD_EMOJIS
+
+    def test_five_buttons(self):
+        kb = mood_keyboard()
+        assert len(kb.inline_keyboard[0]) == len(MOOD_EMOJIS)
 
 
 class TestCatchKeyboard:

@@ -88,6 +88,16 @@ def init_db():
                 user_id     INTEGER REFERENCES users(user_id),
                 claimed_at  TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS trades (
+                id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                proposer_id         INTEGER NOT NULL REFERENCES users(user_id),
+                recipient_id        INTEGER NOT NULL REFERENCES users(user_id),
+                proposer_animal_id  TEXT NOT NULL REFERENCES animals(animal_id),
+                recipient_animal_id TEXT NOT NULL REFERENCES animals(animal_id),
+                created_at          TEXT DEFAULT (datetime('now')),
+                status              TEXT NOT NULL DEFAULT 'pending'
+            );
         """
         )
         _seed_species(conn)
@@ -283,3 +293,54 @@ def award_achievement(user_id, key):
             "INSERT OR IGNORE INTO user_achievements (user_id, achievement_key) VALUES (?, ?)",
             (user_id, key),
         )
+
+
+# ── Trades ────────────────────────────────────────────────────────────────────
+
+
+def get_user_by_username(username: str):
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT * FROM users WHERE username = ?", (username,)
+        ).fetchone()
+
+
+def create_trade(proposer_id, recipient_id, proposer_animal_id, recipient_animal_id) -> int:
+    with get_conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO trades (proposer_id, recipient_id, proposer_animal_id, recipient_animal_id) "
+            "VALUES (?, ?, ?, ?)",
+            (proposer_id, recipient_id, proposer_animal_id, recipient_animal_id),
+        )
+        return cur.lastrowid
+
+
+def get_trade(trade_id: int):
+    with get_conn() as conn:
+        return conn.execute("SELECT * FROM trades WHERE id = ?", (trade_id,)).fetchone()
+
+
+def has_pending_trade_for_animal(animal_id: str) -> bool:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT id FROM trades WHERE status = 'pending' "
+            "AND (proposer_animal_id = ? OR recipient_animal_id = ?)",
+            (animal_id, animal_id),
+        ).fetchone()
+        return row is not None
+
+
+def resolve_trade(trade_id: int, status: str):
+    """Finalise a trade. For 'accepted', atomically swap the two animals' owners."""
+    with get_conn() as conn:
+        trade = conn.execute("SELECT * FROM trades WHERE id = ?", (trade_id,)).fetchone()
+        if status == "accepted":
+            conn.execute(
+                "UPDATE animals SET user_id = ? WHERE animal_id = ?",
+                (trade["recipient_id"], trade["proposer_animal_id"]),
+            )
+            conn.execute(
+                "UPDATE animals SET user_id = ? WHERE animal_id = ?",
+                (trade["proposer_id"], trade["recipient_animal_id"]),
+            )
+        conn.execute("UPDATE trades SET status = ? WHERE id = ?", (status, trade_id))

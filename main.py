@@ -27,6 +27,8 @@ from handlers import (
     gamble_command,
     daily_command,
     slots_command,
+    trade_command,
+    trade_callback,
 )
 
 logging.basicConfig(
@@ -53,6 +55,7 @@ async def post_init(application):
             BotCommand("gamble", "Bet coins on a coin flip"),
             BotCommand("daily", "Claim your daily coin reward"),
             BotCommand("slots", "Spin the slot machine (10 coins)"),
+            BotCommand("trade", "Offer an animal trade to another player"),
             BotCommand("help", "Show all commands"),
         ]
     )
@@ -68,6 +71,8 @@ async def handle_callback(update, ctx):
         await breed_collect_callback(update, ctx)
     elif data.startswith("trivia_"):
         await trivia_callback(update, ctx)
+    elif data.startswith("trade_"):
+        await trade_callback(update, ctx)
     else:
         await update.callback_query.answer("Unknown action")
 
@@ -94,6 +99,7 @@ def main():
     app.add_handler(CommandHandler("gamble", gamble_command))
     app.add_handler(CommandHandler("daily", daily_command))
     app.add_handler(CommandHandler("slots", slots_command))
+    app.add_handler(CommandHandler("trade", trade_command))
     app.add_handler(CallbackQueryHandler(handle_callback))
 
     app.job_queue.run_repeating(
