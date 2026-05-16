@@ -8,6 +8,7 @@ _token_key = "BOT_TOKEN_PROD" if BOT_ENV == "prod" else "BOT_TOKEN_DEV"
 BOT_TOKEN = os.getenv(_token_key) or os.getenv("BOT_TOKEN", "")
 DATABASE_PATH = os.getenv("DATABASE_PATH", "zoo_bot.db")
 PROMPT_INTERVAL_MINUTES = int(os.getenv("PROMPT_INTERVAL_MINUTES", "30"))
+JOB_INTERVAL_MINUTES = int(os.getenv("JOB_INTERVAL_MINUTES", "1"))
 CHECKIN_WINDOW_MINUTES = int(os.getenv("CHECKIN_WINDOW_MINUTES", "15"))
 CATCH_EXPIRY_MINUTES = int(os.getenv("CATCH_EXPIRY_MINUTES", "5"))
 TRADE_EXPIRY_MINUTES = int(os.getenv("TRADE_EXPIRY_MINUTES", "10"))
