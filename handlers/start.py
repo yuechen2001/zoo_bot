@@ -24,7 +24,7 @@ async def start_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Give a random starter common animal
+    # Give a random starter common animal and starter enclosures
     with db.get_conn() as conn:
         commons = conn.execute("SELECT * FROM species WHERE rarity = 'common'").fetchall()
         starter = random.choice(commons)
@@ -33,6 +33,7 @@ async def start_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             "INSERT INTO animals (animal_id, user_id, species_id) VALUES (?, ?, ?)",
             (animal_id, tg_id, starter["species_id"]),
         )
+    db.give_starter_enclosures(tg_id)
 
     await update.message.reply_text(
         f"Hey {username}! 🎉 Welcome to *Zoo Bot*!\n\n"
