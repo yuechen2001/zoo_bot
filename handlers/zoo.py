@@ -91,9 +91,7 @@ def _render_habitat_section(
     total_in_habitat = sum(len(v) for v in species_groups.values())
     capacity = ENCLOSURE_LEVELS[level]["capacity"]
 
-    lines = [
-        f"{h_info['emoji']} *{h_info['name']}* \\[Lv {level}\\]  —  {total_in_habitat}/{capacity}"
-    ]
+    lines = [f"{h_info['emoji']} *{h_info['name']}* [Lv {level}]  —  {total_in_habitat}/{capacity}"]
 
     sorted_groups = sorted(
         species_groups.items(),
