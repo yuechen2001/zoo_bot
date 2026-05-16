@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 import db
 
-FEED_COST = 10
+FEED_COST_BY_RARITY = {"common": 10, "rare": 20, "epic": 40, "legendary": 80}
 FEED_HUNGER = 40
 
 
@@ -36,9 +36,10 @@ async def feed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             lines.append(f"#{position}: {animal['emoji']} *{name}* is already full!")
             continue
 
+        feed_cost = FEED_COST_BY_RARITY.get(animal["rarity"], 10)
         user = db.get_user(tg_id)
-        if user["coins"] < FEED_COST:
-            lines.append(f"#{position}: not enough coins (need {FEED_COST} 🪙)")
+        if user["coins"] < feed_cost:
+            lines.append(f"#{position}: not enough coins (need {feed_cost} 🪙)")
             break
 
         new_hunger = min(100, animal["hunger"] + FEED_HUNGER)
@@ -46,7 +47,7 @@ async def feed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         with db.get_conn() as conn:
             conn.execute(
                 "UPDATE users SET coins = coins - ? WHERE user_id = ?",
-                (FEED_COST, tg_id),
+                (feed_cost, tg_id),
             )
             conn.execute(
                 "UPDATE animals SET hunger = ?, hunger_alerted = NULL WHERE animal_id = ?",
@@ -54,7 +55,7 @@ async def feed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             )
 
         lines.append(
-            f"🍖 {animal['emoji']} *{name}*: hunger {animal['hunger']}→{new_hunger} (-{FEED_COST} 🪙)"
+            f"🍖 {animal['emoji']} *{name}*: hunger {animal['hunger']}→{new_hunger} (-{feed_cost} 🪙)"
         )
 
     await update.message.reply_text("\n".join(lines), parse_mode="Markdown")

@@ -27,7 +27,7 @@ SPECIES = [
         "habitat": "woodland",
         "catch_rate": 0.90,
         "catch_cost": 20,
-        "hunger_decay": 3,
+        "hunger_decay": 5,
         "breed_time_hrs": 6,
     },
     {
@@ -37,7 +37,7 @@ SPECIES = [
         "habitat": "tropical",
         "catch_rate": 0.90,
         "catch_cost": 20,
-        "hunger_decay": 3,
+        "hunger_decay": 5,
         "breed_time_hrs": 6,
     },
     {
@@ -47,7 +47,7 @@ SPECIES = [
         "habitat": "savanna",
         "catch_rate": 0.90,
         "catch_cost": 20,
-        "hunger_decay": 3,
+        "hunger_decay": 5,
         "breed_time_hrs": 6,
     },
     {
@@ -57,7 +57,7 @@ SPECIES = [
         "habitat": "aquatic",
         "catch_rate": 0.90,
         "catch_cost": 20,
-        "hunger_decay": 3,
+        "hunger_decay": 5,
         "breed_time_hrs": 6,
     },
     {
@@ -67,7 +67,7 @@ SPECIES = [
         "habitat": "woodland",
         "catch_rate": 0.90,
         "catch_cost": 20,
-        "hunger_decay": 3,
+        "hunger_decay": 5,
         "breed_time_hrs": 6,
     },
     {
@@ -77,7 +77,7 @@ SPECIES = [
         "habitat": "savanna",
         "catch_rate": 0.90,
         "catch_cost": 20,
-        "hunger_decay": 3,
+        "hunger_decay": 5,
         "breed_time_hrs": 6,
     },
     {
@@ -87,7 +87,7 @@ SPECIES = [
         "habitat": "savanna",
         "catch_rate": 0.90,
         "catch_cost": 20,
-        "hunger_decay": 3,
+        "hunger_decay": 5,
         "breed_time_hrs": 6,
     },
     {
@@ -97,7 +97,7 @@ SPECIES = [
         "habitat": "savanna",
         "catch_rate": 0.90,
         "catch_cost": 20,
-        "hunger_decay": 3,
+        "hunger_decay": 5,
         "breed_time_hrs": 6,
     },
     {
@@ -107,7 +107,7 @@ SPECIES = [
         "habitat": "aquatic",
         "catch_rate": 0.90,
         "catch_cost": 20,
-        "hunger_decay": 3,
+        "hunger_decay": 5,
         "breed_time_hrs": 6,
     },
     {
@@ -117,7 +117,7 @@ SPECIES = [
         "habitat": "woodland",
         "catch_rate": 0.90,
         "catch_cost": 20,
-        "hunger_decay": 3,
+        "hunger_decay": 5,
         "breed_time_hrs": 6,
     },
     # Rare — encounter 25%, catch 60%, cost 60, decay 5/tick
@@ -128,7 +128,7 @@ SPECIES = [
         "habitat": "savanna",
         "catch_rate": 0.60,
         "catch_cost": 60,
-        "hunger_decay": 5,
+        "hunger_decay": 3,
         "breed_time_hrs": 12,
     },
     {
@@ -138,7 +138,7 @@ SPECIES = [
         "habitat": "savanna",
         "catch_rate": 0.60,
         "catch_cost": 60,
-        "hunger_decay": 5,
+        "hunger_decay": 3,
         "breed_time_hrs": 12,
     },
     {
@@ -148,7 +148,7 @@ SPECIES = [
         "habitat": "woodland",
         "catch_rate": 0.60,
         "catch_cost": 60,
-        "hunger_decay": 5,
+        "hunger_decay": 3,
         "breed_time_hrs": 12,
     },
     {
@@ -158,7 +158,7 @@ SPECIES = [
         "habitat": "woodland",
         "catch_rate": 0.60,
         "catch_cost": 60,
-        "hunger_decay": 5,
+        "hunger_decay": 3,
         "breed_time_hrs": 12,
     },
     {
@@ -168,7 +168,7 @@ SPECIES = [
         "habitat": "tundra",
         "catch_rate": 0.60,
         "catch_cost": 60,
-        "hunger_decay": 5,
+        "hunger_decay": 3,
         "breed_time_hrs": 12,
     },
     {
@@ -178,7 +178,7 @@ SPECIES = [
         "habitat": "woodland",
         "catch_rate": 0.60,
         "catch_cost": 60,
-        "hunger_decay": 5,
+        "hunger_decay": 3,
         "breed_time_hrs": 12,
     },
     {
@@ -188,7 +188,7 @@ SPECIES = [
         "habitat": "woodland",
         "catch_rate": 0.60,
         "catch_cost": 60,
-        "hunger_decay": 5,
+        "hunger_decay": 3,
         "breed_time_hrs": 12,
     },
     {
@@ -198,7 +198,7 @@ SPECIES = [
         "habitat": "tropical",
         "catch_rate": 0.60,
         "catch_cost": 60,
-        "hunger_decay": 5,
+        "hunger_decay": 3,
         "breed_time_hrs": 12,
     },
     {
@@ -208,7 +208,7 @@ SPECIES = [
         "habitat": "woodland",
         "catch_rate": 0.60,
         "catch_cost": 60,
-        "hunger_decay": 5,
+        "hunger_decay": 3,
         "breed_time_hrs": 12,
     },
     {
@@ -218,7 +218,7 @@ SPECIES = [
         "habitat": "woodland",
         "catch_rate": 0.60,
         "catch_cost": 60,
-        "hunger_decay": 5,
+        "hunger_decay": 3,
         "breed_time_hrs": 12,
     },
     # Epic — encounter 12%, catch 35%, cost 80, decay 7/tick
@@ -229,7 +229,7 @@ SPECIES = [
         "habitat": "tropical",
         "catch_rate": 0.35,
         "catch_cost": 80,
-        "hunger_decay": 7,
+        "hunger_decay": 2,
         "breed_time_hrs": 28,
     },
     {
@@ -239,7 +239,7 @@ SPECIES = [
         "habitat": "woodland",
         "catch_rate": 0.35,
         "catch_cost": 80,
-        "hunger_decay": 7,
+        "hunger_decay": 2,
         "breed_time_hrs": 28,
     },
     {
@@ -249,7 +249,7 @@ SPECIES = [
         "habitat": "tropical",
         "catch_rate": 0.35,
         "catch_cost": 80,
-        "hunger_decay": 7,
+        "hunger_decay": 2,
         "breed_time_hrs": 28,
     },
     {
@@ -259,7 +259,7 @@ SPECIES = [
         "habitat": "savanna",
         "catch_rate": 0.35,
         "catch_cost": 80,
-        "hunger_decay": 7,
+        "hunger_decay": 2,
         "breed_time_hrs": 28,
     },
     {
@@ -269,7 +269,7 @@ SPECIES = [
         "habitat": "tropical",
         "catch_rate": 0.35,
         "catch_cost": 80,
-        "hunger_decay": 7,
+        "hunger_decay": 2,
         "breed_time_hrs": 28,
     },
     {
@@ -279,7 +279,7 @@ SPECIES = [
         "habitat": "tundra",
         "catch_rate": 0.35,
         "catch_cost": 80,
-        "hunger_decay": 7,
+        "hunger_decay": 2,
         "breed_time_hrs": 28,
     },
     {
@@ -289,7 +289,7 @@ SPECIES = [
         "habitat": "tropical",
         "catch_rate": 0.35,
         "catch_cost": 80,
-        "hunger_decay": 7,
+        "hunger_decay": 2,
         "breed_time_hrs": 28,
     },
     {
@@ -299,7 +299,7 @@ SPECIES = [
         "habitat": "aquatic",
         "catch_rate": 0.35,
         "catch_cost": 80,
-        "hunger_decay": 7,
+        "hunger_decay": 2,
         "breed_time_hrs": 28,
     },
     {
@@ -309,7 +309,7 @@ SPECIES = [
         "habitat": "aquatic",
         "catch_rate": 0.35,
         "catch_cost": 80,
-        "hunger_decay": 7,
+        "hunger_decay": 2,
         "breed_time_hrs": 28,
     },
     {
@@ -319,7 +319,7 @@ SPECIES = [
         "habitat": "aquatic",
         "catch_rate": 0.35,
         "catch_cost": 80,
-        "hunger_decay": 7,
+        "hunger_decay": 2,
         "breed_time_hrs": 28,
     },
     # Legendary — encounter 3%, catch 10%, cost 200, decay 10/tick
@@ -330,7 +330,7 @@ SPECIES = [
         "habitat": "mythic",
         "catch_rate": 0.10,
         "catch_cost": 200,
-        "hunger_decay": 10,
+        "hunger_decay": 1,
         "breed_time_hrs": 48,
     },
     {
@@ -340,7 +340,7 @@ SPECIES = [
         "habitat": "mythic",
         "catch_rate": 0.10,
         "catch_cost": 200,
-        "hunger_decay": 10,
+        "hunger_decay": 1,
         "breed_time_hrs": 48,
     },
     {
@@ -350,7 +350,7 @@ SPECIES = [
         "habitat": "tropical",
         "catch_rate": 0.10,
         "catch_cost": 200,
-        "hunger_decay": 10,
+        "hunger_decay": 1,
         "breed_time_hrs": 48,
     },
     {
@@ -360,7 +360,7 @@ SPECIES = [
         "habitat": "tundra",
         "catch_rate": 0.10,
         "catch_cost": 200,
-        "hunger_decay": 10,
+        "hunger_decay": 1,
         "breed_time_hrs": 48,
     },
     {
@@ -370,7 +370,7 @@ SPECIES = [
         "habitat": "savanna",
         "catch_rate": 0.10,
         "catch_cost": 200,
-        "hunger_decay": 10,
+        "hunger_decay": 1,
         "breed_time_hrs": 48,
     },
     {
@@ -380,7 +380,7 @@ SPECIES = [
         "habitat": "savanna",
         "catch_rate": 0.10,
         "catch_cost": 200,
-        "hunger_decay": 10,
+        "hunger_decay": 1,
         "breed_time_hrs": 48,
     },
     {
@@ -390,7 +390,7 @@ SPECIES = [
         "habitat": "aquatic",
         "catch_rate": 0.10,
         "catch_cost": 200,
-        "hunger_decay": 10,
+        "hunger_decay": 1,
         "breed_time_hrs": 48,
     },
     {
@@ -400,7 +400,7 @@ SPECIES = [
         "habitat": "mythic",
         "catch_rate": 0.10,
         "catch_cost": 200,
-        "hunger_decay": 10,
+        "hunger_decay": 1,
         "breed_time_hrs": 48,
     },
     {
@@ -410,7 +410,7 @@ SPECIES = [
         "habitat": "tundra",
         "catch_rate": 0.10,
         "catch_cost": 200,
-        "hunger_decay": 10,
+        "hunger_decay": 1,
         "breed_time_hrs": 48,
     },
     {
@@ -420,7 +420,7 @@ SPECIES = [
         "habitat": "aquatic",
         "catch_rate": 0.10,
         "catch_cost": 200,
-        "hunger_decay": 10,
+        "hunger_decay": 1,
         "breed_time_hrs": 48,
     },
 ]

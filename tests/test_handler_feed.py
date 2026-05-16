@@ -1,9 +1,13 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from handlers.feed import feed_command, FEED_COST, FEED_HUNGER
+from handlers.feed import feed_command, FEED_COST_BY_RARITY, FEED_HUNGER
+
+FEED_COST = FEED_COST_BY_RARITY["common"]
 
 
-def _make_animal(name="Mouse", emoji="🐭", is_breeding=0, hunger=50, nickname=None):
+def _make_animal(
+    name="Mouse", emoji="🐭", is_breeding=0, hunger=50, nickname=None, rarity="common"
+):
     return {
         "animal_id": "a1",
         "nickname": nickname,
@@ -11,6 +15,7 @@ def _make_animal(name="Mouse", emoji="🐭", is_breeding=0, hunger=50, nickname=
         "emoji": emoji,
         "is_breeding": is_breeding,
         "hunger": hunger,
+        "rarity": rarity,
     }
 
 
