@@ -30,6 +30,13 @@ async def sell_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    if db.has_pending_trade_for_animal(animal["animal_id"]):
+        await update.message.reply_text(
+            f"{animal['emoji']} *{name}* has a pending trade — can't sell!",
+            parse_mode="Markdown",
+        )
+        return
+
     base = animal["catch_cost"] // 2
     sell_price = max(1, round(base * animal["hunger"] / 100))
 

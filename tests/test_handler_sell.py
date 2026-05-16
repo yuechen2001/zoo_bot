@@ -73,13 +73,28 @@ async def test_sell_blocked_for_breeding_animal():
 
 
 @pytest.mark.asyncio
+async def test_sell_blocked_for_animal_in_trade():
+    update = _make_update()
+    ctx = _make_ctx(args=["1"])
+    animal = _make_animal()
+    with patch("handlers.sell.db.get_user", return_value={"coins": 100}), patch(
+        "handlers.sell.db.get_animal_by_position", return_value=animal
+    ), patch("handlers.sell.db.has_pending_trade_for_animal", return_value=True):
+        await sell_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0]
+    assert "trade" in reply.lower()
+
+
+@pytest.mark.asyncio
 async def test_sell_full_hunger_earns_half_catch_cost():
     update = _make_update()
     ctx = _make_ctx(args=["1"])
     animal = _make_animal(catch_cost=20, hunger=100)
     with patch("handlers.sell.db.get_user", return_value={"coins": 100}), patch(
         "handlers.sell.db.get_animal_by_position", return_value=animal
-    ), patch("handlers.sell.db.delete_animal") as mock_delete, patch(
+    ), patch("handlers.sell.db.has_pending_trade_for_animal", return_value=False), patch(
+        "handlers.sell.db.delete_animal"
+    ) as mock_delete, patch(
         "handlers.sell.db.get_conn", return_value=_make_conn_mock()
     ):
         await sell_command(update, ctx)
@@ -96,7 +111,9 @@ async def test_sell_low_hunger_reduces_price():
     animal = _make_animal(catch_cost=40, hunger=50)
     with patch("handlers.sell.db.get_user", return_value={"coins": 100}), patch(
         "handlers.sell.db.get_animal_by_position", return_value=animal
-    ), patch("handlers.sell.db.delete_animal"), patch(
+    ), patch("handlers.sell.db.has_pending_trade_for_animal", return_value=False), patch(
+        "handlers.sell.db.delete_animal"
+    ), patch(
         "handlers.sell.db.get_conn", return_value=_make_conn_mock()
     ):
         await sell_command(update, ctx)
@@ -112,7 +129,9 @@ async def test_sell_legendary_full_hunger():
     animal = _make_animal(catch_cost=200, hunger=100, nickname="Drgn", emoji="🐉")
     with patch("handlers.sell.db.get_user", return_value={"coins": 100}), patch(
         "handlers.sell.db.get_animal_by_position", return_value=animal
-    ), patch("handlers.sell.db.delete_animal"), patch(
+    ), patch("handlers.sell.db.has_pending_trade_for_animal", return_value=False), patch(
+        "handlers.sell.db.delete_animal"
+    ), patch(
         "handlers.sell.db.get_conn", return_value=_make_conn_mock()
     ):
         await sell_command(update, ctx)
