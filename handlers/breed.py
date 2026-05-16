@@ -10,6 +10,7 @@ from game.breed_engine import (
     calc_breed_cost,
     breed_duration_str,
 )
+from species_data import ENCLOSURE_LEVELS, HABITATS
 
 
 async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -69,7 +70,17 @@ async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     rarity_a = animal_a["rarity"]
     rarity_b = animal_b["rarity"]
     cost = calc_breed_cost(rarity_a, rarity_b)
-    duration = breed_duration_str(rarity_a, rarity_b, animal_a["hunger"], animal_b["hunger"])
+
+    habitat_bonus = 0.0
+    habitat_a = animal_a.get("habitat")
+    habitat_b = animal_b.get("habitat")
+    if habitat_a and habitat_a == habitat_b:
+        enc_level = db.get_enclosure_level(tg_id, habitat_a)
+        habitat_bonus = ENCLOSURE_LEVELS[enc_level]["breed_bonus"]
+
+    duration = breed_duration_str(
+        rarity_a, rarity_b, animal_a["hunger"], animal_b["hunger"], habitat_bonus
+    )
 
     if user["coins"] < cost:
         await update.message.reply_text(
@@ -82,7 +93,9 @@ async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     with db.get_conn() as conn:
         offspring_species_id = resolve_offspring(rarity_a, rarity_b, conn)
-        ready_at = calc_breed_ready_at(rarity_a, rarity_b, animal_a["hunger"], animal_b["hunger"])
+        ready_at = calc_breed_ready_at(
+            rarity_a, rarity_b, animal_a["hunger"], animal_b["hunger"], habitat_bonus
+        )
         conn.execute("UPDATE users SET coins = coins - ? WHERE user_id = ?", (cost, tg_id))
         conn.execute(
             "UPDATE animals SET is_breeding = 1 WHERE animal_id IN (?, ?)",
@@ -94,9 +107,17 @@ async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             (tg_id, animal_a["animal_id"], animal_b["animal_id"], offspring_species_id, ready_at),
         )
 
+    bonus_line = ""
+    if habitat_bonus > 0:
+        h_info = HABITATS[habitat_a]
+        bonus_line = (
+            f"⚡ {h_info['emoji']} Habitat bonus: -{int(habitat_bonus * 100)}% breed time\n"
+        )
+
     await update.message.reply_text(
         f"💕 *{animal_a['emoji']} {name_a}* × *{animal_b['emoji']} {name_b}* are now breeding!\n\n"
         f"Cost: -{cost} 🪙\n"
+        f"{bonus_line}"
         f"Ready in: *{duration}*\n\n"
         f"Use `/breed collect` when the timer is up!",
         parse_mode="Markdown",

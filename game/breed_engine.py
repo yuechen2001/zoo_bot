@@ -30,10 +30,15 @@ def _hunger_adjusted_hours(base_hours: float, hunger_a: int, hunger_b: int) -> f
 
 
 def calc_breed_ready_at(
-    rarity_a: str, rarity_b: str, hunger_a: int = 100, hunger_b: int = 100
+    rarity_a: str,
+    rarity_b: str,
+    hunger_a: int = 100,
+    hunger_b: int = 100,
+    habitat_bonus: float = 0.0,
 ) -> str:
     params = get_breed_params(rarity_a, rarity_b)
     hours = _hunger_adjusted_hours(params["hours"], hunger_a, hunger_b)
+    hours *= max(0.0, 1.0 - habitat_bonus)
     ready = datetime.datetime.utcnow() + datetime.timedelta(hours=hours)
     return ready.isoformat()
 
@@ -43,10 +48,15 @@ def calc_breed_cost(rarity_a: str, rarity_b: str) -> int:
 
 
 def breed_duration_str(
-    rarity_a: str, rarity_b: str, hunger_a: int = 100, hunger_b: int = 100
+    rarity_a: str,
+    rarity_b: str,
+    hunger_a: int = 100,
+    hunger_b: int = 100,
+    habitat_bonus: float = 0.0,
 ) -> str:
     params = get_breed_params(rarity_a, rarity_b)
     hours = _hunger_adjusted_hours(params["hours"], hunger_a, hunger_b)
+    hours *= max(0.0, 1.0 - habitat_bonus)
     if hours < 1:
         minutes = round(hours * 60)
         return f"{minutes}m"
