@@ -79,7 +79,7 @@ def render_zoo(username: str, animals: list, coins: int, streak: int) -> str:
     habitat_order = list(HABITATS.keys())
     by_habitat: dict[str, dict] = {h: {} for h in habitat_order}
     for a in animals:
-        h = a.get("habitat") or "woodland"
+        h = a["habitat"] or "woodland"
         sid = a["species_id"]
         if sid not in by_habitat[h]:
             by_habitat[h][sid] = []

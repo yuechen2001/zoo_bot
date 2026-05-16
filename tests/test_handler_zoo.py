@@ -12,6 +12,7 @@ def _make_animal(
     hunger=75,
     nickname=None,
     is_breeding=0,
+    habitat="woodland",
 ):
     return {
         "animal_id": animal_id,
@@ -25,6 +26,7 @@ def _make_animal(
         "is_breeding": is_breeding,
         "hunger_decay": 3,
         "caught_at": "2026-01-01T00:00:00",
+        "habitat": habitat,
     }
 
 
