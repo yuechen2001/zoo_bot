@@ -78,6 +78,8 @@ python main.py
 |---|---|
 | `/start` | Join and receive a starter animal |
 | `/zoo` | View your zoo, one habitat per page — tap ◀ ▶ to browse |
+| `/autofeed <threshold> <max_coins>` | Auto-feed animals below hunger threshold each tick (e.g. `/autofeed 50 100`) |
+| `/autofeed off` | Disable auto-feed |
 | `/catch` | Search for a wild animal |
 | `/feed <numbers>` | Feed animal(s) — 10 🪙 each |
 | `/breed <a> <b>` | Breed two animals together |

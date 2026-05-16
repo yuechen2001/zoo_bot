@@ -9,6 +9,7 @@ from handlers import (
     achievements_command,
     admin_command,
     start_command,
+    autofeed_command,
     zoo_command,
     zoo_page_callback,
     catch_command,
@@ -66,6 +67,7 @@ async def post_init(application):
             BotCommand("sell", "Sell an animal for coins"),
             BotCommand("enclosures", "View and upgrade your enclosures"),
             BotCommand("directory", "Browse all animals & see which you own"),
+            BotCommand("autofeed", "Auto-feed animals below a hunger threshold each tick"),
             BotCommand("help", "Show all commands"),
         ]
     )
@@ -120,6 +122,7 @@ def main():
     app.add_handler(CommandHandler("sell", sell_command))
     app.add_handler(CommandHandler("enclosures", enclosures_command))
     app.add_handler(CommandHandler("directory", directory_command))
+    app.add_handler(CommandHandler("autofeed", autofeed_command))
     app.add_handler(CallbackQueryHandler(handle_callback))
 
     app.job_queue.run_repeating(

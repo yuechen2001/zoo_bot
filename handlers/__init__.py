@@ -1,4 +1,5 @@
 from .achievements import achievements_command
+from .autofeed import autofeed_command
 from .admin import admin_command
 from .start import start_command
 from .zoo import zoo_command, zoo_page_callback
@@ -42,6 +43,7 @@ __all__ = [
     "help_command",
     "admin_command",
     "achievements_command",
+    "autofeed_command",
     "trivia_command",
     "trivia_callback",
     "gamble_command",
