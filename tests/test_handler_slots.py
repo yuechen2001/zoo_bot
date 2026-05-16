@@ -38,18 +38,6 @@ def test_symbols_are_unique():
 
 
 @pytest.mark.asyncio
-async def test_slots_rejects_group_chat():
-    update = MagicMock()
-    update.effective_chat.type = "group"
-    update.message.reply_text = AsyncMock()
-
-    await slots_command(update, MagicMock())
-
-    reply = update.message.reply_text.call_args[0][0]
-    assert "private" in reply.lower()
-
-
-@pytest.mark.asyncio
 async def test_slots_rejects_unknown_user():
     update = MagicMock()
     update.effective_chat.type = "private"

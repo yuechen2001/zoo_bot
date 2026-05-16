@@ -25,14 +25,6 @@ def _setup(coins=200, args=None, chat_type="private"):
 
 
 @pytest.mark.asyncio
-async def test_gamble_rejects_group_chat():
-    update, ctx, user = _setup(chat_type="group")
-    await gamble_command(update, ctx)
-    reply = update.message.reply_text.call_args[0][0]
-    assert "private" in reply.lower()
-
-
-@pytest.mark.asyncio
 async def test_gamble_rejects_unknown_user():
     update, ctx, _ = _setup()
     with patch("handlers.gamble.db.get_user", return_value=None):

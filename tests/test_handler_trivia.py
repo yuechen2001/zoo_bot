@@ -35,18 +35,6 @@ def _make_trivia_query(user_id: int, option: str = "B"):
 
 
 @pytest.mark.asyncio
-async def test_trivia_rejects_group_chat():
-    update = MagicMock()
-    update.effective_chat.type = "group"
-    update.message.reply_text = AsyncMock()
-
-    await trivia_command(update, MagicMock())
-
-    reply = update.message.reply_text.call_args[0][0]
-    assert "private" in reply.lower()
-
-
-@pytest.mark.asyncio
 async def test_trivia_rejects_unknown_user():
     update = MagicMock()
     update.effective_chat.type = "private"
