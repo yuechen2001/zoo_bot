@@ -17,29 +17,6 @@ def init_db():
     run_migrations(DATABASE_PATH)
     with get_conn() as conn:
         _seed_species(conn)
-        # Backfill nicknames for animals that have none
-        conn.execute(
-            "UPDATE animals SET nickname = (SELECT name FROM species WHERE species_id = animals.species_id) "
-            "WHERE nickname IS NULL OR nickname = ''"
-        )
-        # Clear is_breeding on animals with no active (uncollected, not-yet-ready) breed session
-        conn.execute(
-            "UPDATE animals SET is_breeding = 0 "
-            "WHERE is_breeding = 1 AND animal_id NOT IN ("
-            "  SELECT parent_a FROM breeding_queue WHERE collected = 0 AND ready_at > datetime('now')"
-            "  UNION"
-            "  SELECT parent_b FROM breeding_queue WHERE collected = 0 AND ready_at > datetime('now')"
-            ")"
-        )
-        # Backfill starter enclosures for existing users
-        from species_data import HABITATS
-
-        for row in conn.execute("SELECT user_id FROM users").fetchall():
-            for habitat in HABITATS:
-                conn.execute(
-                    "INSERT OR IGNORE INTO user_enclosures (user_id, habitat, level) VALUES (?, ?, 1)",
-                    (row["user_id"], habitat),
-                )
 
 
 def _seed_species(conn):
