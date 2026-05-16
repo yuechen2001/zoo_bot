@@ -146,6 +146,10 @@ async def _check_starved_animals(ctx):
                 "DELETE FROM breeding_queue WHERE parent_a = ? OR parent_b = ?",
                 (animal["animal_id"], animal["animal_id"]),
             )
+            conn.execute(
+                "DELETE FROM trades WHERE proposer_animal_id = ? OR recipient_animal_id = ?",
+                (animal["animal_id"], animal["animal_id"]),
+            )
             conn.execute("DELETE FROM animals WHERE animal_id = ?", (animal["animal_id"],))
 
 
