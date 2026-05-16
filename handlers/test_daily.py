@@ -32,7 +32,9 @@ async def test_daily_rejects_unknown_user():
 
 @pytest.mark.asyncio
 async def test_daily_cooldown_blocks_early_claim():
-    recent = (datetime.datetime.utcnow() - datetime.timedelta(hours=1)).isoformat()
+    recent = (
+        datetime.datetime.now(datetime.UTC).replace(tzinfo=None) - datetime.timedelta(hours=1)
+    ).isoformat()
     cm = _make_conn_mock(last_claimed=recent)
 
     update = MagicMock()
@@ -73,7 +75,8 @@ async def test_daily_grants_coins_on_first_claim():
 @pytest.mark.asyncio
 async def test_daily_grants_coins_after_cooldown_expires():
     old = (
-        datetime.datetime.utcnow() - datetime.timedelta(hours=DAILY_COOLDOWN_HOURS + 1)
+        datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        - datetime.timedelta(hours=DAILY_COOLDOWN_HOURS + 1)
     ).isoformat()
     cm = _make_conn_mock(last_claimed=old)
 

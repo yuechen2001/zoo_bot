@@ -138,7 +138,7 @@ class TestCatchCapacityGate:
             "rarity": "common",
             "name": "Mouse",
             "emoji": "🐭",
-            "at": datetime.datetime.utcnow().isoformat(),
+            "at": datetime.datetime.now(datetime.UTC).replace(tzinfo=None).isoformat(),
             "message_id": 42,
         }
 

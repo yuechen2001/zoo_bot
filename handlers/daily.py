@@ -22,7 +22,8 @@ async def daily_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     if last:
         elapsed = (
-            datetime.datetime.utcnow() - datetime.datetime.fromisoformat(last["claimed_at"])
+            datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            - datetime.datetime.fromisoformat(last["claimed_at"])
         ).total_seconds()
         remaining_s = DAILY_COOLDOWN_HOURS * 3600 - elapsed
         if remaining_s > 0:
@@ -34,7 +35,7 @@ async def daily_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-    now_str = datetime.datetime.utcnow().isoformat()
+    now_str = datetime.datetime.now(datetime.UTC).replace(tzinfo=None).isoformat()
     with db.get_conn() as conn:
         conn.execute(
             "INSERT INTO daily_log (user_id, claimed_at) VALUES (?, ?)",

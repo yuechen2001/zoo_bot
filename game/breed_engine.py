@@ -39,7 +39,9 @@ def calc_breed_ready_at(
     params = get_breed_params(rarity_a, rarity_b)
     hours = _hunger_adjusted_hours(params["hours"], hunger_a, hunger_b)
     hours *= max(0.0, 1.0 - habitat_bonus)
-    ready = datetime.datetime.utcnow() + datetime.timedelta(hours=hours)
+    ready = datetime.datetime.now(datetime.UTC).replace(tzinfo=None) + datetime.timedelta(
+        hours=hours
+    )
     return ready.isoformat()
 
 

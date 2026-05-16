@@ -56,7 +56,7 @@ async def pause_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     amount, unit = int(match.group(1)), match.group(2)
     delta = datetime.timedelta(hours=amount) if unit == "h" else datetime.timedelta(minutes=amount)
-    paused_until = (datetime.datetime.utcnow() + delta).isoformat()
+    paused_until = (datetime.datetime.now(datetime.UTC).replace(tzinfo=None) + delta).isoformat()
 
     with db.get_conn() as conn:
         conn.execute("UPDATE users SET paused_until = ? WHERE user_id = ?", (paused_until, tg_id))
@@ -108,7 +108,9 @@ async def mood_checkin_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     last_prompt = user["last_prompt_at"]
     if last_prompt:
         prompt_time = datetime.datetime.fromisoformat(last_prompt)
-        elapsed_min = (datetime.datetime.utcnow() - prompt_time).total_seconds() / 60
+        elapsed_min = (
+            datetime.datetime.now(datetime.UTC).replace(tzinfo=None) - prompt_time
+        ).total_seconds() / 60
         if elapsed_min > CHECKIN_WINDOW_MINUTES:
             await query.answer("⏰ Window closed — wait for the next prompt!", show_alert=True)
             return
@@ -123,7 +125,7 @@ async def mood_checkin_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     # Update streak
     new_streak = user["streak_windows"] + 1
     coins = calc_coins(emoji, new_streak)
-    now_str = datetime.datetime.utcnow().isoformat()
+    now_str = datetime.datetime.now(datetime.UTC).replace(tzinfo=None).isoformat()
 
     with db.get_conn() as conn:
         conn.execute(

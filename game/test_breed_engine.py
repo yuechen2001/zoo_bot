@@ -88,7 +88,7 @@ class TestBreedDurationStr:
 
 class TestCalcBreedReadyAt:
     def test_returns_future_timestamp(self):
-        before = datetime.datetime.utcnow()
+        before = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         ts = calc_breed_ready_at("common", "common")
         dt = datetime.datetime.fromisoformat(ts)
         assert dt > before
@@ -96,13 +96,13 @@ class TestCalcBreedReadyAt:
     def test_common_common_full_hunger_approx_30m(self):
         ts = calc_breed_ready_at("common", "common", 100, 100)
         dt = datetime.datetime.fromisoformat(ts)
-        delta = dt - datetime.datetime.utcnow()
+        delta = dt - datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         assert abs(delta.total_seconds() - 30 * 60) < 5
 
     def test_legendary_legendary_full_hunger_approx_2h(self):
         ts = calc_breed_ready_at("legendary", "legendary", 100, 100)
         dt = datetime.datetime.fromisoformat(ts)
-        delta = dt - datetime.datetime.utcnow()
+        delta = dt - datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         assert abs(delta.total_seconds() - 2 * 3600) < 5
 
     def test_low_hunger_makes_longer_breed(self):

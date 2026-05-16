@@ -216,7 +216,10 @@ async def test_expired_trade_notifies_proposer(temp_db):
                 "INSERT INTO animals (animal_id, user_id, species_id) VALUES ('b1', 2, ?)",
                 (species_id,),
             )
-            old_time = (datetime.datetime.utcnow() - datetime.timedelta(minutes=30)).isoformat()
+            old_time = (
+                datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                - datetime.timedelta(minutes=30)
+            ).isoformat()
             conn.execute(
                 "INSERT INTO trades (proposer_id, recipient_id, proposer_animal_id, recipient_animal_id, created_at, status) "
                 "VALUES (1, 2, 'a1', 'b1', ?, 'pending')",

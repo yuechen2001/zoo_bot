@@ -42,7 +42,7 @@ async def _send_mood_prompts(ctx):
     if not users:
         return
 
-    now_str = datetime.datetime.utcnow().isoformat()
+    now_str = datetime.datetime.now(datetime.UTC).replace(tzinfo=None).isoformat()
 
     from collections import defaultdict
 
@@ -87,7 +87,7 @@ async def _send_mood_prompts(ctx):
         group_state = db.get_group_state(group_chat_id)
         if group_state and group_state["last_prompt_at"]:
             elapsed = (
-                datetime.datetime.utcnow()
+                datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 - datetime.datetime.fromisoformat(group_state["last_prompt_at"])
             ).total_seconds() / 60
             if elapsed < PROMPT_INTERVAL_MINUTES:
@@ -295,7 +295,7 @@ async def _autofeed(ctx):
 
 async def _cleanup_expired_prompts(ctx):
     prompt_messages = ctx.bot_data.get("prompt_messages", {})
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
     to_remove = []
     for group_chat_id, info in list(prompt_messages.items()):
         sent_at = datetime.datetime.fromisoformat(info["sent_at"])

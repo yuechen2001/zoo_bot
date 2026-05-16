@@ -82,7 +82,7 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "rarity": species["rarity"],
         "name": species["name"],
         "emoji": species["emoji"],
-        "at": datetime.datetime.utcnow().isoformat(),
+        "at": datetime.datetime.now(datetime.UTC).replace(tzinfo=None).isoformat(),
         "message_id": msg.message_id,
     }
 
@@ -114,7 +114,9 @@ async def catch_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     # Check expiry
     at = datetime.datetime.fromisoformat(pending["at"])
-    if (datetime.datetime.utcnow() - at).total_seconds() > CATCH_EXPIRY_MINUTES * 60:
+    if (
+        datetime.datetime.now(datetime.UTC).replace(tzinfo=None) - at
+    ).total_seconds() > CATCH_EXPIRY_MINUTES * 60:
         await query.answer("Too slow! The animal escaped.")
         await query.edit_message_text("⏰ Time's up — it got away. Try /catch again!")
         ctx.user_data.pop("pending_catch", None)

@@ -148,7 +148,7 @@ async def _breed_status(update, tg_id):
     emoji_b = pb["emoji"] if pb else ""
 
     ready_at = datetime.datetime.fromisoformat(pending["ready_at"])
-    remaining = ready_at - datetime.datetime.utcnow()
+    remaining = ready_at - datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
 
     if remaining.total_seconds() <= 0:
         time_str = "ready! Use `/breed collect`"
@@ -173,8 +173,8 @@ async def _collect_breed(update, tg_id, ctx=None):
         return
 
     ready_at = datetime.datetime.fromisoformat(pending["ready_at"])
-    if datetime.datetime.utcnow() < ready_at:
-        remaining = ready_at - datetime.datetime.utcnow()
+    if datetime.datetime.now(datetime.UTC).replace(tzinfo=None) < ready_at:
+        remaining = ready_at - datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         hours, rem = divmod(int(remaining.total_seconds()), 3600)
         minutes = rem // 60
         time_str = f"{hours}h {minutes}m" if hours else f"{minutes}m"

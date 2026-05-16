@@ -138,7 +138,7 @@ async def test_trade_callback_rejects_wrong_user():
 @pytest.mark.asyncio
 async def test_trade_callback_accept_calls_resolve():
     update, query = _make_query(action="accept", trade_id=1, recipient_id=2, from_user_id=2)
-    now = datetime.datetime.utcnow().isoformat()
+    now = datetime.datetime.now(datetime.UTC).replace(tzinfo=None).isoformat()
     trade = {
         "id": 1,
         "status": "pending",
@@ -163,7 +163,7 @@ async def test_trade_callback_accept_calls_resolve():
 @pytest.mark.asyncio
 async def test_trade_callback_decline_calls_resolve():
     update, query = _make_query(action="decline", trade_id=1, recipient_id=2, from_user_id=2)
-    now = datetime.datetime.utcnow().isoformat()
+    now = datetime.datetime.now(datetime.UTC).replace(tzinfo=None).isoformat()
     trade = {
         "id": 1,
         "status": "pending",
@@ -184,7 +184,9 @@ async def test_trade_callback_decline_calls_resolve():
 @pytest.mark.asyncio
 async def test_trade_callback_expired_trade():
     update, query = _make_query(action="accept", trade_id=1, recipient_id=2, from_user_id=2)
-    old_time = (datetime.datetime.utcnow() - datetime.timedelta(minutes=15)).isoformat()
+    old_time = (
+        datetime.datetime.now(datetime.UTC).replace(tzinfo=None) - datetime.timedelta(minutes=15)
+    ).isoformat()
     trade = {
         "id": 1,
         "status": "pending",
@@ -204,7 +206,11 @@ async def test_trade_callback_expired_trade():
 @pytest.mark.asyncio
 async def test_trade_callback_already_resolved():
     update, query = _make_query(action="accept", trade_id=1, recipient_id=2, from_user_id=2)
-    trade = {"id": 1, "status": "accepted", "created_at": datetime.datetime.utcnow().isoformat()}
+    trade = {
+        "id": 1,
+        "status": "accepted",
+        "created_at": datetime.datetime.now(datetime.UTC).replace(tzinfo=None).isoformat(),
+    }
     with patch("handlers.trade.db.get_trade", return_value=trade):
         await trade_callback(update, MagicMock())
     query.answer.assert_called_once_with("This trade is no longer active.")

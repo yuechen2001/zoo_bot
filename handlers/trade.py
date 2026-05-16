@@ -116,7 +116,9 @@ async def trade_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     created = datetime.datetime.fromisoformat(trade["created_at"])
-    elapsed = (datetime.datetime.utcnow() - created).total_seconds() / 60
+    elapsed = (
+        datetime.datetime.now(datetime.UTC).replace(tzinfo=None) - created
+    ).total_seconds() / 60
     if elapsed > TRADE_EXPIRY_MINUTES:
         db.resolve_trade(trade_id, "declined")
         await query.answer("Trade expired.")

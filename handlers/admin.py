@@ -257,7 +257,7 @@ async def _cmd_pause(update, tg_id, args):
         return
     amount, unit = int(match.group(1)), match.group(2)
     delta = datetime.timedelta(hours=amount) if unit == "h" else datetime.timedelta(minutes=amount)
-    paused_until = (datetime.datetime.utcnow() + delta).isoformat()
+    paused_until = (datetime.datetime.now(datetime.UTC).replace(tzinfo=None) + delta).isoformat()
     user = db.get_user(tg_id)
     group_chat_id = user["group_chat_id"]
     with db.get_conn() as conn:
