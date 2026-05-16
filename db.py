@@ -75,19 +75,44 @@ def init_db():
                 earned_at       TEXT DEFAULT (datetime('now')),
                 PRIMARY KEY (user_id, achievement_key)
             );
+
+            CREATE TABLE IF NOT EXISTS trivia_log (
+                id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id   INTEGER REFERENCES users(user_id),
+                asked_at  TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS daily_log (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id     INTEGER REFERENCES users(user_id),
+                claimed_at  TEXT NOT NULL
+            );
         """)
         _seed_species(conn)
+        # Backfill any animals that have no nickname with their species name
+        conn.execute(
+            "UPDATE animals SET nickname = (SELECT name FROM species WHERE species_id = animals.species_id) "
+            "WHERE nickname IS NULL OR nickname = ''"
+        )
 
 
 def _seed_species(conn):
-    count = conn.execute("SELECT COUNT(*) FROM species").fetchone()[0]
-    if count > 0:
-        return
-    conn.executemany(
-        "INSERT INTO species (name, emoji, rarity, catch_rate, catch_cost, hunger_decay, breed_time_hrs) "
-        "VALUES (:name, :emoji, :rarity, :catch_rate, :catch_cost, :hunger_decay, :breed_time_hrs)",
-        SPECIES,
-    )
+    for s in SPECIES:
+        existing = conn.execute(
+            "SELECT species_id FROM species WHERE name = ? AND emoji = ?",
+            (s["name"], s["emoji"]),
+        ).fetchone()
+        if existing:
+            conn.execute(
+                "UPDATE species SET catch_rate=?, catch_cost=?, hunger_decay=?, breed_time_hrs=? WHERE species_id=?",
+                (s["catch_rate"], s["catch_cost"], s["hunger_decay"], s["breed_time_hrs"], existing["species_id"]),
+            )
+        else:
+            conn.execute(
+                "INSERT INTO species (name, emoji, rarity, catch_rate, catch_cost, hunger_decay, breed_time_hrs) "
+                "VALUES (:name, :emoji, :rarity, :catch_rate, :catch_cost, :hunger_decay, :breed_time_hrs)",
+                s,
+            )
 
 
 # ── Users ─────────────────────────────────────────────────────────────────────

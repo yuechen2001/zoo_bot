@@ -14,6 +14,10 @@ from .mood import (
     mood_checkin_callback,
     help_command,
 )
+from .trivia import trivia_command, trivia_callback
+from .gamble import gamble_command
+from .daily import daily_command
+from .slots import slots_command
 
 __all__ = [
     "start_command",
@@ -28,4 +32,8 @@ __all__ = [
     "help_command",
     "admin_command",
     "achievements_command",
+    "trivia_command", "trivia_callback",
+    "gamble_command",
+    "daily_command",
+    "slots_command",
 ]

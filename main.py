@@ -1,4 +1,5 @@
 import logging
+from telegram import BotCommand
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler
 
 from config import BOT_TOKEN, PROMPT_INTERVAL_MINUTES
@@ -17,6 +18,10 @@ from handlers import (
     pause_command, resume_command,
     mood_checkin_callback,
     help_command,
+    trivia_command, trivia_callback,
+    gamble_command,
+    daily_command,
+    slots_command,
 )
 
 logging.basicConfig(
@@ -24,6 +29,26 @@ logging.basicConfig(
     level=logging.INFO,
 )
 logging.getLogger("httpx").setLevel(logging.WARNING)
+
+
+async def post_init(application):
+    await application.bot.set_my_commands([
+        BotCommand("start",        "Join and get your starter animal"),
+        BotCommand("zoo",          "See your zoo"),
+        BotCommand("catch",        "Search for a wild animal"),
+        BotCommand("feed",         "Feed animals (10 🪙 each)"),
+        BotCommand("breed",        "Breed two animals"),
+        BotCommand("name",         "Give an animal a nickname"),
+        BotCommand("moodstart",    "Opt in to mood prompts"),
+        BotCommand("moodstop",     "Opt out of prompts"),
+        BotCommand("resume",       "End pause early"),
+        BotCommand("achievements", "View achievements"),
+        BotCommand("trivia",       "Answer animal trivia for coins"),
+        BotCommand("gamble",       "Bet coins on a coin flip"),
+        BotCommand("daily",        "Claim your daily coin reward"),
+        BotCommand("slots",        "Spin the slot machine (10 coins)"),
+        BotCommand("help",         "Show all commands"),
+    ])
 
 
 async def handle_callback(update, ctx):
@@ -34,6 +59,8 @@ async def handle_callback(update, ctx):
         await catch_callback(update, ctx)
     elif data == "breed_collect":
         await breed_collect_callback(update, ctx)
+    elif data.startswith("trivia_"):
+        await trivia_callback(update, ctx)
     else:
         await update.callback_query.answer("Unknown action")
 
@@ -41,7 +68,7 @@ async def handle_callback(update, ctx):
 def main():
     init_db()
 
-    app = Application.builder().token(BOT_TOKEN).build()
+    app = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
 
     app.add_handler(CommandHandler("start",     start_command))
     app.add_handler(CommandHandler("zoo",       zoo_command))
@@ -56,6 +83,10 @@ def main():
     app.add_handler(CommandHandler("help",      help_command))
     app.add_handler(CommandHandler("admin",        admin_command))
     app.add_handler(CommandHandler("achievements", achievements_command))
+    app.add_handler(CommandHandler("trivia",  trivia_command))
+    app.add_handler(CommandHandler("gamble",  gamble_command))
+    app.add_handler(CommandHandler("daily",   daily_command))
+    app.add_handler(CommandHandler("slots",   slots_command))
     app.add_handler(CallbackQueryHandler(handle_callback))
 
     app.job_queue.run_repeating(
