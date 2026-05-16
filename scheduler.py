@@ -66,6 +66,15 @@ async def _send_mood_prompts(ctx):
                             (new_misses, tg_id),
                         )
 
+        # Don't send a new prompt if the last one is still within the checkin window
+        last_sent = ctx.bot_data.get("prompt_messages", {}).get(group_chat_id)
+        if last_sent:
+            elapsed = (
+                datetime.datetime.utcnow() - datetime.datetime.fromisoformat(last_sent["sent_at"])
+            ).total_seconds() / 60
+            if elapsed < CHECKIN_WINDOW_MINUTES:
+                continue
+
         try:
             msg = await ctx.bot.send_message(
                 group_chat_id,
