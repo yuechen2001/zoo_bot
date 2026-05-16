@@ -10,3 +10,11 @@ python-telegram-bot==22.7
 pytz==2024.1
 typing_extensions==4.15.0
 tzlocal==5.3.1
+
+# dev / test
+pytest==8.3.5
+pytest-asyncio==0.24.0
+pytest-cov==6.1.0
+pre-commit==4.2.0
+ruff==0.9.10
+black==25.1.0

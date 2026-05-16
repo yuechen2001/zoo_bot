@@ -1,0 +1,73 @@
+import sqlite3
+import pytest
+from species_data import SPECIES
+
+
+@pytest.fixture
+def conn():
+    """In-memory SQLite DB with schema + species seeded. Used by game logic tests."""
+    c = sqlite3.connect(":memory:")
+    c.row_factory = sqlite3.Row
+    c.executescript("""
+        CREATE TABLE species (
+            species_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+            name           TEXT NOT NULL,
+            emoji          TEXT NOT NULL,
+            rarity         TEXT NOT NULL,
+            catch_rate     REAL NOT NULL,
+            catch_cost     INTEGER NOT NULL,
+            hunger_decay   INTEGER NOT NULL DEFAULT 5,
+            breed_time_hrs INTEGER NOT NULL DEFAULT 24
+        );
+        CREATE TABLE users (
+            user_id            INTEGER PRIMARY KEY,
+            username           TEXT,
+            group_chat_id      INTEGER,
+            coins              INTEGER NOT NULL DEFAULT 100,
+            streak_windows     INTEGER NOT NULL DEFAULT 0,
+            consecutive_misses INTEGER NOT NULL DEFAULT 0,
+            last_prompt_at     TEXT,
+            last_checkin_at    TEXT,
+            paused_until       TEXT,
+            opted_in           INTEGER NOT NULL DEFAULT 1
+        );
+        CREATE TABLE animals (
+            animal_id   TEXT PRIMARY KEY,
+            user_id     INTEGER,
+            species_id  INTEGER,
+            nickname    TEXT,
+            hunger      INTEGER NOT NULL DEFAULT 100,
+            happiness   INTEGER NOT NULL DEFAULT 100,
+            level       INTEGER NOT NULL DEFAULT 1,
+            xp          INTEGER NOT NULL DEFAULT 0,
+            is_breeding INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE breeding_queue (
+            id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id              INTEGER,
+            parent_a             TEXT,
+            parent_b             TEXT,
+            offspring_species_id INTEGER,
+            ready_at             TEXT NOT NULL,
+            collected            INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE trivia_log (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id   INTEGER,
+            asked_at  TEXT NOT NULL
+        );
+        CREATE TABLE daily_log (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER,
+            claimed_at  TEXT NOT NULL
+        );
+    """)
+    for s in SPECIES:
+        c.execute(
+            "INSERT INTO species (name, emoji, rarity, catch_rate, catch_cost, hunger_decay, breed_time_hrs) "
+            "VALUES (:name, :emoji, :rarity, :catch_rate, :catch_cost, :hunger_decay, :breed_time_hrs)",
+            s,
+        )
+    c.commit()
+    yield c
+    c.close()
