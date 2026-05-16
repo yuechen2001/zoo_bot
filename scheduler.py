@@ -142,6 +142,10 @@ async def _check_starved_animals(ctx):
         except Exception:
             logger.exception("Failed to send starved-animal message to %s", chat_id)
         with db.get_conn() as conn:
+            conn.execute(
+                "DELETE FROM breeding_queue WHERE parent_a = ? OR parent_b = ?",
+                (animal["animal_id"], animal["animal_id"]),
+            )
             conn.execute("DELETE FROM animals WHERE animal_id = ?", (animal["animal_id"],))
 
 
