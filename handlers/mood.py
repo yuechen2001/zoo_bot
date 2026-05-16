@@ -178,6 +178,8 @@ async def help_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "/name <number> <name> — nickname an animal\n"
         "/sell <number> — sell an animal for coins\n"
         "/autofeed <threshold> <max\\_coins> — auto-feed below hunger level each tick\n"
+        "/autofeed off — disable auto-feed\n"
+        "/directory — browse all species & see which you own\n"
         "/achievements — view your milestones\n\n"
         "*Enclosures:*\n"
         "/enclosures — view and upgrade your habitat enclosures\n\n"

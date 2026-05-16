@@ -2,15 +2,18 @@
 Admin / debug commands — only usable by IDs listed in ADMIN_IDS.
 
 Usage:
-  /admin help                        — list all commands
-  /admin coins <amount>              — give yourself coins
-  /admin givecoin <username> <amt>   — give coins to another user by username
-  /admin give <species_name>         — add an animal directly to your zoo
-  /admin hunger <number> <value>     — set animal #N hunger (0–100)
-  /admin tick                        — manually trigger the scheduler tick
-  /admin prompt                      — send a mood prompt to yourself right now
-  /admin reset                       — wipe your own data and start fresh
-  /admin stats                       — show DB summary
+  /admin help                          — list all commands
+  /admin coins <amount>                — give yourself coins
+  /admin givecoin <username> <amt>     — give coins to another user by username
+  /admin give <species_name>           — add an animal directly to your zoo
+  /admin giveuser <username> <species> — add an animal to another user's zoo
+  /admin listanimals <username>        — show all animals owned by a user
+  /admin hunger <number> <value>       — set animal #N hunger (0–100)
+  /admin tick                          — manually trigger the scheduler tick
+  /admin prompt                        — send a mood prompt to yourself right now
+  /admin reset                         — wipe your own data and start fresh
+  /admin resetuser <username>          — wipe another user's data
+  /admin stats                         — show DB summary
 """
 
 import uuid
@@ -51,6 +54,12 @@ async def admin_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     elif sub == "give":
         await _cmd_give(update, tg_id, args)
 
+    elif sub == "giveuser":
+        await _cmd_giveuser(update, args)
+
+    elif sub == "listanimals":
+        await _cmd_listanimals(update, args)
+
     elif sub == "hunger":
         await _cmd_set_stat(update, tg_id, args, "hunger")
 
@@ -74,6 +83,9 @@ async def admin_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     elif sub == "reset":
         await _cmd_reset(update, tg_id)
+
+    elif sub == "resetuser":
+        await _cmd_resetuser(update, args)
 
     elif sub == "stats":
         await _cmd_stats(update)
@@ -172,6 +184,59 @@ async def _cmd_set_stat(update, tg_id, args, stat):
     )
 
 
+async def _cmd_giveuser(update, args):
+    if len(args) < 2:
+        await update.message.reply_text("Usage: /admin giveuser <username> <species>")
+        return
+    username = args[0].lstrip("@")
+    name = " ".join(args[1:]).title()
+    target = db.get_user_by_username(username)
+    if not target:
+        await update.message.reply_text(f"User `{username}` not found.", parse_mode="Markdown")
+        return
+    with db.get_conn() as conn:
+        species = conn.execute(
+            "SELECT * FROM species WHERE LOWER(name) = LOWER(?)", (name,)
+        ).fetchone()
+    if not species:
+        with db.get_conn() as conn:
+            all_names = [
+                r["name"] for r in conn.execute("SELECT name FROM species ORDER BY name").fetchall()
+            ]
+        await update.message.reply_text(
+            f"Species `{name}` not found.\nAvailable: {', '.join(all_names)}",
+            parse_mode="Markdown",
+        )
+        return
+    animal_id = str(uuid.uuid4())
+    db.add_animal(animal_id, target["user_id"], species["species_id"])
+    await update.message.reply_text(
+        f"✅ Added {species['emoji']} *{species['name']}* to *{username}*'s zoo!",
+        parse_mode="Markdown",
+    )
+
+
+async def _cmd_listanimals(update, args):
+    if not args:
+        await update.message.reply_text("Usage: /admin listanimals <username>")
+        return
+    username = args[0].lstrip("@")
+    target = db.get_user_by_username(username)
+    if not target:
+        await update.message.reply_text(f"User `{username}` not found.", parse_mode="Markdown")
+        return
+    animals = db.get_animals(target["user_id"])
+    if not animals:
+        await update.message.reply_text(f"*{username}* has no animals.", parse_mode="Markdown")
+        return
+    lines = [f"🐾 *{username}'s animals* ({len(animals)} total)\n"]
+    for i, a in enumerate(animals, 1):
+        name = a["nickname"] or a["species_name"]
+        lock = " 🔒" if a["is_breeding"] else ""
+        lines.append(f"#{i} {a['emoji']} {name} — 🍖 {a['hunger']} [{a['rarity']}]{lock}")
+    await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
+
+
 async def _cmd_reset(update, tg_id):
     with db.get_conn() as conn:
         animal_ids = [
@@ -195,6 +260,41 @@ async def _cmd_reset(update, tg_id):
         )
     await update.message.reply_text(
         "🔄 Your data has been reset. Use /start to get a new starter animal."
+    )
+
+
+async def _cmd_resetuser(update, args):
+    if not args:
+        await update.message.reply_text("Usage: /admin resetuser <username>")
+        return
+    username = args[0].lstrip("@")
+    target = db.get_user_by_username(username)
+    if not target:
+        await update.message.reply_text(f"User `{username}` not found.", parse_mode="Markdown")
+        return
+    uid = target["user_id"]
+    with db.get_conn() as conn:
+        animal_ids = [
+            r["animal_id"]
+            for r in conn.execute(
+                "SELECT animal_id FROM animals WHERE user_id = ?", (uid,)
+            ).fetchall()
+        ]
+        if animal_ids:
+            placeholders = ",".join("?" * len(animal_ids))
+            conn.execute(
+                f"DELETE FROM breeding_queue WHERE parent_a IN ({placeholders}) OR parent_b IN ({placeholders})",
+                animal_ids + animal_ids,
+            )
+        conn.execute("DELETE FROM animals WHERE user_id = ?", (uid,))
+        conn.execute("DELETE FROM mood_checkins WHERE user_id = ?", (uid,))
+        conn.execute(
+            "UPDATE users SET coins = 100, streak_windows = 0, consecutive_misses = 0, "
+            "last_prompt_at = NULL, last_checkin_at = NULL, paused_until = NULL WHERE user_id = ?",
+            (uid,),
+        )
+    await update.message.reply_text(
+        f"🔄 *{username}*'s data has been reset.", parse_mode="Markdown"
     )
 
 
@@ -229,9 +329,12 @@ def _help_text() -> str:
         "`/admin coins <amount>` — add/remove your own coins\n"
         "`/admin givecoin <username> <amount>` — give coins to another user\n"
         "`/admin give <species>` — add animal to your zoo\n"
+        "`/admin giveuser <username> <species>` — add animal to another user's zoo\n"
+        "`/admin listanimals <username>` — show all animals owned by a user\n"
         "`/admin hunger <#> <val>` — set animal hunger (0–100)\n"
         "`/admin tick` — fire the scheduler manually\n"
         "`/admin prompt` — send yourself a mood prompt now\n"
-        "`/admin reset` — wipe your data and start fresh\n"
+        "`/admin reset` — wipe your own data and start fresh\n"
+        "`/admin resetuser <username>` — wipe another user's data\n"
         "`/admin stats` — DB summary (users, animals, check-ins)"
     )

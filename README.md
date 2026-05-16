@@ -17,6 +17,8 @@ A Telegram bot for couples. Build your own virtual zoo by catching and breeding 
 - **Gamble & slots** — risk your coins for more
 - **Trading** — swap animals with your partner
 - **Investments** — park coins for a 25% return after 24h
+- **Auto-feed** — set a hunger threshold and coin cap; the bot feeds your animals automatically each tick
+- **Animal directory** — browse all 40 species and track which you've discovered
 - **Admin commands** — debug tools for the bot owner
 
 ---
@@ -80,6 +82,7 @@ python main.py
 | `/zoo` | View your zoo, one habitat per page — tap ◀ ▶ to browse |
 | `/autofeed <threshold> <max_coins>` | Auto-feed animals below hunger threshold each tick (e.g. `/autofeed 50 100`) |
 | `/autofeed off` | Disable auto-feed |
+| `/directory` | Browse all species and see which you own |
 | `/catch` | Search for a wild animal |
 | `/feed <numbers>` | Feed animal(s) — 10 🪙 each |
 | `/breed <a> <b>` | Breed two animals together |
