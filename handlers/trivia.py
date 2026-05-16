@@ -26,12 +26,6 @@ def _trivia_keyboard(tg_id: int):
 async def trivia_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     from game.trivia_data import QUESTIONS
 
-    if update.effective_chat.type != "private":
-        await update.message.reply_text(
-            "🎮 Mini-games are only available in private chat with the bot."
-        )
-        return
-
     tg_id = update.effective_user.id
     user = db.get_user(tg_id)
     if not user:

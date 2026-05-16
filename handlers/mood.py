@@ -161,7 +161,7 @@ async def help_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "/breed <a> <b> — breed two animals\n"
         "/breed collect — claim your offspring\n"
         "/name <number> <name> — nickname an animal\n\n"
-        "*Earn coins (private chat only):*\n"
+        "*Earn coins:*\n"
         "/daily — claim +50 coins once per day\n"
         "/trivia — animal trivia (+40 correct, +5 wrong, 4h cooldown)\n"
         "/gamble <amount> — coin flip bet (max 100 🪙)\n"
