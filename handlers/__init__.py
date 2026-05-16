@@ -22,6 +22,7 @@ from .trade import trade_command, trade_callback
 from .invest import invest_command
 from .sell import sell_command
 from .enclosures import enclosures_command, enclosure_upgrade_callback
+from .directory import directory_command
 
 __all__ = [
     "start_command",
@@ -51,4 +52,5 @@ __all__ = [
     "sell_command",
     "enclosures_command",
     "enclosure_upgrade_callback",
+    "directory_command",
 ]
