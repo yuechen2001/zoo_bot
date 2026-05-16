@@ -105,6 +105,34 @@ def get_all_users_with_animals():
         ).fetchall()
 
 
+def set_autofeed(user_id: int, threshold: int | None, max_coins: int | None) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET autofeed_threshold = ?, autofeed_max_coins = ? WHERE user_id = ?",
+            (threshold, max_coins, user_id),
+        )
+
+
+def get_autofeed_users() -> list:
+    """Users with autofeed enabled who have a group chat."""
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT * FROM users WHERE autofeed_threshold IS NOT NULL AND group_chat_id IS NOT NULL"
+        ).fetchall()
+
+
+def get_animals_below_hunger(user_id: int, threshold: int) -> list:
+    """Non-breeding animals below threshold, sorted by hunger ascending."""
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT a.*, s.name AS species_name, s.emoji, s.rarity, s.hunger_decay "
+            "FROM animals a JOIN species s ON s.species_id = a.species_id "
+            "WHERE a.user_id = ? AND a.hunger < ? AND a.is_breeding = 0 "
+            "ORDER BY a.hunger ASC",
+            (user_id, threshold),
+        ).fetchall()
+
+
 # ── Species ───────────────────────────────────────────────────────────────────
 
 
@@ -295,6 +323,16 @@ def expire_old_trades() -> list:
                 (cutoff,),
             )
     return expired
+
+
+def has_prompt_response(group_chat_id: int, prompt_sent_at: str, user_id: int) -> bool:
+    """True if this user already responded to the given prompt."""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM prompt_responses WHERE group_chat_id = ? AND prompt_sent_at = ? AND user_id = ?",
+            (group_chat_id, prompt_sent_at, user_id),
+        ).fetchone()
+    return row is not None
 
 
 def record_prompt_response(group_chat_id: int, prompt_sent_at: str, user_id: int) -> bool:

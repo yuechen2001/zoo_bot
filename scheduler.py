@@ -12,6 +12,7 @@ async def tick(ctx):
     await _check_starved_animals(ctx)
     await _check_breed_completions(ctx)
     await _check_hunger_alerts(ctx)
+    await _autofeed(ctx)
 
 
 async def cleanup(ctx):
@@ -41,9 +42,9 @@ async def _send_mood_prompts(ctx):
     for group_chat_id, members in by_group.items():
         for user in members:
             tg_id = user["user_id"]
-            if user["last_prompt_at"] and (
-                not user["last_checkin_at"] or user["last_checkin_at"] < user["last_prompt_at"]
-            ):
+            last_prompt = user["last_prompt_at"]
+            responded = last_prompt and db.has_prompt_response(group_chat_id, last_prompt, tg_id)
+            if last_prompt and not responded:
                 new_misses = (user["consecutive_misses"] or 0) + 1
                 if new_misses >= 2:
                     with db.get_conn() as conn:
@@ -196,6 +197,58 @@ async def _cleanup_expired_trades(ctx):
                 chat_id,
                 "⏰ Your trade offer expired — no response in time.",
             )
+        except Exception:
+            pass
+
+
+async def _autofeed(ctx):
+    from handlers.feed import FEED_COST_BY_RARITY, FEED_HUNGER
+
+    for user in db.get_autofeed_users():
+        uid = user["user_id"]
+        threshold = user["autofeed_threshold"]
+        max_coins = user["autofeed_max_coins"]
+        chat_id = user["group_chat_id"] or uid
+
+        animals = db.get_animals_below_hunger(uid, threshold)
+        if not animals:
+            continue
+
+        current_user = db.get_user(uid)
+        budget = min(max_coins, current_user["coins"])
+
+        spent = 0
+        fed_count = 0
+        for animal in animals:
+            cost = FEED_COST_BY_RARITY.get(animal["rarity"], 10)
+            if spent + cost > budget:
+                break
+            new_hunger = min(100, animal["hunger"] + FEED_HUNGER)
+            with db.get_conn() as conn:
+                conn.execute(
+                    "UPDATE users SET coins = coins - ? WHERE user_id = ?",
+                    (cost, uid),
+                )
+                conn.execute(
+                    "UPDATE animals SET hunger = ?, hunger_alerted = NULL WHERE animal_id = ?",
+                    (new_hunger, animal["animal_id"]),
+                )
+            spent += cost
+            fed_count += 1
+
+        try:
+            if fed_count == 0:
+                await ctx.bot.send_message(
+                    chat_id,
+                    "⚠️ Auto-feed skipped — not enough coins.",
+                )
+            else:
+                remaining = current_user["coins"] - spent
+                plural = "s" if fed_count != 1 else ""
+                await ctx.bot.send_message(
+                    chat_id,
+                    f"🍖 Auto-fed {fed_count} animal{plural} — spent {spent} 🪙 (balance: {remaining} 🪙)",
+                )
         except Exception:
             pass
 
