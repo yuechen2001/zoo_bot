@@ -4,6 +4,7 @@ from telegram.ext import ContextTypes
 import datetime
 import db
 from game.mood_engine import streak_label
+from species_data import HABITATS, ENCLOSURE_LEVELS
 
 
 def _time_remaining(ready_at_str: str) -> str:
@@ -58,47 +59,62 @@ def render_zoo(username: str, animals: list, coins: int, streak: int) -> str:
             f"💰 {coins} coins"
         )
 
-    # Build breeding set and position map from the ordered list
+    user_id = animals[0]["user_id"]
+
+    # Build breeding set
     breeding_ids = set()
     with db.get_conn() as conn:
         rows = conn.execute(
             "SELECT parent_a, parent_b FROM breeding_queue WHERE user_id = ? AND collected = 0",
-            (animals[0]["user_id"],),
+            (user_id,),
         ).fetchall()
         for r in rows:
             breeding_ids.add(r["parent_a"])
             breeding_ids.add(r["parent_b"])
 
+    enclosures = db.get_enclosures(user_id)  # {habitat: level}
     position = {a["animal_id"]: i + 1 for i, a in enumerate(animals)}
 
-    # Group by species_id preserving first-seen order
-    species_order = []
-    groups = {}
+    # Group animals by habitat, then by species within
+    habitat_order = list(HABITATS.keys())
+    by_habitat: dict[str, dict] = {h: {} for h in habitat_order}
     for a in animals:
+        h = a.get("habitat") or "woodland"
         sid = a["species_id"]
-        if sid not in groups:
-            species_order.append(sid)
-            groups[sid] = []
-        groups[sid].append(a)
+        if sid not in by_habitat[h]:
+            by_habitat[h][sid] = []
+        by_habitat[h][sid].append(a)
 
     lines = [f"🏕 *{username}'s Zoo*\n"]
 
-    for sid in species_order:
-        members = groups[sid]
-        first = members[0]
-        rarity_sq = RARITY_SQUARE.get(first["rarity"], "⬜")
-        count = len(members)
-        breeding_in_group = sum(1 for a in members if a["animal_id"] in breeding_ids)
+    for habitat_key in habitat_order:
+        species_groups = by_habitat[habitat_key]
+        if not species_groups:
+            continue
 
-        count_tag = f"  ×{count}" if count > 1 else ""
-        lines.append(f"*{first['emoji']} {first['species_name']}*  {rarity_sq}{count_tag}")
-        lines.append(_render_habitat(first["emoji"], count, breeding_in_group))
+        h_info = HABITATS[habitat_key]
+        level = enclosures.get(habitat_key, 1)
+        total_in_habitat = sum(len(v) for v in species_groups.values())
+        capacity = ENCLOSURE_LEVELS[level]["capacity"]
+        lines.append(
+            f"{h_info['emoji']} *{h_info['name']}* \\[Lv {level}\\]  —  {total_in_habitat}/{capacity}"
+        )
 
-        for a in members:
-            pos = position[a["animal_id"]]
-            name = a["nickname"] or a["species_name"]
-            lock = "  🔒" if a["animal_id"] in breeding_ids else ""
-            lines.append(f"  #{pos} {name} — 🍖 {a['hunger']}{lock}")
+        for sid, members in species_groups.items():
+            first = members[0]
+            rarity_sq = RARITY_SQUARE.get(first["rarity"], "⬜")
+            count = len(members)
+            breeding_in_group = sum(1 for a in members if a["animal_id"] in breeding_ids)
+
+            count_tag = f"  ×{count}" if count > 1 else ""
+            lines.append(f"  *{first['emoji']} {first['species_name']}*  {rarity_sq}{count_tag}")
+            lines.append(f"  {_render_habitat(first['emoji'], count, breeding_in_group)}")
+
+            for a in members:
+                pos = position[a["animal_id"]]
+                name = a["nickname"] or a["species_name"]
+                lock = "  🔒" if a["animal_id"] in breeding_ids else ""
+                lines.append(f"    #{pos} {name} — 🍖 {a['hunger']}{lock}")
 
         lines.append("")
 
