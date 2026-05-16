@@ -4,6 +4,7 @@ Admin / debug commands — only usable by IDs listed in ADMIN_IDS.
 Usage:
   /admin help                        — list all commands
   /admin coins <amount>              — give yourself coins
+  /admin givecoin <username> <amt>   — give coins to another user by username
   /admin give <species_name>         — add an animal directly to your zoo
   /admin hunger <number> <value>     — set animal #N hunger (0–100)
   /admin happiness <number> <value>  — set animal #N happiness (0–100)
@@ -44,6 +45,9 @@ async def admin_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     elif sub == "coins":
         await _cmd_coins(update, tg_id, args)
+
+    elif sub == "givecoin":
+        await _cmd_givecoin(update, args)
 
     elif sub == "give":
         await _cmd_give(update, tg_id, args)
@@ -100,6 +104,29 @@ async def _cmd_coins(update, tg_id, args):
     sign = "+" if amount >= 0 else ""
     await update.message.reply_text(
         f"💰 {sign}{amount} coins. Balance: *{user['coins']}* 🪙", parse_mode="Markdown"
+    )
+
+
+async def _cmd_givecoin(update, args):
+    if len(args) < 2 or not args[1].lstrip("-").isdigit():
+        await update.message.reply_text("Usage: /admin givecoin <username> <amount>")
+        return
+    username = args[0].lstrip("@")
+    amount = int(args[1])
+    target = db.get_user_by_username(username)
+    if not target:
+        await update.message.reply_text(f"User `{username}` not found.", parse_mode="Markdown")
+        return
+    with db.get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET coins = MAX(0, coins + ?) WHERE user_id = ?",
+            (amount, target["user_id"]),
+        )
+    updated = db.get_user(target["user_id"])
+    sign = "+" if amount >= 0 else ""
+    await update.message.reply_text(
+        f"💰 {sign}{amount} coins → *{username}*. Their balance: *{updated['coins']}* 🪙",
+        parse_mode="Markdown",
     )
 
 
@@ -203,7 +230,8 @@ async def _cmd_stats(update):
 def _help_text() -> str:
     return (
         "🔧 *Admin Commands*\n\n"
-        "`/admin coins <amount>` — add/remove coins\n"
+        "`/admin coins <amount>` — add/remove your own coins\n"
+        "`/admin givecoin <username> <amount>` — give coins to another user\n"
         "`/admin give <species>` — add animal to zoo\n"
         "`/admin hunger <#> <val>` — set animal hunger\n"
         "`/admin happiness <#> <val>` — set animal happiness\n"

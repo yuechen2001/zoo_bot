@@ -131,6 +131,13 @@ def get_user(user_id):
         return conn.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone()
 
 
+def get_user_by_username(username: str):
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT * FROM users WHERE LOWER(username) = LOWER(?)", (username,)
+        ).fetchone()
+
+
 def ensure_user(user_id, username, group_chat_id):
     with get_conn() as conn:
         conn.execute(
