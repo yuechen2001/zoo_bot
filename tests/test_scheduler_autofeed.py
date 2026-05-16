@@ -9,7 +9,9 @@ def _make_ctx(send_side_effect=None):
     return ctx
 
 
-def _make_user(uid=1, group_chat_id=-100, coins=200, threshold=50, max_coins=100):
+def _make_user(
+    uid=1, group_chat_id=-100, coins=200, threshold=50, max_coins=100, username="tester"
+):
     user = MagicMock()
     user.__getitem__ = MagicMock(
         side_effect=lambda k: {
@@ -18,12 +20,21 @@ def _make_user(uid=1, group_chat_id=-100, coins=200, threshold=50, max_coins=100
             "coins": coins,
             "autofeed_threshold": threshold,
             "autofeed_max_coins": max_coins,
+            "username": username,
         }[k]
     )
     return user
 
 
-def _make_animal(animal_id="a1", hunger=30, rarity="common", is_breeding=0):
+def _make_animal(
+    animal_id="a1",
+    hunger=30,
+    rarity="common",
+    is_breeding=0,
+    nickname=None,
+    species_name="Mouse",
+    emoji="🐭",
+):
     a = MagicMock()
     a.__getitem__ = MagicMock(
         side_effect=lambda k: {
@@ -31,6 +42,9 @@ def _make_animal(animal_id="a1", hunger=30, rarity="common", is_breeding=0):
             "hunger": hunger,
             "rarity": rarity,
             "is_breeding": is_breeding,
+            "nickname": nickname,
+            "species_name": species_name,
+            "emoji": emoji,
         }[k]
     )
     return a
@@ -59,7 +73,7 @@ async def test_autofeed_feeds_hungry_animals():
 
     ctx.bot.send_message.assert_called_once()
     msg = ctx.bot.send_message.call_args[0][1]
-    assert "Auto-fed 1 animal" in msg
+    assert "Auto-feed" in msg
     assert "5" in msg  # spent
 
 
@@ -110,7 +124,7 @@ async def test_autofeed_respects_max_coins_cap():
         await _autofeed(ctx)
 
     msg = ctx.bot.send_message.call_args[0][1]
-    assert "Auto-fed 1 animal" in msg
+    assert "Auto-feed" in msg
     assert "5" in msg  # spent only 5, not 10
 
 
@@ -131,7 +145,7 @@ async def test_autofeed_plural_message():
         await _autofeed(ctx)
 
     msg = ctx.bot.send_message.call_args[0][1]
-    assert "Auto-fed 2 animals" in msg
+    assert "Auto-feed" in msg
 
 
 @pytest.mark.asyncio

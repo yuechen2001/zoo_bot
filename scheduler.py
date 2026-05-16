@@ -79,14 +79,12 @@ async def _send_mood_prompts(ctx):
             except Exception:
                 logger.exception("Failed to send streak-reset message to %s", group_chat_id)
 
-        # Don't send a new prompt if one was sent recently — use DB so this survives restarts
-        most_recent_prompt = max(
-            (u["last_prompt_at"] for u in members if u["last_prompt_at"]),
-            default=None,
-        )
-        if most_recent_prompt:
+        # Don't send a new prompt if one was sent recently — checked against DB so restarts are safe
+        group_state = db.get_group_state(group_chat_id)
+        if group_state and group_state["last_prompt_at"]:
             elapsed = (
-                datetime.datetime.utcnow() - datetime.datetime.fromisoformat(most_recent_prompt)
+                datetime.datetime.utcnow()
+                - datetime.datetime.fromisoformat(group_state["last_prompt_at"])
             ).total_seconds() / 60
             if elapsed < PROMPT_INTERVAL_MINUTES:
                 continue
@@ -102,6 +100,7 @@ async def _send_mood_prompts(ctx):
                 "message_id": msg.message_id,
                 "sent_at": now_str,
             }
+            db.set_group_last_prompt(group_chat_id, now_str)
             with db.get_conn() as conn:
                 conn.executemany(
                     "UPDATE users SET last_prompt_at = ? WHERE user_id = ?",
@@ -251,7 +250,7 @@ async def _autofeed(ctx):
         budget = min(max_coins, current_user["coins"])
 
         spent = 0
-        fed_count = 0
+        fed_lines = []
         for animal in animals:
             cost = FEED_COST_BY_RARITY.get(animal["rarity"], 10)
             if spent + cost > budget:
@@ -266,21 +265,25 @@ async def _autofeed(ctx):
                     "UPDATE animals SET hunger = ?, hunger_alerted = NULL WHERE animal_id = ?",
                     (new_hunger, animal["animal_id"]),
                 )
+            name = animal["nickname"] or animal["species_name"]
+            fed_lines.append(
+                f"{animal['emoji']} {name}: {animal['hunger']}→{new_hunger} (-{cost} 🪙)"
+            )
             spent += cost
-            fed_count += 1
 
         try:
-            if fed_count == 0:
+            if not fed_lines:
                 await ctx.bot.send_message(
                     chat_id,
                     "⚠️ Auto-feed skipped — not enough coins.",
                 )
             else:
                 remaining = current_user["coins"] - spent
-                plural = "s" if fed_count != 1 else ""
+                lines = "\n".join(fed_lines)
                 await ctx.bot.send_message(
                     chat_id,
-                    f"🍖 Auto-fed {fed_count} animal{plural} — spent {spent} 🪙 (balance: {remaining} 🪙)",
+                    f"🍖 *Auto-feed* (@{user['username'] or uid})\n{lines}\n\nBalance: {remaining} 🪙",
+                    parse_mode="Markdown",
                 )
         except Exception:
             logger.exception("Failed to send autofeed message to %s", chat_id)
