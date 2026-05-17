@@ -175,10 +175,11 @@ async def _check_breed_completions(ctx):
             continue
         is_reminder = breed["last_notified_at"] is not None
         prefix = "🔔 *Breed ready reminder!*" if is_reminder else "🥚 *Breeding complete!*"
+        mention = f"@{breed['username']}" if breed["username"] else f"user {breed['user_id']}"
         try:
             await ctx.bot.send_message(
                 group_chat_id,
-                f"{prefix}\n"
+                f"{prefix} ({mention})\n"
                 f"{breed['emoji_a']} {breed['name_a']} × {breed['emoji_b']} {breed['name_b']} "
                 f"→ {breed['emoji_offspring']} {breed['name_offspring']}\n\n"
                 f"Use `/breed collect` to claim your new animal!",

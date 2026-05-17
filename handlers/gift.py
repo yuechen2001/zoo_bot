@@ -61,7 +61,7 @@ async def gift_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     name = animal["nickname"] or animal["species_name"]
     chat_id = sender["group_chat_id"] or tg_id
-    await update.message.bot.send_message(
+    await ctx.bot.send_message(
         chat_id,
         f"🎁 *{sender['username'] or 'Someone'}* gifted {animal['emoji']} *{name}* to *@{username}*!",
         parse_mode="Markdown",

@@ -193,7 +193,7 @@ async def help_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "/enclosures collect — claim your pending enclosure income\n\n"
         "*Breeding:*\n"
         "/breed <a> <b> — breed two animals together\n"
-        "/breed collect — claim your finished offspring\n"
+        "/breed collect — claim your finished offspring (enclosure must have space)\n"
         "/breed status — check time remaining on active breed\n\n"
         "*Store:*\n"
         "/store — browse consumables and cosmetic titles\n"

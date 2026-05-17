@@ -52,7 +52,7 @@ from handlers import (
     directory_command,
 )
 from handlers.gift import gift_command
-from handlers.store import store_command
+from handlers.store import store_command, store_callback
 from handlers.wild_event import wild_event_callback
 
 _log_fmt = logging.Formatter("%(asctime)s  %(name)s  %(levelname)s  %(message)s")
@@ -121,6 +121,8 @@ async def handle_callback(update, ctx):
         await zoo_page_callback(update, ctx)
     elif data.startswith("wild_catch_"):
         await wild_event_callback(update, ctx)
+    elif data.startswith("store_buy_") or data.startswith("store_equip_"):
+        await store_callback(update, ctx)
     elif data == "zoo_noop":
         await update.callback_query.answer()
     else:

@@ -32,7 +32,9 @@ def _make_user(**kw):
 @pytest.mark.asyncio
 async def test_store_shows_items():
     update, ctx = _make_update(args=[])
-    with patch("handlers.store.db.get_user", return_value=_make_user()):
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store._owned_cosmetic_keys", return_value=set()
+    ):
         await store_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]
     assert "Mega Feed" in reply

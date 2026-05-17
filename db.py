@@ -225,7 +225,7 @@ def get_pending_breed(user_id):
 def get_ready_breeds(reminder_minutes: int = 30):
     with get_conn() as conn:
         return conn.execute(
-            "SELECT bq.*, u.group_chat_id, "
+            "SELECT bq.*, u.group_chat_id, u.username, "
             "sa.emoji AS emoji_a, sa.name AS name_a, "
             "sb.emoji AS emoji_b, sb.name AS name_b, "
             "so.emoji AS emoji_offspring, so.name AS name_offspring "

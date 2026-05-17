@@ -188,7 +188,7 @@ async def test_breed_collect_ready():
         - datetime.timedelta(hours=1)
     ).isoformat()
     pending = make_row(id=1, ready_at=past, parent_a="a1", parent_b="a2", offspring_species_id=1)
-    species = make_row(species_id=1, name="Dragon", emoji="🐉")
+    species = make_row(species_id=1, name="Dragon", emoji="🐉", habitat="woodland")
 
     cm, _ = _make_conn_mock()
     update = MagicMock()
@@ -196,10 +196,37 @@ async def test_breed_collect_ready():
 
     with patch("handlers.breed.db.get_pending_breed", return_value=pending), patch(
         "handlers.breed.db.get_species", return_value=species
-    ), patch("handlers.breed.db.get_conn", return_value=cm), patch(
+    ), patch("handlers.breed.db.get_enclosure_level", return_value=1), patch(
+        "handlers.breed.db.get_animal_count_by_habitat", return_value=0
+    ), patch(
+        "handlers.breed.db.get_conn", return_value=cm
+    ), patch(
         "handlers.breed.check_achievements"
     ):
         await _collect_breed(update, 1, MagicMock())
 
     reply = update.message.reply_text.call_args[0][0]
     assert "hatched" in reply.lower() or "dragon" in reply.lower()
+
+
+@pytest.mark.asyncio
+async def test_breed_collect_blocked_when_enclosure_full():
+    past = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        - datetime.timedelta(hours=1)
+    ).isoformat()
+    pending = make_row(id=1, ready_at=past, parent_a="a1", parent_b="a2", offspring_species_id=1)
+    species = make_row(species_id=1, name="Dragon", emoji="🐉", habitat="woodland")
+
+    update = MagicMock()
+    update.message.reply_text = AsyncMock()
+
+    with patch("handlers.breed.db.get_pending_breed", return_value=pending), patch(
+        "handlers.breed.db.get_species", return_value=species
+    ), patch("handlers.breed.db.get_enclosure_level", return_value=1), patch(
+        "handlers.breed.db.get_animal_count_by_habitat", return_value=3
+    ):  # capacity 3 at level 1 → full
+        await _collect_breed(update, 1, MagicMock())
+
+    reply = update.message.reply_text.call_args[0][0]
+    assert "full" in reply.lower()

@@ -140,8 +140,22 @@ async def _collect_breed(update, tg_id, ctx=None):
         )
         return
 
-    # Collect!
+    # Check enclosure capacity before adding offspring
     offspring_species = db.get_species(pending["offspring_species_id"])
+    habitat = offspring_species["habitat"] or "woodland"
+    enc_level = db.get_enclosure_level(tg_id, habitat)
+    capacity = ENCLOSURE_LEVELS[enc_level]["capacity"]
+    current = db.get_animal_count_by_habitat(tg_id, habitat)
+    if current >= capacity:
+        h_info = HABITATS.get(habitat, {"name": habitat.title(), "emoji": "🏕"})
+        await update.message.reply_text(
+            f"❌ Your *{h_info['emoji']} {h_info['name']}* enclosure is full "
+            f"({current}/{capacity})!\n\n"
+            f"Sell or gift an animal to make room, then use `/breed collect` again.",
+            parse_mode="Markdown",
+        )
+        return
+
     animal_id = str(uuid.uuid4())
 
     with db.get_conn() as conn:

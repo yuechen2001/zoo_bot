@@ -113,8 +113,9 @@ async def test_gift_successful_transfer():
     ), patch(
         "handlers.gift.db.transfer_animal"
     ) as mock_transfer:
+        ctx.bot.send_message = AsyncMock()
         await gift_command(update, ctx)
     mock_transfer.assert_called_once_with("a1", 2)
-    update.message.bot.send_message.assert_called_once()
-    msg = update.message.bot.send_message.call_args[0][1]
+    ctx.bot.send_message.assert_called_once()
+    msg = ctx.bot.send_message.call_args[0][1]
     assert "gifted" in msg.lower() or "🎁" in msg
