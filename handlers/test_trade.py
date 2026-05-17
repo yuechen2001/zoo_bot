@@ -163,6 +163,61 @@ async def test_trade_callback_accept_calls_resolve():
     assert "position" in reply.lower() or "/zoo" in reply
 
 
+# ── capacity check ─────────────────────────────────────────────────────────────
+
+
+def _make_trade(proposer_animal_id="a1", recipient_animal_id="b1", proposer_id=1):
+    now = datetime.datetime.now(datetime.UTC).replace(tzinfo=None).isoformat()
+    return {
+        "id": 1,
+        "status": "pending",
+        "created_at": now,
+        "proposer_animal_id": proposer_animal_id,
+        "recipient_animal_id": recipient_animal_id,
+        "proposer_id": proposer_id,
+    }
+
+
+@pytest.mark.asyncio
+async def test_trade_blocked_when_recipient_enclosure_full():
+    """Recipient's enclosure is full for the incoming animal's habitat → block."""
+    update, query = _make_query(action="accept", trade_id=1, recipient_id=2, from_user_id=2)
+    trade = _make_trade()
+    # Animals from different habitats
+    proposer_animal = {**_make_animal("a1"), "habitat": "woodland"}
+    recipient_animal = {**_make_animal("b1"), "habitat": "savanna"}
+
+    with patch("handlers.trade.db.get_trade", return_value=trade), patch(
+        "handlers.trade.db.get_animal",
+        side_effect=[proposer_animal, recipient_animal],
+    ), patch("handlers.trade.db.get_animal_count_by_habitat", return_value=3), patch(
+        "handlers.trade.db.get_enclosure_level", return_value=1
+    ):
+        await trade_callback(update, MagicMock())
+
+    query.answer.assert_called_once()
+    assert "full" in query.answer.call_args[0][0].lower()
+    reply = query.edit_message_text.call_args[0][0]
+    assert "full" in reply.lower() or "enclosure" in reply.lower()
+
+
+@pytest.mark.asyncio
+async def test_trade_allowed_when_same_habitat():
+    """Animals from the same habitat → no capacity issue, trade proceeds."""
+    update, query = _make_query(action="accept", trade_id=1, recipient_id=2, from_user_id=2)
+    trade = _make_trade()
+    proposer_animal = {**_make_animal("a1"), "habitat": "woodland"}
+    recipient_animal = {**_make_animal("b1"), "habitat": "woodland"}
+
+    with patch("handlers.trade.db.get_trade", return_value=trade), patch(
+        "handlers.trade.db.get_animal",
+        side_effect=[proposer_animal, recipient_animal],
+    ), patch("handlers.trade.db.resolve_trade"), patch("handlers.trade.check_achievements"):
+        await trade_callback(update, MagicMock())
+
+    query.answer.assert_called_with("Trade accepted! ✅")
+
+
 @pytest.mark.asyncio
 async def test_trade_callback_decline_calls_resolve():
     update, query = _make_query(action="decline", trade_id=1, recipient_id=2, from_user_id=2)

@@ -67,3 +67,39 @@ class TestEnclosureIncome:
             h for h, lv in enclosures.items() if ENCLOSURE_LEVELS[lv]["coins_per_animal_hr"] > 0
         ]
         assert earning_habitats == [], "Level-1 enclosures must not earn income"
+
+
+# ── _tick_enclosure_income named message ───────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_enclosure_income_sends_named_group_message():
+    """Named income message groups earnings per chat, not per user."""
+    from unittest.mock import AsyncMock, MagicMock, patch
+    from scheduler import _tick_enclosure_income
+
+    user = MagicMock()
+    user.__getitem__ = MagicMock(
+        side_effect=lambda k: {
+            "user_id": 1,
+            "group_chat_id": -100,
+            "username": "alice",
+        }[k]
+    )
+    user.get = MagicMock(side_effect=lambda k, d=None: {"username": "alice"}.get(k, d))
+
+    ctx = MagicMock()
+    ctx.bot.send_message = AsyncMock()
+
+    with patch("scheduler.db.get_all_users_with_animals", return_value=[user]), patch(
+        "scheduler.db.get_enclosures", return_value={"woodland": 2}
+    ), patch("scheduler.db.get_animal_count_by_habitat", return_value=2), patch(
+        "scheduler.db.add_coins"
+    ):
+        await _tick_enclosure_income(ctx)
+
+    ctx.bot.send_message.assert_called_once()
+    args = ctx.bot.send_message.call_args
+    assert args[0][0] == -100  # sent to group
+    assert "alice" in args[0][1]
+    assert "Enclosure income" in args[0][1]
