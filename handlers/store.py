@@ -10,20 +10,19 @@ def _store_text() -> str:
     lines.append("*Consumables* (one-time use):")
     for key, item in CONSUMABLES.items():
         lines.append(
-            f"  {item['emoji']} *{item['name']}* — {item['price']} 🪙\n    _{item['desc']}_"
+            f"  {item['emoji']} *{item['name']}* — {item['price']} 🪙\n"
+            f"  {item['desc']}\n"
+            f"  → `/store buy {key}`"
         )
-    lines.append("\n*Cosmetics* (titles shown in /zoo):")
+    lines.append("\n*Titles* (shown in your /zoo):")
     for key, item in COSMETICS.items():
         lines.append(
-            f"  {item['emoji']} *{item['name']}* — {item['price']} 🪙\n    _{item['desc']}_"
+            f"  {item['emoji']} *{item['name']}* — {item['price']} 🪙\n"
+            f"  {item['desc']}\n"
+            f"  → `/store buy {key}` then `/store equip {key}`"
         )
     lines.append(
-        "\n*Commands:*\n"
-        "`/store buy <item>` — purchase an item\n"
-        "`/store use mega_feed <#>` — apply Mega Feed to animal #N\n"
-        "`/store equip <title>` — set your active title\n\n"
-        "Item keys: `mega_feed` `breed_boost` `lucky_token`\n"
-        "`title_keeper` `title_whisperer` `title_legend`"
+        "\n_After buying Mega Feed, use_ `/store use mega_feed <animal number>` _to apply it._"
     )
     return "\n".join(lines)
 
