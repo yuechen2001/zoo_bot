@@ -92,7 +92,16 @@ def _render_habitat_section(
     total_in_habitat = sum(len(v) for v in species_groups.values())
     capacity = ENCLOSURE_LEVELS[level]["capacity"]
 
-    lines = [f"{h_info['emoji']} *{h_info['name']}* [Lv {level}]  —  {total_in_habitat}/{capacity}"]
+    lines = [f"{h_info['emoji']} *{h_info['name']}* [Lv {level}]  {total_in_habitat}/{capacity}"]
+    income_rate = ENCLOSURE_LEVELS[level]["coins_per_animal_hr"]
+    breed_bonus = ENCLOSURE_LEVELS[level]["breed_bonus"]
+    if income_rate > 0 or breed_bonus > 0:
+        stats = []
+        if income_rate > 0:
+            stats.append(f"💰 {income_rate}🪙/hr")
+        if breed_bonus > 0:
+            stats.append(f"🧬 -{int(breed_bonus * 100)}% breed time")
+        lines.append(f"   {' · '.join(stats)}")
 
     sorted_groups = sorted(
         species_groups.items(),
@@ -160,22 +169,20 @@ def render_zoo_page(
 
     if autofeed_threshold is not None:
         lines.append(
-            f"🤖 Auto-feed: below {autofeed_threshold} hunger, max {autofeed_max_coins} 🪙/tick"
+            f"🤖 Auto-feed: ≤{autofeed_threshold} hunger · {autofeed_max_coins}🪙 per tick"
         )
 
     if investment:
         invested_at = datetime.datetime.fromisoformat(investment["invested_at"])
         matures_at = (invested_at + datetime.timedelta(hours=INVESTMENT_HOURS)).isoformat()
         inv_time = _time_remaining(matures_at)
-        lines.append(
-            f"💹 Investment: {investment['amount']} 🪙 → {investment['return_amount']} 🪙 ({inv_time})"
-        )
+        profit = investment["return_amount"] - investment["amount"]
+        lines.append(f"💹 Investment: +{profit}🪙 in {inv_time}")
 
     if active_breed:
         breed_time = _time_remaining(active_breed["ready_at"])
         lines.append(
-            f"🥚 Breeding: {active_breed['emoji_a']} {active_breed['name_a']} × "
-            f"{active_breed['emoji_b']} {active_breed['name_b']} → {breed_time}"
+            f"🥚 Breeding: {active_breed['emoji_a']} × {active_breed['emoji_b']} · {breed_time}"
         )
 
     return "\n".join(lines), inhabited

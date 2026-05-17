@@ -264,9 +264,9 @@ async def check_achievements(user_id: int, trigger: str, ctx):
     if not newly_earned:
         return
 
-    name = user.get("username") or "Someone"
+    name = user["username"] or "Someone"
     for ach in newly_earned:
-        if user.get("group_chat_id"):
+        if user["group_chat_id"]:
             try:
                 await ctx.bot.send_message(
                     user["group_chat_id"],

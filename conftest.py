@@ -3,6 +3,18 @@ import pytest
 from species_data import SPECIES
 
 
+class FakeRow(dict):
+    """Mimics sqlite3.Row: supports key access but raises on .get() to catch the common bug."""
+
+    def get(self, *args, **kwargs):
+        raise AttributeError("sqlite3.Row has no .get() — use row['key'] instead")
+
+
+def make_row(**kwargs) -> FakeRow:
+    """Factory for FakeRow. Use instead of plain dicts when mocking db results in handler tests."""
+    return FakeRow(kwargs)
+
+
 @pytest.fixture
 def conn():
     """In-memory SQLite DB with schema + species seeded. Used by game logic tests."""

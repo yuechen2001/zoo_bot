@@ -210,6 +210,10 @@ async def _check_hunger_alerts(ctx):
 
 
 async def _tick_enclosure_income(ctx):
+    from collections import defaultdict
+
+    group_earnings: dict = defaultdict(list)
+
     for user in db.get_all_users_with_animals():
         uid = user["user_id"]
         enclosures = db.get_enclosures(uid)
@@ -222,15 +226,18 @@ async def _tick_enclosure_income(ctx):
             total_coins += rate * count
         if total_coins > 0:
             db.add_coins(uid, total_coins)
-            updated = db.get_user(uid)
-            chat_id = user["group_chat_id"] or uid
-            try:
-                await ctx.bot.send_message(
-                    chat_id,
-                    f"🏦 Enclosure income: +{total_coins} 🪙 (balance: {updated['coins']} 🪙)",
-                )
-            except Exception:
-                logger.exception("Failed to send enclosure income message to %s", chat_id)
+            name = user.get("username") or f"user {uid}"
+            if user["group_chat_id"]:
+                group_earnings[user["group_chat_id"]].append((name, total_coins))
+
+    for group_chat_id, earnings in group_earnings.items():
+        lines = ["🏦 *Enclosure income*"]
+        for name, coins in earnings:
+            lines.append(f"  {name}: +{coins} 🪙")
+        try:
+            await ctx.bot.send_message(group_chat_id, "\n".join(lines), parse_mode="Markdown")
+        except Exception:
+            logger.exception("Failed to send enclosure income to %s", group_chat_id)
 
 
 async def _cleanup_expired_trades(ctx):

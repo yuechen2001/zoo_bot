@@ -4,7 +4,7 @@ from telegram.ext import ContextTypes
 import db
 from keyboards import trade_keyboard
 from config import TRADE_EXPIRY_MINUTES
-from species_data import RARITY_LABELS
+from species_data import RARITY_LABELS, HABITATS, ENCLOSURE_LEVELS
 from achievements import check_achievements
 
 
@@ -133,6 +133,35 @@ async def trade_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     r_name = recipient_animal["nickname"] or recipient_animal["species_name"]
 
     if action == "accept":
+        # Capacity check — only needed when animals are from different habitats
+        p_habitat = proposer_animal["habitat"]
+        r_habitat = recipient_animal["habitat"]
+        proposer_id = trade["proposer_id"]
+
+        if p_habitat != r_habitat:
+            # Proposer gains recipient_animal (r_habitat) — check proposer's r_habitat
+            used = db.get_animal_count_by_habitat(proposer_id, r_habitat)
+            cap = ENCLOSURE_LEVELS[db.get_enclosure_level(proposer_id, r_habitat)]["capacity"]
+            if used >= cap:
+                h = HABITATS[r_habitat]
+                await query.answer("Trade blocked — enclosure full!", show_alert=True)
+                await query.edit_message_text(
+                    f"❌ Trade cancelled — the proposer's {h['emoji']} *{h['name']}* enclosure is full.",
+                    parse_mode="Markdown",
+                )
+                return
+
+            # Recipient gains proposer_animal (p_habitat) — check recipient's p_habitat
+            used = db.get_animal_count_by_habitat(recipient_id, p_habitat)
+            cap = ENCLOSURE_LEVELS[db.get_enclosure_level(recipient_id, p_habitat)]["capacity"]
+            if used >= cap:
+                h = HABITATS[p_habitat]
+                await query.answer("Trade blocked — enclosure full!", show_alert=True)
+                await query.edit_message_text(
+                    f"❌ Trade cancelled — your {h['emoji']} *{h['name']}* enclosure is full.",
+                    parse_mode="Markdown",
+                )
+                return
         db.resolve_trade(trade_id, "accepted")
         await query.answer("Trade accepted! ✅")
         await query.edit_message_text(

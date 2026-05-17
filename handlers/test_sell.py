@@ -3,6 +3,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from handlers.sell import sell_command
 
 
+@pytest.fixture(autouse=True)
+def no_achievements(monkeypatch):
+    monkeypatch.setattr("handlers.sell.check_achievements", AsyncMock())
+
+
 def _make_update(user_id=1):
     update = MagicMock()
     update.effective_user.id = user_id

@@ -5,6 +5,11 @@ from handlers.feed import feed_command, FEED_COST_BY_RARITY, FEED_HUNGER
 FEED_COST = FEED_COST_BY_RARITY["common"]
 
 
+@pytest.fixture(autouse=True)
+def no_achievements(monkeypatch):
+    monkeypatch.setattr("handlers.feed.check_achievements", AsyncMock())
+
+
 def _make_animal(
     name="Mouse", emoji="🐭", is_breeding=0, hunger=50, nickname=None, rarity="common"
 ):

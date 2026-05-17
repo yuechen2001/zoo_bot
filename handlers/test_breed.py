@@ -1,6 +1,12 @@
+import sys
+import os
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from handlers.breed import breed_command
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+from conftest import make_row
 
 
 def _make_update(args=None):
@@ -13,32 +19,21 @@ def _make_update(args=None):
 
 
 def _make_user(coins=500):
-    user = MagicMock()
-    user.__getitem__ = MagicMock(
-        side_effect=lambda k: {
-            "coins": coins,
-            "user_id": 1,
-        }.get(k)
-    )
-    return user
+    return make_row(coins=coins, user_id=1)
 
 
 def _make_animal(animal_id, rarity="common", is_breeding=0):
-    a = MagicMock()
-    a.__getitem__ = MagicMock(
-        side_effect=lambda k: {
-            "animal_id": animal_id,
-            "rarity": rarity,
-            "is_breeding": is_breeding,
-            "nickname": None,
-            "species_name": "Frog",
-            "emoji": "🐸",
-            "habitat": "woodland",
-            "catch_cost": 20,
-            "hunger": 80,
-        }.get(k)
+    return make_row(
+        animal_id=animal_id,
+        rarity=rarity,
+        is_breeding=is_breeding,
+        nickname=None,
+        species_name="Frog",
+        emoji="🐸",
+        habitat="woodland",
+        catch_cost=20,
+        hunger=80,
     )
-    return a
 
 
 # ── /breed status removed — status is now shown in /zoo ───────────────────────
