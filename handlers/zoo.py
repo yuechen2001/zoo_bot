@@ -101,7 +101,7 @@ def _render_habitat_section(
             stats.append(f"💰 {income_rate}🪙/hr")
         if breed_bonus > 0:
             stats.append(f"🧬 -{int(breed_bonus * 100)}% breed time")
-        lines.append(f"   {' · '.join(stats)}")
+        lines.append(f"   {' | '.join(stats)}")
 
     sorted_groups = sorted(
         species_groups.items(),
@@ -165,11 +165,11 @@ def render_zoo_page(
         _render_habitat_section(habitat_key, species_groups, position, breeding_ids, enclosures)
     )
     lines.append("")
-    lines.append(f"💰 {coins}  •  {streak_label(streak)}")
+    lines.append(f"💰 {coins} | {streak_label(streak)}")
 
     if autofeed_threshold is not None:
         lines.append(
-            f"🤖 Auto-feed: ≤{autofeed_threshold} hunger · {autofeed_max_coins}🪙 per tick"
+            f"🤖 Auto-feed: ≤{autofeed_threshold} hunger | {autofeed_max_coins}🪙 per tick"
         )
 
     if investment:
@@ -182,7 +182,7 @@ def render_zoo_page(
     if active_breed:
         breed_time = _time_remaining(active_breed["ready_at"])
         lines.append(
-            f"🥚 Breeding: {active_breed['emoji_a']} × {active_breed['emoji_b']} · {breed_time}"
+            f"🥚 Breeding: {active_breed['emoji_a']} × {active_breed['emoji_b']} | {breed_time}"
         )
 
     return "\n".join(lines), inhabited
