@@ -159,6 +159,34 @@ def _make_user_row(**kw):
 
 
 @pytest.mark.asyncio
+async def test_enclosures_command_shows_habitats():
+    from handlers.enclosures import enclosures_command
+
+    update, ctx = _make_update_cmd(args=[])
+    enclosure_data = {
+        h: 1 for h in ["woodland", "savanna", "tropical", "aquatic", "tundra", "mythic"]
+    }
+    with patch("handlers.enclosures.db.get_user", return_value=_make_user_row()), patch(
+        "handlers.enclosures.db.get_enclosures", return_value=enclosure_data
+    ), patch("handlers.enclosures.db.get_animal_count_by_habitat", return_value=0):
+        await enclosures_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0]
+    assert "Woodland" in reply
+    assert "Savanna" in reply
+    assert "Lv 1" in reply
+
+
+@pytest.mark.asyncio
+async def test_enclosures_command_unregistered_user():
+    from handlers.enclosures import enclosures_command
+
+    update, ctx = _make_update_cmd()
+    with patch("handlers.enclosures.db.get_user", return_value=None):
+        await enclosures_command(update, ctx)
+    update.message.reply_text.assert_called_once_with("Use /start first!")
+
+
+@pytest.mark.asyncio
 async def test_collect_nothing_pending():
     from handlers.enclosures import enclosures_command
 

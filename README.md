@@ -13,7 +13,9 @@ A Telegram bot for couples. Build your own virtual zoo by catching and breeding 
 - **Breeding** — pair two animals and wait for an offspring; same-habitat pairs get a time reduction
 - **Hunger** — animals decay over time, feed them before they run away
 - **Achievements** — 14 milestones across catching, breeding, and streaks
-- **Daily & trivia** — extra ways to earn coins
+- **Tiered daily rewards** — claim coins daily; consecutive days unlock higher tiers (50 → 75 → 100 → 150 🪙)
+- **Trivia** — answer animal trivia for bonus coins
+- **Store** — spend coins on consumables (Mega Feed) and cosmetic titles
 - **Gamble & slots** — risk your coins for more
 - **Trading** — swap animals with your partner
 - **Investments** — park coins for a 25% return after 24h
@@ -90,16 +92,20 @@ python main.py
 | `/breed status` | Check time remaining on active breed |
 | `/name <number> <name>` | Give an animal a nickname |
 | `/sell <number>` | Sell an animal for coins |
+| `/gift <number> @user` | Give an animal to another player |
 | `/trade @user <yours> <theirs>` | Offer an animal swap |
 | `/enclosures` | View and upgrade your habitat enclosures |
+| `/enclosures collect` | Claim pending passive income |
+| `/store` | Browse consumables and cosmetic titles |
 | `/achievements` | View your achievements |
-| `/daily` | Claim +50 coins once per day |
+| `/daily` | Claim daily coins (50→75→100→150 on consecutive days) |
 | `/trivia` | Animal trivia — +40 correct, +5 wrong, 4h cooldown |
 | `/gamble <amount>` | Coin flip bet (max 100 🪙) |
 | `/slots` | Spin the slot machine (10 🪙 per spin) |
 | `/invest <amount>` | Invest coins (25% return after 24h) |
+| `/invest collect` | Claim your matured investment |
 | `/moodstart` | Opt in to mood prompts |
-| `/moodstop` | Opt out (resets streak) |
+| `/moodstop` | Opt out (streak preserved) |
 | `/help` | Show all commands |
 | `/admin help` | List all admin & mod commands (pause, resume, give, reset…) |
 

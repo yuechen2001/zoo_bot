@@ -1,7 +1,30 @@
 import datetime
+import sys
+import os
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from handlers.mood import mood_checkin_callback, pause_command, resume_command
+from handlers.mood import (
+    mood_checkin_callback,
+    pause_command,
+    resume_command,
+    moodstart_command,
+    moodstop_command,
+)
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+from conftest import make_row
+
+
+def _make_cmd_update(user_id=1):
+    update = MagicMock()
+    update.effective_user.id = user_id
+    update.message.reply_text = AsyncMock()
+    return update
+
+
+def _make_user_row(**kw):
+    defaults = {"user_id": 1, "opted_in": 0, "streak_windows": 5, "consecutive_misses": 1}
+    return make_row(**{**defaults, **kw})
 
 
 def _make_query(user_id: int, emoji: str = "🙂"):
@@ -18,6 +41,57 @@ def _make_update(query):
     update = MagicMock()
     update.callback_query = query
     return update
+
+
+# ── /moodstart and /moodstop ─────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_moodstart_rejects_unknown_user():
+    update = _make_cmd_update()
+    with patch("handlers.mood.db.get_user", return_value=None):
+        await moodstart_command(update, MagicMock())
+    update.message.reply_text.assert_called_once_with("Use /start first!")
+
+
+@pytest.mark.asyncio
+async def test_moodstart_sets_opted_in():
+    update = _make_cmd_update()
+    conn_mock = MagicMock()
+    conn_ctx = MagicMock()
+    conn_ctx.__enter__ = MagicMock(return_value=conn_mock)
+    conn_ctx.__exit__ = MagicMock(return_value=False)
+
+    with patch("handlers.mood.db.get_user", return_value=_make_user_row()), patch(
+        "handlers.mood.db.get_conn", return_value=conn_ctx
+    ):
+        await moodstart_command(update, MagicMock())
+
+    conn_mock.execute.assert_called_once()
+    sql = conn_mock.execute.call_args[0][0]
+    assert "opted_in = 1" in sql
+    reply = update.message.reply_text.call_args[0][0]
+    assert "enabled" in reply.lower()
+
+
+@pytest.mark.asyncio
+async def test_moodstop_preserves_streak():
+    update = _make_cmd_update()
+    conn_mock = MagicMock()
+    conn_ctx = MagicMock()
+    conn_ctx.__enter__ = MagicMock(return_value=conn_mock)
+    conn_ctx.__exit__ = MagicMock(return_value=False)
+
+    with patch("handlers.mood.db.get_user", return_value=_make_user_row(streak_windows=10)), patch(
+        "handlers.mood.db.get_conn", return_value=conn_ctx
+    ):
+        await moodstop_command(update, MagicMock())
+
+    sql = conn_mock.execute.call_args[0][0]
+    assert "streak_windows" not in sql, "moodstop must not reset streak_windows"
+    assert "opted_in = 0" in sql
+    reply = update.message.reply_text.call_args[0][0]
+    assert "preserved" in reply.lower()
 
 
 # ── Mood prompt shared group check-in ─────────────────────────────────────────
