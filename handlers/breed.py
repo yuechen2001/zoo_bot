@@ -67,8 +67,8 @@ async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     cost = calc_breed_cost(rarity_a, rarity_b)
 
     habitat_bonus = 0.0
-    habitat_a = animal_a.get("habitat")
-    habitat_b = animal_b.get("habitat")
+    habitat_a = animal_a["habitat"]
+    habitat_b = animal_b["habitat"]
     if habitat_a and habitat_a == habitat_b:
         enc_level = db.get_enclosure_level(tg_id, habitat_a)
         habitat_bonus = ENCLOSURE_LEVELS[enc_level]["breed_bonus"]
