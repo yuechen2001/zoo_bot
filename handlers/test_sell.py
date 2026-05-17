@@ -101,6 +101,8 @@ async def test_sell_full_hunger_earns_half_catch_cost():
         "handlers.sell.db.delete_animal"
     ) as mock_delete, patch(
         "handlers.sell.db.get_conn", return_value=_make_conn_mock()
+    ), patch(
+        "handlers.sell.check_achievements"
     ):
         await sell_command(update, ctx)
     mock_delete.assert_called_once_with("a1")
