@@ -3,6 +3,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from handlers.catch import catch_command, ENCOUNTER_FEE
 
 
+@pytest.fixture(autouse=True)
+def stub_lucky_catch(monkeypatch):
+    monkeypatch.setattr("handlers.catch.db.set_lucky_catch", lambda *a: None)
+
+
 def _make_conn_mock():
     inner = MagicMock()
     cm = MagicMock()
@@ -27,7 +32,7 @@ async def test_catch_rejects_when_insufficient_coins():
     ctx = MagicMock()
     ctx.user_data = {}
 
-    with patch("handlers.catch.db.get_user", return_value={"coins": 5}):
+    with patch("handlers.catch.db.get_user", return_value={"coins": 5, "lucky_catch_active": 0}):
         await catch_command(update, ctx)
 
     update.message.reply_text.assert_called_once()
@@ -63,9 +68,15 @@ async def test_catch_deducts_encounter_fee_upfront():
     ctx = MagicMock()
     ctx.user_data = {}
 
-    with patch("handlers.catch.db.get_user", side_effect=[{"coins": 100}, {"coins": 90}]), patch(
-        "handlers.catch.db.get_conn", return_value=cm
-    ), patch("handlers.catch.roll_encounter", return_value="common"), patch(
+    with patch(
+        "handlers.catch.db.get_user",
+        side_effect=[
+            {"coins": 100, "lucky_catch_active": 0},
+            {"coins": 90, "lucky_catch_active": 0},
+        ],
+    ), patch("handlers.catch.db.get_conn", return_value=cm), patch(
+        "handlers.catch.roll_encounter", return_value="common"
+    ), patch(
         "handlers.catch.pick_species", return_value=species
     ), patch(
         "handlers.catch.db.get_species_habitat", return_value="woodland"
@@ -106,9 +117,15 @@ async def test_catch_stores_pending_catch_in_context():
     ctx = MagicMock()
     ctx.user_data = {}
 
-    with patch("handlers.catch.db.get_user", side_effect=[{"coins": 100}, {"coins": 90}]), patch(
-        "handlers.catch.db.get_conn", return_value=cm
-    ), patch("handlers.catch.roll_encounter", return_value="rare"), patch(
+    with patch(
+        "handlers.catch.db.get_user",
+        side_effect=[
+            {"coins": 100, "lucky_catch_active": 0},
+            {"coins": 90, "lucky_catch_active": 0},
+        ],
+    ), patch("handlers.catch.db.get_conn", return_value=cm), patch(
+        "handlers.catch.roll_encounter", return_value="rare"
+    ), patch(
         "handlers.catch.pick_species", return_value=species
     ), patch(
         "handlers.catch.db.get_species_habitat", return_value="woodland"
@@ -158,9 +175,11 @@ class TestCatchCapacityGate:
         ctx = MagicMock()
         ctx.user_data = {"pending_catch": self._make_pending(species_id=1)}
 
-        with patch("handlers.catch.db.get_user", return_value={"coins": 500}), patch(
-            "handlers.catch.db.get_conn"
-        ), patch("handlers.catch.roll_catch", return_value=True), patch(
+        with patch(
+            "handlers.catch.db.get_user", return_value={"coins": 500, "lucky_catch_active": 0}
+        ), patch("handlers.catch.db.get_conn"), patch(
+            "handlers.catch.roll_catch", return_value=True
+        ), patch(
             "handlers.catch.db.get_species_habitat", return_value="woodland"
         ), patch(
             "handlers.catch.db.get_animal_count_by_habitat", return_value=3
@@ -192,9 +211,11 @@ class TestCatchCapacityGate:
 
         cm, inner = _make_conn_mock()
 
-        with patch("handlers.catch.db.get_user", return_value={"coins": 500}), patch(
-            "handlers.catch.db.get_conn", return_value=cm
-        ), patch("handlers.catch.roll_catch", return_value=True), patch(
+        with patch(
+            "handlers.catch.db.get_user", return_value={"coins": 500, "lucky_catch_active": 0}
+        ), patch("handlers.catch.db.get_conn", return_value=cm), patch(
+            "handlers.catch.roll_catch", return_value=True
+        ), patch(
             "handlers.catch.db.get_species_habitat", return_value="woodland"
         ), patch(
             "handlers.catch.db.get_animal_count_by_habitat", return_value=1

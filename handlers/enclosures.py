@@ -49,6 +49,10 @@ async def enclosures_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Use /start first!")
         return
 
+    if ctx.args and ctx.args[0].lower() == "collect":
+        await _collect_income(update, tg_id)
+        return
+
     # Existing players who predate enclosures get starter enclosures on first visit
     enclosures = db.get_enclosures(tg_id)
     if not enclosures:
@@ -57,6 +61,21 @@ async def enclosures_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     text, upgradeable = _render_enclosures(tg_id, user["coins"])
     keyboard = enclosure_upgrade_keyboard(upgradeable) if upgradeable else None
     await update.message.reply_text(text, parse_mode="Markdown", reply_markup=keyboard)
+
+
+async def _collect_income(update: Update, user_id: int):
+    amount = db.collect_enclosure_coins(user_id)
+    if amount == 0:
+        await update.message.reply_text(
+            "Nothing to collect yet — enclosure income builds up hourly.\n"
+            "You'll get a notification when coins are ready."
+        )
+        return
+    user = db.get_user(user_id)
+    await update.message.reply_text(
+        f"💰 Collected *{amount}* 🪙 from your enclosures!\nBalance: *{user['coins']}* 🪙",
+        parse_mode="Markdown",
+    )
 
 
 async def enclosure_upgrade_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

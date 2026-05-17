@@ -126,6 +126,7 @@ def render_zoo_page(
     autofeed_max_coins=None,
     investment=None,
     active_breed=None,
+    active_title: str | None = None,
 ) -> tuple[str, list[str]]:
     """
     Returns (rendered_text, inhabited_habitat_keys).
@@ -151,7 +152,15 @@ def render_zoo_page(
     habitat_key = inhabited[page]
     species_groups = by_habitat[habitat_key]
 
-    lines = [f"🏕 *{username}'s Zoo*\n"]
+    if active_title:
+        from game.store_data import COSMETICS
+
+        title_item = COSMETICS.get(active_title)
+        title_str = f"{title_item['emoji']} {title_item['name']} • " if title_item else ""
+    else:
+        title_str = ""
+
+    lines = [f"🏕 {title_str}*{username}'s Zoo*\n"]
     lines.extend(
         _render_habitat_section(habitat_key, species_groups, position, breeding_ids, enclosures)
     )
@@ -206,6 +215,7 @@ async def zoo_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         autofeed_max_coins=user["autofeed_max_coins"],
         investment=investment,
         active_breed=active_breed,
+        active_title=user["active_title"],
     )
     kb = zoo_page_keyboard(tg_id, 0, inhabited) if inhabited else None
     await update.message.reply_text(text, parse_mode="Markdown", reply_markup=kb)
@@ -240,6 +250,7 @@ async def zoo_page_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         autofeed_max_coins=user["autofeed_max_coins"],
         investment=investment,
         active_breed=active_breed,
+        active_title=user["active_title"],
     )
     kb = zoo_page_keyboard(owner_id, page, inhabited) if inhabited else None
     await query.edit_message_text(text, parse_mode="Markdown", reply_markup=kb)

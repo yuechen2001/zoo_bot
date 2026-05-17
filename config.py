@@ -17,6 +17,9 @@ TIMEZONE = os.getenv("TIMEZONE", "Asia/Shanghai")
 INVESTMENT_HOURS = int(os.getenv("INVESTMENT_HOURS", "24"))
 INVESTMENT_RETURN_RATE = float(os.getenv("INVESTMENT_RETURN_RATE", "0.25"))
 BREED_READY_REMINDER_MINUTES = int(os.getenv("BREED_READY_REMINDER_MINUTES", "30"))
+WILD_EVENT_MIN_MINUTES = int(os.getenv("WILD_EVENT_MIN_MINUTES", "30"))
+WILD_EVENT_MAX_MINUTES = int(os.getenv("WILD_EVENT_MAX_MINUTES", "60"))
+WILD_EVENT_EXPIRY_HOURS = int(os.getenv("WILD_EVENT_EXPIRY_HOURS", "2"))
 
 # Comma-separated Telegram user IDs allowed to use /admin commands
 # e.g. ADMIN_IDS=123456789,987654321

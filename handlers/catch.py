@@ -151,7 +151,12 @@ async def catch_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             (cost, tg_id),
         )
 
-    success = roll_catch(pending["catch_rate"])
+    catch_rate = pending["catch_rate"]
+    if user["lucky_catch_active"]:
+        catch_rate = min(1.0, catch_rate * 2)
+        db.set_lucky_catch(tg_id, False)
+
+    success = roll_catch(catch_rate)
     ctx.user_data.pop("pending_catch", None)
 
     if success:

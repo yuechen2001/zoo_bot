@@ -203,6 +203,14 @@ def add_animal(animal_id, user_id, species_id, nickname=None):
         )
 
 
+def transfer_animal(animal_id: str, new_user_id: int):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE animals SET user_id = ?, caught_at = datetime('now') WHERE animal_id = ?",
+            (new_user_id, animal_id),
+        )
+
+
 # ── Breeding ──────────────────────────────────────────────────────────────────
 
 
@@ -532,3 +540,111 @@ def upgrade_enclosure(user_id: int, habitat: str) -> str:
             (user_id, habitat, 2),
         )
     return "ok"
+
+
+# ── Wild events ───────────────────────────────────────────────────────────────
+
+
+def create_wild_event(group_chat_id: int, species_id: int, message_id: int) -> int:
+    with get_conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO wild_events (group_chat_id, species_id, message_id) VALUES (?, ?, ?)",
+            (group_chat_id, species_id, message_id),
+        )
+        return cur.lastrowid
+
+
+def claim_wild_event(event_id: int, user_id: int) -> bool:
+    """Atomically claim the event. Returns True if this user got it, False if already claimed."""
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE wild_events SET caught_by_user_id = ? "
+            "WHERE id = ? AND caught_by_user_id IS NULL",
+            (user_id, event_id),
+        )
+        row = conn.execute(
+            "SELECT caught_by_user_id FROM wild_events WHERE id = ?", (event_id,)
+        ).fetchone()
+        return row is not None and row["caught_by_user_id"] == user_id
+
+
+def get_expired_wild_events(expiry_hours: int) -> list:
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT * FROM wild_events WHERE caught_by_user_id IS NULL "
+            "AND datetime(created_at) <= datetime('now', ? || ' hours')",
+            (f"-{expiry_hours}",),
+        ).fetchall()
+
+
+def get_wild_event(event_id: int):
+    with get_conn() as conn:
+        return conn.execute("SELECT * FROM wild_events WHERE id = ?", (event_id,)).fetchone()
+
+
+# ── Enclosure collect ─────────────────────────────────────────────────────────
+
+
+def add_pending_enclosure_coins(user_id: int, amount: int):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET pending_enclosure_coins = pending_enclosure_coins + ? WHERE user_id = ?",
+            (amount, user_id),
+        )
+
+
+def collect_enclosure_coins(user_id: int) -> int:
+    """Claim and reset pending enclosure coins. Returns the amount claimed."""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT pending_enclosure_coins FROM users WHERE user_id = ?", (user_id,)
+        ).fetchone()
+        if not row or row["pending_enclosure_coins"] == 0:
+            return 0
+        amount = row["pending_enclosure_coins"]
+        conn.execute(
+            "UPDATE users SET coins = coins + ?, pending_enclosure_coins = 0 WHERE user_id = ?",
+            (amount, user_id),
+        )
+        return amount
+
+
+# ── Store ─────────────────────────────────────────────────────────────────────
+
+
+def has_purchased(user_id: int, item_key: str) -> bool:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT id FROM user_purchases WHERE user_id = ? AND item_key = ?",
+            (user_id, item_key),
+        ).fetchone()
+        return row is not None
+
+
+def record_purchase(user_id: int, item_key: str):
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO user_purchases (user_id, item_key) VALUES (?, ?)",
+            (user_id, item_key),
+        )
+
+
+def set_active_title(user_id: int, title_key: str | None):
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET active_title = ? WHERE user_id = ?", (title_key, user_id))
+
+
+def set_lucky_catch(user_id: int, active: bool):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET lucky_catch_active = ? WHERE user_id = ?",
+            (1 if active else 0, user_id),
+        )
+
+
+def get_active_group_chats() -> list[int]:
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT DISTINCT group_chat_id FROM users WHERE group_chat_id IS NOT NULL"
+        ).fetchall()
+        return [r["group_chat_id"] for r in rows]

@@ -1,7 +1,15 @@
 import datetime
 import logging
 import db
-from config import CHECKIN_WINDOW_MINUTES, PROMPT_INTERVAL_MINUTES, BREED_READY_REMINDER_MINUTES
+import random
+from config import (
+    CHECKIN_WINDOW_MINUTES,
+    PROMPT_INTERVAL_MINUTES,
+    BREED_READY_REMINDER_MINUTES,
+    WILD_EVENT_MIN_MINUTES,
+    WILD_EVENT_MAX_MINUTES,
+    WILD_EVENT_EXPIRY_HOURS,
+)
 from keyboards import mood_keyboard
 from species_data import ENCLOSURE_LEVELS
 
@@ -225,15 +233,16 @@ async def _tick_enclosure_income(ctx):
             count = db.get_animal_count_by_habitat(uid, habitat)
             total_coins += rate * count
         if total_coins > 0:
-            db.add_coins(uid, total_coins)
-            name = user.get("username") or f"user {uid}"
+            db.add_pending_enclosure_coins(uid, total_coins)
+            name = user["username"] or f"user {uid}"
             if user["group_chat_id"]:
                 group_earnings[user["group_chat_id"]].append((name, total_coins))
 
     for group_chat_id, earnings in group_earnings.items():
-        lines = ["🏦 *Enclosure income*"]
+        lines = ["🏦 *Enclosure income ready!*"]
         for name, coins in earnings:
             lines.append(f"  {name}: +{coins} 🪙")
+        lines.append("\nUse `/enclosures collect` to claim.")
         try:
             await ctx.bot.send_message(group_chat_id, "\n".join(lines), parse_mode="Markdown")
         except Exception:
@@ -330,3 +339,57 @@ async def _cleanup_expired_prompts(ctx):
             to_remove.append(group_chat_id)
     for g in to_remove:
         del prompt_messages[g]
+
+
+async def wild_event_tick(ctx):
+    """Post a wild animal sighting to each active group, then reschedule itself at a random interval."""
+    from game.catch_engine import pick_species
+    from handlers.wild_event import wild_catch_keyboard
+
+    groups = db.get_active_group_chats()
+    with db.get_conn() as conn:
+        for group_chat_id in groups:
+            rarity = random.choices(
+                ["common", "rare", "epic", "legendary"],
+                weights=[20, 40, 30, 10],
+            )[0]
+            species = pick_species(rarity, conn)
+            if not species:
+                continue
+            try:
+                msg = await ctx.bot.send_message(
+                    group_chat_id,
+                    f"🌿 *A wild {species['emoji']} {species['name']} appeared!*\n"
+                    f"First to tap catches it!\n_{species['rarity'].title()} species_",
+                    parse_mode="Markdown",
+                    reply_markup=wild_catch_keyboard(0),
+                )
+                event_id = db.create_wild_event(
+                    group_chat_id, species["species_id"], msg.message_id
+                )
+                await ctx.bot.edit_message_reply_markup(
+                    chat_id=group_chat_id,
+                    message_id=msg.message_id,
+                    reply_markup=wild_catch_keyboard(event_id),
+                )
+            except Exception:
+                logger.exception("Failed to send wild event to %s", group_chat_id)
+
+    delay = random.randint(WILD_EVENT_MIN_MINUTES, WILD_EVENT_MAX_MINUTES) * 60
+    ctx.job_queue.run_once(wild_event_tick, delay, name="wild_event_tick")
+
+
+async def cleanup_expired_wild_events(ctx):
+    """Expire unclaimed wild events and edit their messages to show they're gone."""
+    expired = db.get_expired_wild_events(WILD_EVENT_EXPIRY_HOURS)
+    for event in expired:
+        try:
+            await ctx.bot.edit_message_text(
+                chat_id=event["group_chat_id"],
+                message_id=event["message_id"],
+                text="🌿 *The wild animal got away!* Better luck next time.",
+                parse_mode="Markdown",
+            )
+        except Exception:
+            pass
+        db.claim_wild_event(event["id"], -1)

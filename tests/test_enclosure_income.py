@@ -94,7 +94,7 @@ async def test_enclosure_income_sends_named_group_message():
     with patch("scheduler.db.get_all_users_with_animals", return_value=[user]), patch(
         "scheduler.db.get_enclosures", return_value={"woodland": 2}
     ), patch("scheduler.db.get_animal_count_by_habitat", return_value=2), patch(
-        "scheduler.db.add_coins"
+        "scheduler.db.add_pending_enclosure_coins"
     ):
         await _tick_enclosure_income(ctx)
 
@@ -103,3 +103,4 @@ async def test_enclosure_income_sends_named_group_message():
     assert args[0][0] == -100  # sent to group
     assert "alice" in args[0][1]
     assert "Enclosure income" in args[0][1]
+    assert "collect" in args[0][1].lower()

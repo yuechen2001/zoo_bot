@@ -3,9 +3,24 @@ from logging.handlers import RotatingFileHandler
 from telegram import BotCommand
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler
 
-from config import BOT_TOKEN, HUNGER_INTERVAL_MINUTES, JOB_INTERVAL_MINUTES, PROMPT_INTERVAL_MINUTES
+from config import (
+    BOT_TOKEN,
+    HUNGER_INTERVAL_MINUTES,
+    JOB_INTERVAL_MINUTES,
+    PROMPT_INTERVAL_MINUTES,
+    WILD_EVENT_MIN_MINUTES,
+    WILD_EVENT_MAX_MINUTES,
+)
 from db import init_db
-from scheduler import prompt_tick, hunger_tick, job_tick, cleanup, enclosure_income
+from scheduler import (
+    prompt_tick,
+    hunger_tick,
+    job_tick,
+    cleanup,
+    enclosure_income,
+    wild_event_tick,
+    cleanup_expired_wild_events,
+)
 from handlers import (
     achievements_command,
     admin_command,
@@ -36,6 +51,9 @@ from handlers import (
     enclosure_upgrade_callback,
     directory_command,
 )
+from handlers.gift import gift_command
+from handlers.store import store_command
+from handlers.wild_event import wild_event_callback
 
 _log_fmt = logging.Formatter("%(asctime)s  %(name)s  %(levelname)s  %(message)s")
 _file_handler = RotatingFileHandler("zoo_bot.log", maxBytes=5 * 1024 * 1024, backupCount=3)
@@ -71,9 +89,11 @@ async def post_init(application):
             BotCommand("trade", "Offer an animal trade to another player"),
             BotCommand("invest", "Invest coins for a 25% return after 24h"),
             BotCommand("sell", "Sell an animal for coins"),
-            BotCommand("enclosures", "View and upgrade your enclosures"),
+            BotCommand("enclosures", "View, upgrade enclosures, and collect income"),
             BotCommand("directory", "Browse all animals & see which you own"),
             BotCommand("autofeed", "Auto-feed animals below a hunger threshold each tick"),
+            BotCommand("gift", "Give an animal to another player"),
+            BotCommand("store", "Browse the item store"),
             BotCommand("help", "Show all commands"),
         ]
     )
@@ -99,6 +119,8 @@ async def handle_callback(update, ctx):
         await enclosure_upgrade_callback(update, ctx)
     elif data.startswith("zoo_page_"):
         await zoo_page_callback(update, ctx)
+    elif data.startswith("wild_catch_"):
+        await wild_event_callback(update, ctx)
     elif data == "zoo_noop":
         await update.callback_query.answer()
     else:
@@ -131,6 +153,8 @@ def main():
     app.add_handler(CommandHandler("enclosures", enclosures_command))
     app.add_handler(CommandHandler("directory", directory_command))
     app.add_handler(CommandHandler("autofeed", autofeed_command))
+    app.add_handler(CommandHandler("gift", gift_command))
+    app.add_handler(CommandHandler("store", store_command))
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_error_handler(error_handler)
 
@@ -163,6 +187,19 @@ def main():
         interval=3600,
         first=3600,
         job_kwargs={"misfire_grace_time": 300},
+    )
+    app.job_queue.run_repeating(
+        cleanup_expired_wild_events,
+        interval=600,
+        first=60,
+        job_kwargs={"misfire_grace_time": 60},
+    )
+    import random as _random
+
+    app.job_queue.run_once(
+        wild_event_tick,
+        _random.randint(WILD_EVENT_MIN_MINUTES, WILD_EVENT_MAX_MINUTES) * 60,
+        name="wild_event_tick",
     )
 
     logger.info(

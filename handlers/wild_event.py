@@ -1,0 +1,73 @@
+import uuid
+import logging
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import ContextTypes
+import db
+from species_data import ENCLOSURE_LEVELS
+
+logger = logging.getLogger(__name__)
+
+
+def wild_catch_keyboard(event_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [[InlineKeyboardButton("🎣 Catch it!", callback_data=f"wild_catch_{event_id}")]]
+    )
+
+
+async def wild_event_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    tg_id = query.from_user.id
+    event_id = int(query.data.removeprefix("wild_catch_"))
+
+    event = db.get_wild_event(event_id)
+    if not event:
+        await query.answer("This event no longer exists.", show_alert=True)
+        return
+
+    if event["caught_by_user_id"] is not None:
+        await query.answer("Too slow — someone already caught it!", show_alert=True)
+        return
+
+    user = db.get_user(tg_id)
+    if not user:
+        await query.answer("Use /start first to join!", show_alert=True)
+        return
+
+    with db.get_conn() as conn:
+        species = conn.execute(
+            "SELECT * FROM species WHERE species_id = ?", (event["species_id"],)
+        ).fetchone()
+
+    if not species:
+        await query.answer("Something went wrong.", show_alert=True)
+        return
+
+    habitat = species["habitat"] or "woodland"
+    enc_level = db.get_enclosure_level(tg_id, habitat)
+    capacity = ENCLOSURE_LEVELS[enc_level]["capacity"]
+    current = db.get_animal_count_by_habitat(tg_id, habitat)
+    if current >= capacity:
+        await query.answer(
+            f"Your {habitat} enclosure is full (Lv {enc_level}, capacity {capacity})!",
+            show_alert=True,
+        )
+        return
+
+    claimed = db.claim_wild_event(event_id, tg_id)
+    if not claimed:
+        await query.answer("Too slow — someone already caught it!", show_alert=True)
+        return
+
+    animal_id = str(uuid.uuid4())
+    db.add_animal(animal_id, tg_id, species["species_id"])
+
+    username = query.from_user.username or query.from_user.first_name
+    await query.answer(f"🎉 You caught {species['emoji']} {species['name']}!", show_alert=True)
+    try:
+        await query.edit_message_text(
+            f"🌿 *Wild event over!*\n"
+            f"{species['emoji']} *{species['name']}* was caught by *@{username}*!",
+            parse_mode="Markdown",
+        )
+    except Exception:
+        pass

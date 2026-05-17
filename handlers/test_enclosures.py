@@ -1,5 +1,12 @@
+import sys
+import os
+
 import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
 from species_data import HABITATS, ENCLOSURE_LEVELS, MAX_ENCLOSURE_LEVEL
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+from conftest import make_row
 
 
 @pytest.fixture
@@ -124,3 +131,54 @@ class TestGetAnimalCountByHabitat:
         assert db.get_animal_count_by_habitat(1, "woodland") == 2
         assert db.get_animal_count_by_habitat(1, "aquatic") == 1
         assert db.get_animal_count_by_habitat(1, "savanna") == 0
+
+
+# ── /enclosures collect ────────────────────────────────────────────────────────
+
+
+def _make_update_cmd(args=None):
+    update = MagicMock()
+    update.effective_user.id = 1
+    update.message.reply_text = AsyncMock()
+    ctx = MagicMock()
+    ctx.args = args or []
+    return update, ctx
+
+
+def _make_user_row(**kw):
+    defaults = {
+        "user_id": 1,
+        "coins": 100,
+        "pending_enclosure_coins": 0,
+        "autofeed_threshold": None,
+        "autofeed_max_coins": None,
+        "streak_windows": 0,
+        "active_title": None,
+    }
+    return make_row(**{**defaults, **kw})
+
+
+@pytest.mark.asyncio
+async def test_collect_nothing_pending():
+    from handlers.enclosures import enclosures_command
+
+    update, ctx = _make_update_cmd(args=["collect"])
+    with patch("handlers.enclosures.db.get_user", return_value=_make_user_row()), patch(
+        "handlers.enclosures.db.collect_enclosure_coins", return_value=0
+    ):
+        await enclosures_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0]
+    assert "nothing" in reply.lower() or "no" in reply.lower() or "builds" in reply.lower()
+
+
+@pytest.mark.asyncio
+async def test_collect_credits_pending_coins():
+    from handlers.enclosures import enclosures_command
+
+    update, ctx = _make_update_cmd(args=["collect"])
+    with patch("handlers.enclosures.db.get_user", return_value=_make_user_row(coins=100)), patch(
+        "handlers.enclosures.db.collect_enclosure_coins", return_value=42
+    ), patch("handlers.enclosures.db.get_user", return_value=_make_user_row(coins=142)):
+        await enclosures_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0]
+    assert "42" in reply or "Collected" in reply
