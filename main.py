@@ -203,10 +203,14 @@ def main():
     )
 
     logger.info(
-        "Zoo Bot is running! Prompts every %d min, hunger every %d min, job tick every %d min.",
+        "Zoo Bot is running! Prompts every %d min, hunger every %d min, "
+        "job tick every %d min, enclosure income every 60 min, "
+        "wild events every %d–%d min.",
         PROMPT_INTERVAL_MINUTES,
         HUNGER_INTERVAL_MINUTES,
         JOB_INTERVAL_MINUTES,
+        WILD_EVENT_MIN_MINUTES,
+        WILD_EVENT_MAX_MINUTES,
     )
     app.run_polling(drop_pending_updates=True, allowed_updates=["message", "callback_query"])
 
