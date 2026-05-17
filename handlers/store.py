@@ -22,8 +22,8 @@ def _store_text() -> str:
         "`/store buy <item>` — purchase an item\n"
         "`/store use mega_feed <#>` — apply Mega Feed to animal #N\n"
         "`/store equip <title>` — set your active title\n\n"
-        "_Item keys: mega\\_feed, breed\\_boost, lucky\\_token,\n"
-        "title\\_keeper, title\\_whisperer, title\\_legend_"
+        "Item keys: `mega_feed` `breed_boost` `lucky_token`\n"
+        "`title_keeper` `title_whisperer` `title_legend`"
     )
     return "\n".join(lines)
 
