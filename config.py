@@ -16,6 +16,7 @@ TRADE_EXPIRY_MINUTES = int(os.getenv("TRADE_EXPIRY_MINUTES", "10"))
 TIMEZONE = os.getenv("TIMEZONE", "Asia/Shanghai")
 INVESTMENT_HOURS = int(os.getenv("INVESTMENT_HOURS", "24"))
 INVESTMENT_RETURN_RATE = float(os.getenv("INVESTMENT_RETURN_RATE", "0.25"))
+BREED_READY_REMINDER_MINUTES = int(os.getenv("BREED_READY_REMINDER_MINUTES", "30"))
 
 # Comma-separated Telegram user IDs allowed to use /admin commands
 # e.g. ADMIN_IDS=123456789,987654321

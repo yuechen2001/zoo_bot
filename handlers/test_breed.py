@@ -1,4 +1,3 @@
-import datetime
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from handlers.breed import breed_command
@@ -42,97 +41,17 @@ def _make_animal(animal_id, rarity="common", is_breeding=0):
     return a
 
 
-# ── /breed status ──────────────────────────────────────────────────────────────
+# ── /breed status removed — status is now shown in /zoo ───────────────────────
 
 
 @pytest.mark.asyncio
-async def test_breed_status_no_breeding():
+async def test_breed_status_arg_shows_usage():
+    """/breed status no longer exists — should show usage hint pointing to /zoo."""
     update, ctx = _make_update(args=["status"])
-    with patch("handlers.breed.db.get_user", return_value=_make_user()), patch(
-        "handlers.breed.db.get_pending_breed", return_value=None
-    ):
+    with patch("handlers.breed.db.get_user", return_value=_make_user()):
         await breed_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]
-    assert "No breeding in progress" in reply
-
-
-@pytest.mark.asyncio
-async def test_breed_status_shows_time_remaining():
-    update, ctx = _make_update(args=["status"])
-    future = (
-        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-        + datetime.timedelta(hours=2, minutes=30)
-    ).isoformat()
-
-    pending = MagicMock()
-    pending.__getitem__ = MagicMock(
-        side_effect=lambda k: {
-            "parent_a": "a1",
-            "parent_b": "a2",
-            "ready_at": future,
-        }.get(k)
-    )
-
-    parent = MagicMock()
-    parent.__getitem__ = MagicMock(
-        side_effect=lambda k: {
-            "nickname": None,
-            "name": "Frog",
-            "emoji": "🐸",
-        }.get(k)
-    )
-
-    with patch("handlers.breed.db.get_user", return_value=_make_user()), patch(
-        "handlers.breed.db.get_pending_breed", return_value=pending
-    ), patch("handlers.breed.db.get_conn") as mock_conn:
-        inner = MagicMock()
-        inner.execute.return_value.fetchone.return_value = parent
-        mock_conn.return_value.__enter__ = MagicMock(return_value=inner)
-        mock_conn.return_value.__exit__ = MagicMock(return_value=False)
-        await breed_command(update, ctx)
-
-    reply = update.message.reply_text.call_args[0][0]
-    assert "2h" in reply
-    assert "remaining" in reply
-
-
-@pytest.mark.asyncio
-async def test_breed_status_shows_ready_when_past():
-    update, ctx = _make_update(args=["status"])
-    past = (
-        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-        - datetime.timedelta(minutes=5)
-    ).isoformat()
-
-    pending = MagicMock()
-    pending.__getitem__ = MagicMock(
-        side_effect=lambda k: {
-            "parent_a": "a1",
-            "parent_b": "a2",
-            "ready_at": past,
-        }.get(k)
-    )
-
-    parent = MagicMock()
-    parent.__getitem__ = MagicMock(
-        side_effect=lambda k: {
-            "nickname": None,
-            "name": "Frog",
-            "emoji": "🐸",
-        }.get(k)
-    )
-
-    with patch("handlers.breed.db.get_user", return_value=_make_user()), patch(
-        "handlers.breed.db.get_pending_breed", return_value=pending
-    ), patch("handlers.breed.db.get_conn") as mock_conn:
-        inner = MagicMock()
-        inner.execute.return_value.fetchone.return_value = parent
-        mock_conn.return_value.__enter__ = MagicMock(return_value=inner)
-        mock_conn.return_value.__exit__ = MagicMock(return_value=False)
-        await breed_command(update, ctx)
-
-    reply = update.message.reply_text.call_args[0][0]
-    assert "ready" in reply.lower()
+    assert "/zoo" in reply
 
 
 # ── /breed usage ───────────────────────────────────────────────────────────────
@@ -145,8 +64,8 @@ async def test_breed_no_args_shows_usage():
         await breed_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]
     assert "/breed 1 3" in reply
-    assert "/breed status" in reply
     assert "/breed collect" in reply
+    assert "/zoo" in reply
 
 
 @pytest.mark.asyncio

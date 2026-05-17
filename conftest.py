@@ -57,7 +57,8 @@ def conn():
             parent_b             TEXT,
             offspring_species_id INTEGER,
             ready_at             TEXT NOT NULL,
-            collected            INTEGER NOT NULL DEFAULT 0
+            collected            INTEGER NOT NULL DEFAULT 0,
+            last_notified_at     TEXT
         );
         CREATE TABLE trivia_log (
             id        INTEGER PRIMARY KEY AUTOINCREMENT,

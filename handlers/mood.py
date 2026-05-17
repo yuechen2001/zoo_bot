@@ -27,10 +27,12 @@ async def moodstop_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
     with db.get_conn() as conn:
         conn.execute(
-            "UPDATE users SET opted_in = 0, streak_windows = 0, consecutive_misses = 0 WHERE user_id = ?",
+            "UPDATE users SET opted_in = 0, consecutive_misses = 0 WHERE user_id = ?",
             (tg_id,),
         )
-    await update.message.reply_text("⏸ Mood prompts stopped. Streak reset.")
+    await update.message.reply_text(
+        "⏸ Mood prompts stopped. Resume with /moodstart — your streak is preserved."
+    )
 
 
 async def pause_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -189,18 +191,18 @@ async def help_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "/enclosures — view and upgrade your habitat enclosures\n\n"
         "*Breeding:*\n"
         "/breed <a> <b> — breed two animals together\n"
-        "/breed collect — claim your finished offspring\n"
-        "/breed status — check time remaining on active breed\n\n"
+        "/breed collect — claim your finished offspring\n\n"
         "*Earn coins:*\n"
         "/daily — claim +50 coins once per day\n"
         "/trivia — animal trivia (+40 correct, +5 wrong, 4h cooldown)\n"
         "/gamble <amount> — coin flip bet (max 100 🪙)\n"
         "/slots — spin the slot machine (10 🪙 per spin)\n"
         "/trade @user <yours> <theirs> — offer an animal swap\n"
-        "/invest <amount> — invest coins (25% return after 24h)\n\n"
+        "/invest <amount> — invest coins (25% return after 24h)\n"
+        "/invest collect — collect your matured investment\n\n"
         "*Mood prompts:*\n"
         "/moodstart — opt in to prompts\n"
-        "/moodstop — opt out (resets streak)\n\n"
+        "/moodstop — opt out (streak preserved)\n\n"
         "*Admin:*\n"
         "/admin help — full list of admin commands\n\n"
         "⏱ Respond within *15 min* of a prompt to earn coins!\n"

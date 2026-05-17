@@ -1,7 +1,7 @@
 import datetime
 import logging
 import db
-from config import CHECKIN_WINDOW_MINUTES, PROMPT_INTERVAL_MINUTES
+from config import CHECKIN_WINDOW_MINUTES, PROMPT_INTERVAL_MINUTES, BREED_READY_REMINDER_MINUTES
 from keyboards import mood_keyboard
 from species_data import ENCLOSURE_LEVELS
 
@@ -34,7 +34,7 @@ async def cleanup(ctx):
 
 async def enclosure_income(ctx):
     """Runs every hour. Awards passive coin income from enclosures."""
-    await _tick_enclosure_income()
+    await _tick_enclosure_income(ctx)
 
 
 async def _send_mood_prompts(ctx):
@@ -160,20 +160,23 @@ async def _check_starved_animals(ctx):
 
 
 async def _check_breed_completions(ctx):
-    ready = db.get_ready_breeds()
+    ready = db.get_ready_breeds(BREED_READY_REMINDER_MINUTES)
     for breed in ready:
         group_chat_id = breed["group_chat_id"]
         if not group_chat_id:
             continue
+        is_reminder = breed["last_notified_at"] is not None
+        prefix = "🔔 *Breed ready reminder!*" if is_reminder else "🥚 *Breeding complete!*"
         try:
             await ctx.bot.send_message(
                 group_chat_id,
-                f"🥚 *Breeding complete!*\n"
+                f"{prefix}\n"
                 f"{breed['emoji_a']} {breed['name_a']} × {breed['emoji_b']} {breed['name_b']} "
                 f"→ {breed['emoji_offspring']} {breed['name_offspring']}\n\n"
                 f"Use `/breed collect` to claim your new animal!",
                 parse_mode="Markdown",
             )
+            db.mark_breed_notified(breed["id"])
         except Exception:
             logger.exception("Failed to send breed-complete message to %s", group_chat_id)
 
@@ -206,7 +209,7 @@ async def _check_hunger_alerts(ctx):
             )
 
 
-async def _tick_enclosure_income():
+async def _tick_enclosure_income(ctx):
     for user in db.get_all_users_with_animals():
         uid = user["user_id"]
         enclosures = db.get_enclosures(uid)
@@ -219,6 +222,15 @@ async def _tick_enclosure_income():
             total_coins += rate * count
         if total_coins > 0:
             db.add_coins(uid, total_coins)
+            updated = db.get_user(uid)
+            chat_id = user["group_chat_id"] or uid
+            try:
+                await ctx.bot.send_message(
+                    chat_id,
+                    f"🏦 Enclosure income: +{total_coins} 🪙 (balance: {updated['coins']} 🪙)",
+                )
+            except Exception:
+                logger.exception("Failed to send enclosure income message to %s", chat_id)
 
 
 async def _cleanup_expired_trades(ctx):

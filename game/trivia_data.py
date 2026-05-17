@@ -282,4 +282,189 @@ QUESTIONS = [
         "options": ["A) Herd", "B) Pride", "C) Pack", "D) Colony"],
         "answer": "C",
     },
+    # Marine life
+    {
+        "q": "How many hearts does an octopus have?",
+        "options": ["A) 1", "B) 2", "C) 3", "D) 4"],
+        "answer": "C",
+    },
+    {
+        "q": "What is the largest fish in the ocean?",
+        "options": [
+            "A) Great white shark",
+            "B) Blue whale",
+            "C) Whale shark",
+            "D) Giant manta ray",
+        ],
+        "answer": "C",
+    },
+    {
+        "q": "Which sea creature can regenerate a lost arm?",
+        "options": ["A) Jellyfish", "B) Starfish", "C) Seahorse", "D) Crab"],
+        "answer": "B",
+    },
+    {
+        "q": "What is the fastest fish in the ocean?",
+        "options": ["A) Tuna", "B) Marlin", "C) Sailfish", "D) Swordfish"],
+        "answer": "C",
+    },
+    {
+        "q": "How do clownfish benefit sea anemones?",
+        "options": [
+            "A) They feed them",
+            "B) They clean parasites",
+            "C) They attract prey",
+            "D) They add colour",
+        ],
+        "answer": "B",
+    },
+    {
+        "q": "Which animal is the largest invertebrate on Earth?",
+        "options": [
+            "A) Giant squid",
+            "B) Colossal squid",
+            "C) Giant clam",
+            "D) Lion's mane jellyfish",
+        ],
+        "answer": "B",
+    },
+    # Birds
+    {
+        "q": "Which bird has the largest wingspan of any living bird?",
+        "options": ["A) Bald eagle", "B) Andean condor", "C) Wandering albatross", "D) Pelican"],
+        "answer": "C",
+    },
+    {
+        "q": "What is the only continent where penguins naturally live in the wild?",
+        "options": ["A) Arctic", "B) Antarctica", "C) South America only", "D) Africa only"],
+        "answer": "B",
+    },
+    {
+        "q": "Which bird is known for mimicking sounds from its environment?",
+        "options": ["A) Crow", "B) Lyrebird", "C) Parrot", "D) Mockingbird"],
+        "answer": "B",
+    },
+    {
+        "q": "How do flamingos get their pink colour?",
+        "options": [
+            "A) Genetics",
+            "B) Sun exposure",
+            "C) Diet of algae and shrimp",
+            "D) Feather pigment",
+        ],
+        "answer": "C",
+    },
+    {
+        "q": "Which bird lays the largest egg relative to its body size?",
+        "options": ["A) Ostrich", "B) Kiwi", "C) Emu", "D) Penguin"],
+        "answer": "B",
+    },
+    # Insects
+    {
+        "q": "How many legs does an insect have?",
+        "options": ["A) 4", "B) 6", "C) 8", "D) 10"],
+        "answer": "B",
+    },
+    {
+        "q": "Which insect can lift up to 50 times its own body weight?",
+        "options": ["A) Beetle", "B) Grasshopper", "C) Ant", "D) Bee"],
+        "answer": "C",
+    },
+    {
+        "q": "How do butterflies taste their food?",
+        "options": [
+            "A) With their antennae",
+            "B) With their feet",
+            "C) With their tongue",
+            "D) With their eyes",
+        ],
+        "answer": "B",
+    },
+    {
+        "q": "What is the lifespan of a worker bee?",
+        "options": ["A) 1 day", "B) 6 weeks", "C) 6 months", "D) 1 year"],
+        "answer": "B",
+    },
+    {
+        "q": "Which insect is responsible for producing silk?",
+        "options": [
+            "A) Moth larva",
+            "B) Spider",
+            "C) Silkworm (moth caterpillar)",
+            "D) Beetle larva",
+        ],
+        "answer": "C",
+    },
+    # Reptiles
+    {
+        "q": "How do snakes smell their environment?",
+        "options": [
+            "A) Through their nostrils",
+            "B) Through their tongue",
+            "C) Through their skin",
+            "D) Through their eyes",
+        ],
+        "answer": "B",
+    },
+    {
+        "q": "Which is the world's largest living reptile?",
+        "options": [
+            "A) Nile crocodile",
+            "B) Komodo dragon",
+            "C) Saltwater crocodile",
+            "D) Leatherback sea turtle",
+        ],
+        "answer": "C",
+    },
+    {
+        "q": "What is unique about a chameleon's eyes?",
+        "options": [
+            "A) They glow in the dark",
+            "B) They move independently of each other",
+            "C) They can see UV light",
+            "D) They never blink",
+        ],
+        "answer": "B",
+    },
+    {
+        "q": "Which reptile can detach its tail to escape predators?",
+        "options": ["A) Gecko", "B) Iguana", "C) Skink", "D) All of the above"],
+        "answer": "D",
+    },
+    {
+        "q": "How do sea turtles navigate back to their birth beach?",
+        "options": [
+            "A) Memory of landmarks",
+            "B) Earth's magnetic field",
+            "C) Ocean currents",
+            "D) Star patterns",
+        ],
+        "answer": "B",
+    },
+    # Mixed
+    {
+        "q": "Which mammal can truly fly (not just glide)?",
+        "options": ["A) Flying squirrel", "B) Sugar glider", "C) Bat", "D) Colugos"],
+        "answer": "C",
+    },
+    {
+        "q": "What is the loudest animal on Earth?",
+        "options": ["A) Blue whale", "B) Sperm whale", "C) Howler monkey", "D) Pistol shrimp"],
+        "answer": "A",
+    },
+    {
+        "q": "Which animal has the longest migration of any mammal?",
+        "options": ["A) Humpback whale", "B) Gray whale", "C) Arctic tern (bird)", "D) Wildebeest"],
+        "answer": "B",
+    },
+    {
+        "q": "What colour is a polar bear's skin?",
+        "options": ["A) White", "B) Pink", "C) Black", "D) Grey"],
+        "answer": "C",
+    },
+    {
+        "q": "Which animal sleeps the most per day on average?",
+        "options": ["A) Sloth", "B) Koala", "C) Lion", "D) Brown bat"],
+        "answer": "D",
+    },
 ]

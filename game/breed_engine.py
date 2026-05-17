@@ -3,22 +3,28 @@ import datetime
 from species_data import RARITY_ORDER, get_breed_params
 
 
+# (common, rare, epic, legendary) weights per sorted parent rarity pair.
+# Breeding complements /catch — epic/legendary from low-tier pairs is intentionally rare.
+_RARITY_WEIGHTS: dict[tuple[str, str], tuple] = {
+    ("common", "common"): (85, 13, 1.5, 0.5),
+    ("common", "rare"): (42, 52, 5, 1),
+    ("rare", "rare"): (18, 72, 8, 2),
+    ("common", "epic"): (25, 40, 30, 5),
+    ("rare", "epic"): (12, 33, 47, 8),
+    ("epic", "epic"): (5, 18, 65, 12),
+    ("common", "legendary"): (15, 32, 38, 15),
+    ("rare", "legendary"): (8, 20, 50, 22),
+    ("epic", "legendary"): (3, 10, 47, 40),
+    ("legendary", "legendary"): (5, 15, 40, 40),
+}
+
+
 def resolve_offspring(rarity_a: str, rarity_b: str, conn) -> int:
-    """
-    Return a species_id for the offspring.
-    10% chance of bumping up one rarity tier; otherwise inherits one parent's rarity.
-    """
-    higher = max(rarity_a, rarity_b, key=lambda r: RARITY_ORDER.index(r))
-    lower = min(rarity_a, rarity_b, key=lambda r: RARITY_ORDER.index(r))
-
-    bump_chance = 0.10
-    higher_idx = RARITY_ORDER.index(higher)
-
-    if random.random() < bump_chance and higher_idx < len(RARITY_ORDER) - 1:
-        offspring_rarity = RARITY_ORDER[higher_idx + 1]
-    else:
-        offspring_rarity = higher if random.random() < 0.7 else lower
-
+    """Return a species_id for the offspring using weighted rarity distribution."""
+    a, b = sorted([rarity_a, rarity_b], key=lambda r: RARITY_ORDER.index(r))
+    pair = (a, b)
+    weights = _RARITY_WEIGHTS[pair]
+    offspring_rarity = random.choices(RARITY_ORDER, weights=weights, k=1)[0]
     rows = conn.execute("SELECT * FROM species WHERE rarity = ?", (offspring_rarity,)).fetchall()
     return random.choice(rows)["species_id"] if rows else 1
 

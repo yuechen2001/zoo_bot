@@ -121,21 +121,11 @@ async def test_invest_collect_success():
 
 
 @pytest.mark.asyncio
-async def test_invest_status_shows_remaining_time():
+async def test_invest_status_arg_redirects_to_zoo():
+    """/invest status no longer exists — should show usage hint pointing to /zoo."""
     update = _make_update()
     ctx = _make_ctx(args=["status"])
-    inv = {
-        "id": 1,
-        "amount": 100,
-        "return_amount": 125,
-        "invested_at": datetime.datetime.now(datetime.timezone.utc)
-        .replace(tzinfo=None)
-        .isoformat(),
-    }
-    with patch("handlers.invest.db.get_user", return_value=_make_user()), patch(
-        "handlers.invest.db.get_active_investment", return_value=inv
-    ):
+    with patch("handlers.invest.db.get_user", return_value=_make_user()):
         await invest_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]
-    assert "100" in reply and "125" in reply
-    assert "remaining" in reply.lower() or "h" in reply
+    assert "/zoo" in reply

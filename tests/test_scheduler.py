@@ -7,6 +7,7 @@ from scheduler import (
     _decay_stats,
     _check_hunger_alerts,
     _cleanup_expired_trades,
+    _check_breed_completions,
 )
 
 
@@ -236,3 +237,104 @@ async def test_expired_trade_notifies_proposer(temp_db):
 
     assert trade["status"] == "expired"
     ctx.bot.send_message.assert_called_once()
+
+
+# ── breed-ready notifications ─────────────────────────────────────────────────
+
+
+def _insert_ready_breed(db_path, last_notified_at=None):
+    """Insert a completed breed into the queue for notification tests."""
+    with patch("db.DATABASE_PATH", db_path):
+        with db.get_conn() as conn:
+            conn.execute(
+                "INSERT OR IGNORE INTO users (user_id, username, group_chat_id) VALUES (1, 'tester', -100)"
+            )
+            species_id = conn.execute("SELECT species_id FROM species LIMIT 1").fetchone()[
+                "species_id"
+            ]
+            conn.execute(
+                "INSERT INTO animals (animal_id, user_id, species_id, is_breeding) VALUES ('pa', 1, ?, 1)",
+                (species_id,),
+            )
+            conn.execute(
+                "INSERT INTO animals (animal_id, user_id, species_id, is_breeding) VALUES ('pb', 1, ?, 1)",
+                (species_id,),
+            )
+            past = (
+                datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                - datetime.timedelta(hours=2)
+            ).isoformat()
+            conn.execute(
+                "INSERT INTO breeding_queue "
+                "(user_id, parent_a, parent_b, offspring_species_id, ready_at, collected, last_notified_at) "
+                "VALUES (1, 'pa', 'pb', ?, ?, 0, ?)",
+                (species_id, past, last_notified_at),
+            )
+
+
+@pytest.mark.asyncio
+async def test_breed_ready_notifies_on_first_completion(temp_db):
+    _insert_ready_breed(temp_db, last_notified_at=None)
+
+    ctx = MagicMock()
+    ctx.bot.send_message = AsyncMock()
+
+    with patch("db.DATABASE_PATH", temp_db):
+        await _check_breed_completions(ctx)
+
+    ctx.bot.send_message.assert_called_once()
+    msg = ctx.bot.send_message.call_args[0][1]
+    assert "Breeding complete" in msg or "breed" in msg.lower()
+
+
+@pytest.mark.asyncio
+async def test_breed_ready_marks_notified_after_send(temp_db):
+    _insert_ready_breed(temp_db, last_notified_at=None)
+
+    ctx = MagicMock()
+    ctx.bot.send_message = AsyncMock()
+
+    with patch("db.DATABASE_PATH", temp_db):
+        await _check_breed_completions(ctx)
+        with db.get_conn() as conn:
+            row = conn.execute("SELECT last_notified_at FROM breeding_queue LIMIT 1").fetchone()
+
+    assert row["last_notified_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_breed_ready_no_repeat_within_interval(temp_db):
+    """A breed notified 5 minutes ago should NOT trigger another notification (interval=30min)."""
+    recent = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        - datetime.timedelta(minutes=5)
+    ).isoformat()
+    _insert_ready_breed(temp_db, last_notified_at=recent)
+
+    ctx = MagicMock()
+    ctx.bot.send_message = AsyncMock()
+
+    with patch("db.DATABASE_PATH", temp_db):
+        await _check_breed_completions(ctx)
+
+    ctx.bot.send_message.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_breed_ready_reminds_after_interval(temp_db):
+    """A breed notified 35 minutes ago SHOULD trigger a reminder (interval=30min)."""
+    old = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        - datetime.timedelta(minutes=35)
+    ).isoformat()
+    _insert_ready_breed(temp_db, last_notified_at=old)
+
+    ctx = MagicMock()
+    ctx.bot.send_message = AsyncMock()
+
+    with patch("db.DATABASE_PATH", temp_db):
+        await _check_breed_completions(ctx)
+
+    ctx.bot.send_message.assert_called_once()
+    msg = ctx.bot.send_message.call_args[0][1]
+    assert "reminder" in msg.lower() or "ready" in msg.lower()

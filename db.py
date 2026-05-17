@@ -214,7 +214,7 @@ def get_pending_breed(user_id):
         ).fetchone()
 
 
-def get_ready_breeds():
+def get_ready_breeds(reminder_minutes: int = 30):
     with get_conn() as conn:
         return conn.execute(
             "SELECT bq.*, u.group_chat_id, "
@@ -228,8 +228,35 @@ def get_ready_breeds():
             "JOIN animals pb ON pb.animal_id = bq.parent_b "
             "JOIN species sb ON sb.species_id = pb.species_id "
             "JOIN species so ON so.species_id = bq.offspring_species_id "
-            "WHERE bq.collected = 0 AND bq.ready_at <= datetime('now')",
+            "WHERE bq.collected = 0 AND datetime(bq.ready_at) <= datetime('now') "
+            "AND (bq.last_notified_at IS NULL "
+            "     OR datetime(bq.last_notified_at) <= datetime('now', ? || ' minutes'))",
+            (f"-{reminder_minutes}",),
         ).fetchall()
+
+
+def mark_breed_notified(breed_id: int):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE breeding_queue SET last_notified_at = datetime('now') WHERE id = ?",
+            (breed_id,),
+        )
+
+
+def get_active_breed(user_id: int):
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT bq.*, "
+            "sa.emoji AS emoji_a, sa.name AS name_a, "
+            "sb.emoji AS emoji_b, sb.name AS name_b "
+            "FROM breeding_queue bq "
+            "JOIN animals pa ON pa.animal_id = bq.parent_a "
+            "JOIN species sa ON sa.species_id = pa.species_id "
+            "JOIN animals pb ON pb.animal_id = bq.parent_b "
+            "JOIN species sb ON sb.species_id = pb.species_id "
+            "WHERE bq.user_id = ? AND bq.collected = 0",
+            (user_id,),
+        ).fetchone()
 
 
 # ── Achievements ──────────────────────────────────────────────────────────────

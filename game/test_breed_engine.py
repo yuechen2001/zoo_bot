@@ -150,42 +150,37 @@ class TestHabitatBonus:
 
 
 class TestResolveOffspring:
-    def test_no_bump_picks_higher_rarity(self, conn):
-        # random[0]=0.5 → no bump (>0.10); random[1]=0.3 → picks higher (< 0.7)
-        with patch("game.breed_engine.random.random", side_effect=[0.5, 0.3]):
+    def test_choices_forced_to_rare_gives_rare(self, conn):
+        # Force random.choices to always return "rare"
+        with patch("game.breed_engine.random.choices", return_value=["rare"]):
             species_id = resolve_offspring("common", "rare", conn)
         row = conn.execute(
             "SELECT rarity FROM species WHERE species_id=?", (species_id,)
         ).fetchone()
         assert row["rarity"] == "rare"
 
-    def test_no_bump_picks_lower_rarity(self, conn):
-        # random[0]=0.5 → no bump; random[1]=0.9 → picks lower (>= 0.7)
-        with patch("game.breed_engine.random.random", side_effect=[0.5, 0.9]):
+    def test_choices_forced_to_common_gives_common(self, conn):
+        with patch("game.breed_engine.random.choices", return_value=["common"]):
             species_id = resolve_offspring("common", "rare", conn)
         row = conn.execute(
             "SELECT rarity FROM species WHERE species_id=?", (species_id,)
         ).fetchone()
         assert row["rarity"] == "common"
 
-    def test_bump_on_common_common_gives_rare(self, conn):
-        # random[0]=0.05 → bump (< 0.10); common → rare
-        with patch("game.breed_engine.random.random", return_value=0.05):
+    def test_choices_forced_to_legendary_gives_legendary(self, conn):
+        with patch("game.breed_engine.random.choices", return_value=["legendary"]):
             species_id = resolve_offspring("common", "common", conn)
         row = conn.execute(
             "SELECT rarity FROM species WHERE species_id=?", (species_id,)
         ).fetchone()
-        assert row["rarity"] == "rare"
-
-    def test_legendary_cannot_bump_further(self, conn):
-        # Even with bump roll, legendary is capped (higher_idx == 3 == len-1)
-        # Falls to else branch: random[1]=0.3 → picks higher = legendary
-        with patch("game.breed_engine.random.random", side_effect=[0.05, 0.3]):
-            species_id = resolve_offspring("legendary", "legendary", conn)
-        row = conn.execute(
-            "SELECT rarity FROM species WHERE species_id=?", (species_id,)
-        ).fetchone()
         assert row["rarity"] == "legendary"
+
+    def test_legendary_x_legendary_can_produce_any_rarity(self, conn):
+        # Verify legendary×legendary has non-zero weight for all rarities
+        from game.breed_engine import _RARITY_WEIGHTS
+
+        weights = _RARITY_WEIGHTS[("legendary", "legendary")]
+        assert all(w > 0 for w in weights)
 
     def test_returns_valid_species_id(self, conn):
         species_id = resolve_offspring("common", "common", conn)

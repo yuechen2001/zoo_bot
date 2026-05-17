@@ -26,18 +26,13 @@ async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await _collect_breed(update, tg_id, ctx)
         return
 
-    # /breed status
-    if ctx.args and ctx.args[0].lower() == "status":
-        await _breed_status(update, tg_id)
-        return
-
     # /breed <a> <b>
     if not ctx.args or len(ctx.args) < 2 or not ctx.args[0].isdigit() or not ctx.args[1].isdigit():
         await update.message.reply_text(
             "Usage:\n"
             "`/breed 1 3` — breed animal #1 with animal #3\n"
-            "`/breed status` — check time remaining\n"
-            "`/breed collect` — claim your offspring",
+            "`/breed collect` — claim your offspring\n\n"
+            "Check breeding status anytime with /zoo.",
             parse_mode="Markdown",
         )
         return
@@ -120,48 +115,6 @@ async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         f"{bonus_line}"
         f"Ready in: *{duration}*\n\n"
         f"Use `/breed collect` when the timer is up!",
-        parse_mode="Markdown",
-    )
-
-
-async def _breed_status(update, tg_id):
-    pending = db.get_pending_breed(tg_id)
-    if not pending:
-        await update.message.reply_text(
-            "No breeding in progress.\n\n" "Use `/breed 1 3` to breed animal #1 with animal #3.",
-            parse_mode="Markdown",
-        )
-        return
-
-    with db.get_conn() as conn:
-        pa = conn.execute(
-            "SELECT a.nickname, s.name, s.emoji FROM animals a "
-            "JOIN species s ON s.species_id = a.species_id WHERE a.animal_id = ?",
-            (pending["parent_a"],),
-        ).fetchone()
-        pb = conn.execute(
-            "SELECT a.nickname, s.name, s.emoji FROM animals a "
-            "JOIN species s ON s.species_id = a.species_id WHERE a.animal_id = ?",
-            (pending["parent_b"],),
-        ).fetchone()
-
-    name_a = pa["nickname"] or pa["name"] if pa else "?"
-    name_b = pb["nickname"] or pb["name"] if pb else "?"
-    emoji_a = pa["emoji"] if pa else ""
-    emoji_b = pb["emoji"] if pb else ""
-
-    ready_at = datetime.datetime.fromisoformat(pending["ready_at"])
-    remaining = ready_at - datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-
-    if remaining.total_seconds() <= 0:
-        time_str = "ready! Use `/breed collect`"
-    else:
-        hours, rem = divmod(int(remaining.total_seconds()), 3600)
-        minutes = rem // 60
-        time_str = f"{hours}h {minutes}m remaining" if hours else f"{minutes}m remaining"
-
-    await update.message.reply_text(
-        f"💕 *{emoji_a} {name_a}* × *{emoji_b} {name_b}*\n⏳ {time_str}",
         parse_mode="Markdown",
     )
 

@@ -3,9 +3,9 @@ Admin / debug commands — only usable by IDs listed in ADMIN_IDS.
 
 Usage:
   /admin help                          — list all commands
-  /admin coins <amount>                — give yourself coins
+  /admin coins <amount>                — add/remove your own coins (negative to remove)
   /admin givecoin <username> <amt>     — give coins to another user by username
-  /admin give <species_name>           — add an animal directly to your zoo
+  /admin reducecoin <username> <amt>   — reduce another user's coins by <amt> (positive number)
   /admin giveuser <username> <species> — add an animal to another user's zoo
   /admin listanimals <username>        — show all animals owned by a user
   /admin hunger <number> <value>       — set animal #N hunger (0–100)
@@ -55,8 +55,8 @@ async def admin_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     elif sub == "givecoin":
         await _cmd_givecoin(update, args)
 
-    elif sub == "give":
-        await _cmd_give(update, tg_id, args)
+    elif sub == "reducecoin":
+        await _cmd_reducecoin(update, args)
 
     elif sub == "giveuser":
         await _cmd_giveuser(update, args)
@@ -148,29 +148,25 @@ async def _cmd_givecoin(update, args):
     )
 
 
-async def _cmd_give(update, tg_id, args):
-    if not args:
-        await update.message.reply_text("Usage: /admin give <species_name>")
+async def _cmd_reducecoin(update, args):
+    if len(args) < 2 or not args[1].isdigit():
+        await update.message.reply_text("Usage: /admin reducecoin <username> <amount>")
         return
-    name = " ".join(args).title()
+    username = args[0].lstrip("@")
+    amount = int(args[1])
+    target = db.get_user_by_username(username)
+    if not target:
+        await update.message.reply_text(f"User `{username}` not found.", parse_mode="Markdown")
+        return
     with db.get_conn() as conn:
-        species = conn.execute(
-            "SELECT * FROM species WHERE LOWER(name) = LOWER(?)", (name,)
-        ).fetchone()
-    if not species:
-        with db.get_conn() as conn:
-            all_names = [
-                r["name"] for r in conn.execute("SELECT name FROM species ORDER BY name").fetchall()
-            ]
-        await update.message.reply_text(
-            f"Species `{name}` not found.\nAvailable: {', '.join(all_names)}",
-            parse_mode="Markdown",
+        conn.execute(
+            "UPDATE users SET coins = MAX(0, coins - ?) WHERE user_id = ?",
+            (amount, target["user_id"]),
         )
-        return
-    animal_id = str(uuid.uuid4())
-    db.add_animal(animal_id, tg_id, species["species_id"])
+    updated = db.get_user(target["user_id"])
     await update.message.reply_text(
-        f"✅ Added {species['emoji']} *{species['name']}* to your zoo!", parse_mode="Markdown"
+        f"💸 Removed *{amount}* 🪙 from *{username}*. Their balance: *{updated['coins']}* 🪙",
+        parse_mode="Markdown",
     )
 
 
@@ -381,10 +377,10 @@ async def _cmd_stats(update):
 def _help_text() -> str:
     return (
         "🔧 *Admin Commands*\n\n"
-        "`/admin coins <amount>` — add/remove your own coins\n"
+        "`/admin coins <amount>` — add/remove your own coins (negative to remove)\n"
         "`/admin givecoin <username> <amount>` — give coins to another user\n"
-        "`/admin give <species>` — add animal to your zoo\n"
-        "`/admin giveuser <username> <species>` — add animal to another user's zoo\n"
+        "`/admin reducecoin <username> <amount>` — remove coins from a user\n"
+        "`/admin giveuser <username> <species>` — add animal to a user's zoo\n"
         "`/admin listanimals <username>` — show all animals owned by a user\n"
         "`/admin hunger <#> <val>` — set animal hunger (0–100)\n"
         "`/admin pause <duration>` — freeze streak (e.g. 8h or 30m)\n"

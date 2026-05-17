@@ -10,10 +10,10 @@ HABITATS = {
 # capacity, passive coins earned per animal per hour, breed time reduction, coin cost to upgrade
 ENCLOSURE_LEVELS = {
     1: {"capacity": 3, "coins_per_animal_hr": 0, "breed_bonus": 0.00, "upgrade_cost": 0},
-    2: {"capacity": 6, "coins_per_animal_hr": 1, "breed_bonus": 0.05, "upgrade_cost": 300},
-    3: {"capacity": 10, "coins_per_animal_hr": 2, "breed_bonus": 0.15, "upgrade_cost": 800},
-    4: {"capacity": 15, "coins_per_animal_hr": 4, "breed_bonus": 0.25, "upgrade_cost": 2000},
-    5: {"capacity": 21, "coins_per_animal_hr": 7, "breed_bonus": 0.40, "upgrade_cost": 5000},
+    2: {"capacity": 6, "coins_per_animal_hr": 3, "breed_bonus": 0.05, "upgrade_cost": 300},
+    3: {"capacity": 10, "coins_per_animal_hr": 6, "breed_bonus": 0.15, "upgrade_cost": 800},
+    4: {"capacity": 15, "coins_per_animal_hr": 12, "breed_bonus": 0.25, "upgrade_cost": 2000},
+    5: {"capacity": 21, "coins_per_animal_hr": 21, "breed_bonus": 0.40, "upgrade_cost": 5000},
 }
 
 MAX_ENCLOSURE_LEVEL = 5

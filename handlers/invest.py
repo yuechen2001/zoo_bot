@@ -19,8 +19,6 @@ async def invest_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     if subcommand == "collect":
         await _collect(update, tg_id, user)
-    elif subcommand == "status":
-        await _status(update, tg_id)
     elif subcommand.isdigit() or (len(args) == 1 and args[0].lstrip("-").isdigit()):
         await _invest(update, tg_id, user, args[0])
     else:
@@ -29,8 +27,8 @@ async def invest_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             f"Deposit coins and earn *{int(INVESTMENT_RETURN_RATE * 100)}% return* after {INVESTMENT_HOURS}h.\n\n"
             "Commands:\n"
             "`/invest <amount>` — deposit coins\n"
-            "`/invest status` — check your investment\n"
-            "`/invest collect` — collect when ready",
+            "`/invest collect` — collect when ready\n\n"
+            "Check investment status anytime with /zoo.",
             parse_mode="Markdown",
         )
 
@@ -53,7 +51,7 @@ async def _invest(update, tg_id, user, amount_str):
     existing = db.get_active_investment(tg_id)
     if existing:
         await update.message.reply_text(
-            "You already have an active investment. Use `/invest status` to check it.",
+            "You already have an active investment. Check status with /zoo.",
             parse_mode="Markdown",
         )
         return
@@ -68,35 +66,6 @@ async def _invest(update, tg_id, user, amount_str):
         f"Return: *{return_amount}* 🪙 (+{int(INVESTMENT_RETURN_RATE * 100)}%)\n"
         f"Ready in: *{INVESTMENT_HOURS}h*\n\n"
         f"Use `/invest collect` when the time is up!",
-        parse_mode="Markdown",
-    )
-
-
-async def _status(update, tg_id):
-    inv = db.get_active_investment(tg_id)
-    if not inv:
-        await update.message.reply_text(
-            "No active investment. Use `/invest <amount>` to start one.",
-            parse_mode="Markdown",
-        )
-        return
-
-    invested_at = datetime.datetime.fromisoformat(inv["invested_at"])
-    ready_at = invested_at + datetime.timedelta(hours=INVESTMENT_HOURS)
-    remaining = ready_at - datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-
-    if remaining.total_seconds() <= 0:
-        time_str = "ready! Use `/invest collect`"
-    else:
-        hours, rem = divmod(int(remaining.total_seconds()), 3600)
-        minutes = rem // 60
-        time_str = f"{hours}h {minutes}m remaining" if hours else f"{minutes}m remaining"
-
-    await update.message.reply_text(
-        f"📊 *Investment Status*\n\n"
-        f"Deposited: {inv['amount']} 🪙\n"
-        f"Return: {inv['return_amount']} 🪙\n"
-        f"⏳ {time_str}",
         parse_mode="Markdown",
     )
 

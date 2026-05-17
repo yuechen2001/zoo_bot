@@ -6,6 +6,7 @@ import db
 from game.mood_engine import streak_label
 from species_data import HABITATS, ENCLOSURE_LEVELS
 from keyboards import zoo_page_keyboard
+from config import INVESTMENT_HOURS
 
 
 def _time_remaining(ready_at_str: str) -> str:
@@ -116,7 +117,15 @@ def _render_habitat_section(
 
 
 def render_zoo_page(
-    username: str, animals: list, coins: int, streak: int, page: int = 0
+    username: str,
+    animals: list,
+    coins: int,
+    streak: int,
+    page: int = 0,
+    autofeed_threshold=None,
+    autofeed_max_coins=None,
+    investment=None,
+    active_breed=None,
 ) -> tuple[str, list[str]]:
     """
     Returns (rendered_text, inhabited_habitat_keys).
@@ -149,6 +158,26 @@ def render_zoo_page(
     lines.append("")
     lines.append(f"💰 {coins}  •  {streak_label(streak)}")
 
+    if autofeed_threshold is not None:
+        lines.append(
+            f"🤖 Auto-feed: below {autofeed_threshold} hunger, max {autofeed_max_coins} 🪙/tick"
+        )
+
+    if investment:
+        invested_at = datetime.datetime.fromisoformat(investment["invested_at"])
+        matures_at = (invested_at + datetime.timedelta(hours=INVESTMENT_HOURS)).isoformat()
+        inv_time = _time_remaining(matures_at)
+        lines.append(
+            f"💹 Investment: {investment['amount']} 🪙 → {investment['return_amount']} 🪙 ({inv_time})"
+        )
+
+    if active_breed:
+        breed_time = _time_remaining(active_breed["ready_at"])
+        lines.append(
+            f"🥚 Breeding: {active_breed['emoji_a']} {active_breed['name_a']} × "
+            f"{active_breed['emoji_b']} {active_breed['name_b']} → {breed_time}"
+        )
+
     return "\n".join(lines), inhabited
 
 
@@ -167,12 +196,18 @@ async def zoo_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     animals = db.get_animals(tg_id)
+    investment = db.get_active_investment(tg_id)
+    active_breed = db.get_active_breed(tg_id)
     text, inhabited = render_zoo_page(
         update.effective_user.first_name,
         animals,
         user["coins"],
         user["streak_windows"],
         page=0,
+        autofeed_threshold=user["autofeed_threshold"],
+        autofeed_max_coins=user["autofeed_max_coins"],
+        investment=investment,
+        active_breed=active_breed,
     )
     kb = zoo_page_keyboard(tg_id, 0, inhabited) if inhabited else None
     await update.message.reply_text(text, parse_mode="Markdown", reply_markup=kb)
@@ -195,12 +230,18 @@ async def zoo_page_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     user = db.get_user(owner_id)
     animals = db.get_animals(owner_id)
+    investment = db.get_active_investment(owner_id)
+    active_breed = db.get_active_breed(owner_id)
     text, inhabited = render_zoo_page(
         query.from_user.first_name,
         animals,
         user["coins"],
         user["streak_windows"],
         page=page,
+        autofeed_threshold=user["autofeed_threshold"],
+        autofeed_max_coins=user["autofeed_max_coins"],
+        investment=investment,
+        active_breed=active_breed,
     )
     kb = zoo_page_keyboard(owner_id, page, inhabited) if inhabited else None
     await query.edit_message_text(text, parse_mode="Markdown", reply_markup=kb)
