@@ -93,15 +93,6 @@ def _render_habitat_section(
     capacity = ENCLOSURE_LEVELS[level]["capacity"]
 
     lines = [f"{h_info['emoji']} *{h_info['name']}* [Lv {level}]  {total_in_habitat}/{capacity}"]
-    income_rate = ENCLOSURE_LEVELS[level]["coins_per_animal_hr"]
-    breed_bonus = ENCLOSURE_LEVELS[level]["breed_bonus"]
-    if income_rate > 0 or breed_bonus > 0:
-        stats = []
-        if income_rate > 0:
-            stats.append(f"💰 {income_rate}🪙/hr")
-        if breed_bonus > 0:
-            stats.append(f"🧬 -{int(breed_bonus * 100)}% breed time")
-        lines.append(f"   {' | '.join(stats)}")
 
     sorted_groups = sorted(
         species_groups.items(),
