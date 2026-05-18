@@ -76,8 +76,14 @@ async def cleanup(ctx):
 
 async def enclosure_income(ctx):
     """Runs every hour. Credits pending enclosure coins and notifies."""
+    t0 = datetime.datetime.now(datetime.timezone.utc)
+    logger.info("enclosure_income: start")
     db.set_setting("last_enclosure_tick_at", _now_iso())
     await _tick_enclosure_income(ctx)
+    logger.info(
+        "enclosure_income: done in %.2fs",
+        (datetime.datetime.now(datetime.timezone.utc) - t0).total_seconds(),
+    )
 
 
 async def _send_mood_prompts(ctx):
@@ -341,6 +347,8 @@ async def _cleanup_expired_prompts(ctx):
 
 async def wild_event_tick(ctx):
     """Post a wild animal sighting to each active group, then reschedule itself at a random interval."""
+    t0 = datetime.datetime.now(datetime.timezone.utc)
+    logger.info("wild_event_tick: start")
     from handlers.wild_event import wild_catch_keyboard
 
     groups = db.get_active_group_chats()
@@ -378,11 +386,18 @@ async def wild_event_tick(ctx):
         + datetime.timedelta(seconds=delay)
     ).isoformat()
     db.set_setting("next_wild_event_at", next_at)
+    logger.info(
+        "wild_event_tick: done in %.2fs, next in %ds",
+        (datetime.datetime.now(datetime.timezone.utc) - t0).total_seconds(),
+        delay,
+    )
     ctx.job_queue.run_once(wild_event_tick, delay, name="wild_event_tick")
 
 
 async def cleanup_expired_wild_events(ctx):
     """Expire unclaimed wild events and edit their messages to show they're gone."""
+    t0 = datetime.datetime.now(datetime.timezone.utc)
+    logger.info("cleanup_expired_wild_events: start")
     expired = db.get_expired_wild_events(WILD_EVENT_EXPIRY_MINUTES)
     for event in expired:
         try:
@@ -395,3 +410,7 @@ async def cleanup_expired_wild_events(ctx):
         except Exception:
             pass
         db.claim_wild_event(event["id"], -1)
+    logger.info(
+        "cleanup_expired_wild_events: done in %.2fs",
+        (datetime.datetime.now(datetime.timezone.utc) - t0).total_seconds(),
+    )
