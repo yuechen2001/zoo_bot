@@ -173,7 +173,7 @@ def render_zoo_page(
         )
 
     if active_powerups:
-        active = [label for flag, label in POWERUP_LABELS if active_powerups.get(flag)]
+        active = [label for flag, label in POWERUP_LABELS if active_powerups[flag]]
         if active:
             lines.append("⚡ Active: " + " · ".join(active))
 
