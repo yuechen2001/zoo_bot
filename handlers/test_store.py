@@ -342,6 +342,15 @@ async def test_use_lucky_token_happy_path():
     assert "lucky" in update.message.reply_text.call_args[0][0].lower()
 
 
+@pytest.mark.asyncio
+async def test_use_lucky_token_already_active():
+    update, ctx = _make_update(args=["use", "lucky_token"])
+    with patch("handlers.store.db.get_user", return_value=_make_user(lucky_catch_active=1)):
+        await store_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0].lower()
+    assert "already active" in reply
+
+
 # ── /store use mood_booster ───────────────────────────────────────────────────
 
 
@@ -369,6 +378,15 @@ async def test_use_mood_booster_happy_path():
     assert "booster" in update.message.reply_text.call_args[0][0].lower()
 
 
+@pytest.mark.asyncio
+async def test_use_mood_booster_already_active():
+    update, ctx = _make_update(args=["use", "mood_booster"])
+    with patch("handlers.store.db.get_user", return_value=_make_user(mood_booster_active=1)):
+        await store_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0].lower()
+    assert "already active" in reply
+
+
 # ── /store use catch_net ──────────────────────────────────────────────────────
 
 
@@ -394,6 +412,15 @@ async def test_use_catch_net_happy_path():
     mock_consume.assert_called_once_with(1)
     mock_set.assert_called_once_with(1, True)
     assert "catch net" in update.message.reply_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_use_catch_net_already_active():
+    update, ctx = _make_update(args=["use", "catch_net"])
+    with patch("handlers.store.db.get_user", return_value=_make_user(catch_net_active=1)):
+        await store_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0].lower()
+    assert "already active" in reply
 
 
 # ── /store use breed_accelerator ─────────────────────────────────────────────

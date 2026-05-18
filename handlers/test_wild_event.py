@@ -172,3 +172,38 @@ async def test_wild_event_success():
     query.answer.assert_called_once()
     assert "caught" in query.answer.call_args[0][0].lower()
     query.edit_message_text.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_wild_event_fires_both_achievement_triggers():
+    """Catching a wild event should trigger both wild_catch and catch achievements."""
+    update, query = _make_query()
+    event = _make_event()
+    species = _make_species()
+    lure_row = make_row(id=1)
+    mock_achievements = AsyncMock()
+    ctx = MagicMock()
+    with patch("handlers.wild_event.db.get_wild_event", return_value=event), patch(
+        "handlers.wild_event.db.get_user", return_value=_make_user()
+    ), patch("handlers.wild_event.db.get_conn") as mock_conn, patch(
+        "handlers.wild_event.db.get_enclosure_level", return_value=1
+    ), patch(
+        "handlers.wild_event.db.get_animal_count_by_habitat", return_value=0
+    ), patch(
+        "handlers.wild_event.db.claim_wild_event", return_value=True
+    ), patch(
+        "handlers.wild_event.db.add_animal"
+    ), patch(
+        "handlers.wild_event.check_achievements", mock_achievements
+    ), patch(
+        "handlers.wild_event.random.random", return_value=0.0
+    ):
+        inner = MagicMock()
+        inner.execute.return_value.fetchone.side_effect = [species, lure_row]
+        mock_conn.return_value.__enter__ = MagicMock(return_value=inner)
+        mock_conn.return_value.__exit__ = MagicMock(return_value=False)
+        await wild_event_callback(update, ctx)
+
+    triggers = [c.args[1] for c in mock_achievements.call_args_list]
+    assert "wild_catch" in triggers
+    assert "catch" in triggers

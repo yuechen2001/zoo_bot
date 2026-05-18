@@ -124,6 +124,41 @@ def test_render_zoo_position_numbers_sequential():
     assert "#3 Three" in text
 
 
+# ── power-up indicators ───────────────────────────────────────────────────────
+
+
+def _render_with_powerups(**flags):
+    animals = [_make_animal()]
+    powerups = {
+        "lucky_catch_active": 0,
+        "mood_booster_active": 0,
+        "catch_net_active": 0,
+        **flags,
+    }
+    with _zoo_patches():
+        text, _ = render_zoo_page("Alice", animals, 100, 0, active_powerups=powerups)
+    return text
+
+
+def test_powerup_indicator_shown_when_active():
+    text = _render_with_powerups(lucky_catch_active=1, catch_net_active=1)
+    assert "⚡ Active:" in text
+    assert "🎯 Lucky" in text
+    assert "🪤 Catch Net" in text
+
+
+def test_powerup_indicator_hidden_when_none_active():
+    text = _render_with_powerups()
+    assert "⚡ Active:" not in text
+
+
+def test_powerup_indicator_only_lists_active_flags():
+    text = _render_with_powerups(mood_booster_active=1)
+    assert "✨ Mood Boost" in text
+    assert "🎯 Lucky" not in text
+    assert "🪤 Catch Net" not in text
+
+
 def test_render_zoo_shows_coins():
     animals = [_make_animal(nickname="X")]
     with _zoo_patches():
