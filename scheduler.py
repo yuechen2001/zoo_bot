@@ -127,11 +127,11 @@ async def _send_mood_prompts(ctx):
         # Don't send a new prompt if one was sent recently — checked against DB so restarts are safe
         group_state = db.get_group_state(group_chat_id)
         if group_state and group_state["last_prompt_at"]:
-            elapsed = (
+            elapsed_s = (
                 datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
                 - datetime.datetime.fromisoformat(group_state["last_prompt_at"])
-            ).total_seconds() / 60
-            if elapsed < PROMPT_INTERVAL_MINUTES:
+            ).total_seconds()
+            if elapsed_s < PROMPT_INTERVAL_MINUTES * 60:
                 continue
 
         try:

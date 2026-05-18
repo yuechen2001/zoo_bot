@@ -165,6 +165,17 @@ def _first_delay(setting_key: str, interval_s: int, default_s: int) -> float:
     return max(10.0, interval_s - elapsed)
 
 
+def _first_delay_prompt(interval_s: int) -> float:
+    """Delay until next prompt tick, anchored to when a prompt was last *sent* to any group."""
+    raw = db_module.get_oldest_group_prompt_at()
+    if not raw:
+        return 30.0
+    last = datetime.datetime.fromisoformat(raw)
+    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    elapsed = (now - last).total_seconds()
+    return max(10.0, interval_s - elapsed)
+
+
 def main():
     init_db()
 
@@ -205,7 +216,7 @@ def main():
     app.job_queue.run_repeating(
         prompt_tick,
         interval=prompt_interval,
-        first=_first_delay("last_prompt_tick_at", prompt_interval, 30),
+        first=_first_delay_prompt(prompt_interval),
         job_kwargs={"misfire_grace_time": 60},
     )
     app.job_queue.run_repeating(

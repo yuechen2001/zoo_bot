@@ -101,6 +101,12 @@ def get_group_state(group_chat_id: int):
         ).fetchone()
 
 
+def get_oldest_group_prompt_at() -> str | None:
+    with get_conn() as conn:
+        row = conn.execute("SELECT MIN(last_prompt_at) FROM group_state").fetchone()
+        return row[0] if row else None
+
+
 def set_group_last_prompt(group_chat_id: int, timestamp: str) -> None:
     with get_conn() as conn:
         conn.execute(
