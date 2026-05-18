@@ -365,10 +365,10 @@ async def wild_event_tick(ctx):
         try:
             msg = await ctx.bot.send_message(
                 group_chat_id,
-                f"🌿 *A wild {species['emoji']} {species['name']} appeared!*\n"
-                f"{RARITY_LABELS[species['rarity']]} | {HABITATS[species['habitat']]['emoji']} {HABITATS[species['habitat']]['name']}\n\n"
-                f"Catch rate: {int(species['catch_rate'] * 100)}%\n\n"
-                f"You have 5 min to decide.",
+                f"⚡ *Wild Encounter!*\n"
+                f"{species['emoji']} *{species['name']}* — {RARITY_LABELS[species['rarity']]} · {HABITATS[species['habitat']]['emoji']} {HABITATS[species['habitat']]['name']}\n\n"
+                f"Catch rate: {int(species['catch_rate'] * 100)}%  ·  🎣 Requires a {HABITATS[species['habitat']]['name']} lure\n"
+                f"First to claim it wins!",
                 parse_mode="Markdown",
                 reply_markup=wild_catch_keyboard(0),
             )

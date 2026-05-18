@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 def wild_catch_keyboard(event_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
-        [[InlineKeyboardButton("🎣 Catch it!", callback_data=f"wild_catch_{event_id}")]]
+        [[InlineKeyboardButton("⚡ Claim it!", callback_data=f"wild_catch_{event_id}")]]
     )
 
 
@@ -87,7 +87,7 @@ async def wild_event_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await check_achievements(tg_id, "catch", ctx)
     try:
         await query.edit_message_text(
-            f"🌿 *Wild event over!*\n"
+            f"⚡ *Wild event over!*\n"
             f"{species['emoji']} *{species['name']}* was caught by *{mention}*!",
             parse_mode="Markdown",
         )

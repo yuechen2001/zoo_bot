@@ -325,9 +325,11 @@ async def test_wild_event_tick_message_format():
         await wild_event_tick(ctx)
 
     text = ctx.bot.send_message.call_args[0][1]
-    assert "Common ⬜ | 🌲 Woodland" in text
+    assert "⚡ *Wild Encounter!*" in text
+    assert "Common ⬜ · 🌲 Woodland" in text
     assert "Catch rate: 90%" in text
-    assert "5 min" in text
+    assert "Requires a Woodland lure" in text
+    assert "First to claim it wins!" in text
 
 
 @pytest.mark.asyncio
