@@ -8,14 +8,16 @@ A Telegram bot for couples. Build your own virtual zoo by catching and breeding 
 
 - **Mood check-ins** — bot prompts every 30 min, earn coins for responding
 - **Streak multiplier** — longer streaks = more coins per check-in (up to 3×)
-- **Catch system** — roll for random animals by rarity, pay coins to attempt
+- **Catch system** — buy a lure from /store, use /catch to pick it and encounter an animal; pay coins to attempt the catch
+- **Lures** — Basic Lure (any habitat, no bonus) or habitat-specific lures (1.5× catch rate, pre-checks enclosure capacity)
 - **Habitat enclosures** — 6 typed enclosures (Woodland, Savanna, Tropical, Aquatic, Tundra, Mythic); upgrade for higher capacity, passive income, and breeding bonuses
 - **Breeding** — pair two animals and wait for an offspring; same-habitat pairs get a time reduction
 - **Hunger** — animals decay over time, feed them before they run away
+- **Foot massage** — halve hunger decay for 1h (25 🪙, 4h cooldown)
 - **Achievements** — 14 milestones across catching, breeding, and streaks
 - **Tiered daily rewards** — claim coins daily; consecutive days unlock higher tiers (50 → 75 → 100 → 150 🪙)
 - **Trivia** — answer animal trivia for bonus coins
-- **Store** — spend coins on consumables (Mega Feed) and cosmetic titles
+- **Store** — consumables (lures, feed, boosts), cosmetic titles
 - **Gamble & slots** — risk your coins for more
 - **Trading** — swap animals with your partner
 - **Investments** — park coins for a 25% return after 24h
@@ -72,7 +74,8 @@ python main.py
 1. Add the bot to a group with your partner
 2. Both send `/start` — each person gets a random starter animal and a level-1 enclosure in every habitat
 3. Respond to mood prompts to earn coins
-4. Use `/catch` to grow your zoo, `/enclosures` to expand capacity
+4. Buy a lure from `/store`, then use `/catch` to grow your zoo
+5. Use `/enclosures` to expand capacity and earn passive income
 
 ---
 
@@ -82,10 +85,8 @@ python main.py
 |---|---|
 | `/start` | Join and receive a starter animal |
 | `/zoo` | View your zoo, one habitat per page — tap ◀ ▶ to browse |
-| `/autofeed <threshold> <max_coins>` | Auto-feed animals below hunger threshold each tick (e.g. `/autofeed 50 100`) |
-| `/autofeed off` | Disable auto-feed |
-| `/directory` | Browse all species and see which you own |
-| `/catch` | Search for a wild animal |
+| `/footmassage` | Halve hunger decay for 1h (25 🪙, 4h cooldown) |
+| `/catch` | Pick a lure and search for a wild animal |
 | `/feed <numbers>` | Feed animal(s) — 10 🪙 each |
 | `/breed <a> <b>` | Breed two animals together |
 | `/breed collect` | Claim your finished offspring |
@@ -97,6 +98,7 @@ python main.py
 | `/enclosures` | View and upgrade your habitat enclosures |
 | `/enclosures collect` | Claim pending passive income |
 | `/store` | Browse consumables and cosmetic titles |
+| `/inventory` | Your bag — use items and equip titles |
 | `/achievements` | View your achievements |
 | `/daily` | Claim daily coins (50→75→100→150 on consecutive days) |
 | `/trivia` | Animal trivia — +40 correct, +5 wrong, 4h cooldown |
@@ -104,6 +106,9 @@ python main.py
 | `/slots` | Spin the slot machine (10 🪙 per spin) |
 | `/invest <amount>` | Invest coins (25% return after 24h) |
 | `/invest collect` | Claim your matured investment |
+| `/autofeed <threshold> <max_coins>` | Auto-feed animals below hunger threshold each tick (e.g. `/autofeed 50 100`) |
+| `/autofeed off` | Disable auto-feed |
+| `/directory` | Browse all species and see which you own |
 | `/moodstart` | Opt in to mood prompts |
 | `/moodstop` | Opt out (streak preserved) |
 | `/help` | Show all commands |
@@ -138,7 +143,44 @@ You have **15 minutes** to respond after a prompt. Missing 2 prompts in a row re
 | Epic 🟪 | 12% | 35% | 80 🪙 |
 | Legendary 🟨 | 3% | 10% | 200 🪙 |
 
-Each search costs 10 🪙 upfront. Failed catches lose the attempt cost — no refund.
+Catch rate is multiplied by 1.5× when using a habitat-specific lure. A lure is always consumed on use — if no species are found, it is refunded.
+
+---
+
+## Store
+
+Use `/store` to browse items. Buy with the inline buttons; use `/store use <item>` for consumables.
+
+**Lures** (required for `/catch`):
+
+| Item | Price | Effect |
+|---|---|---|
+| 🎣 Basic Lure | 10 🪙 | Any habitat, base catch rate |
+| 🌲 Woodland Lure | 80 🪙 | Woodland habitat, 1.5× catch rate |
+| 🌾 Savanna Lure | 80 🪙 | Savanna habitat, 1.5× catch rate |
+| 🌴 Tropical Lure | 80 🪙 | Tropical habitat, 1.5× catch rate |
+| 🐠 Aquatic Lure | 80 🪙 | Aquatic habitat, 1.5× catch rate |
+| ❄️ Tundra Lure | 80 🪙 | Tundra habitat, 1.5× catch rate |
+| 🌟 Mythic Lure | 200 🪙 | Mythic habitat, 1.5× catch rate |
+
+**Consumables** (sit in your bag until used):
+
+| Item | Price | Effect |
+|---|---|---|
+| 🍖 Mega Feed | 30 🪙 | Restore one animal's hunger to 100 |
+| ⚡ Breed Boost | 80 🪙 | Cut active breed time by 2h |
+| 🚀 Breed Accelerator | 100 🪙 | Halve remaining breed time |
+| 🎯 Lucky Token | 50 🪙 | 2× catch rate on next /catch |
+| ✨ Mood Booster | 60 🪙 | Double coins on next mood check-in |
+| 🪤 Catch Net | 800 🪙 | Guarantee a legendary encounter and successful catch |
+
+**Cosmetic titles** (shown in `/zoo`):
+
+| Item | Price |
+|---|---|
+| 🎖 Zookeeper | 200 🪙 |
+| 🌿 Animal Whisperer | 500 🪙 |
+| 👑 Zoo Legend | 1,000 🪙 |
 
 ---
 
