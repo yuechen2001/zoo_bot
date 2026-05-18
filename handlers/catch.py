@@ -9,8 +9,7 @@ from keyboards import catch_keyboard, lure_keyboard
 from species_data import RARITY_LABELS, HABITATS, ENCLOSURE_LEVELS
 from config import CATCH_EXPIRY_MINUTES
 from achievements import check_achievements
-
-LURE_MULTIPLIER = 1.5
+from game.balance import LURE_MULTIPLIER
 
 
 async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

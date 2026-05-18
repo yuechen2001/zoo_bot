@@ -2,12 +2,7 @@ import random
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
-
-SPIN_COST = 10
-WIN_3 = 200
-WIN_2 = 20
-
-SYMBOLS = ["🐭", "🐸", "🐱", "🦊", "🐼", "🦄"]
+from game.balance import SPIN_COST, WIN_3, WIN_2, SYMBOLS
 
 
 async def slots_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

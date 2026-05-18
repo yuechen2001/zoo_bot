@@ -442,6 +442,13 @@ RARITY_LABELS = {
     "legendary": "Legendary 🟨",
 }
 
+RARITY_SQUARE = {
+    "common": "⬜",
+    "rare": "🟦",
+    "epic": "🟪",
+    "legendary": "🟨",
+}
+
 # Breed costs by rarity pair (sorted tuple → cost, base_hours at 100 hunger).
 # Max breed time = base_hours * 2 (at 0 hunger). Legendary×Legendary capped at 4h.
 BREED_TABLE = {

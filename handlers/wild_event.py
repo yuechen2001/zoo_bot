@@ -7,10 +7,9 @@ import db
 from achievements import check_achievements
 from species_data import ENCLOSURE_LEVELS
 from utils import format_mention
+from game.balance import LURE_MULTIPLIER
 
 logger = logging.getLogger(__name__)
-
-LURE_MULTIPLIER = 1.5
 
 
 def wild_catch_keyboard(event_id: int) -> InlineKeyboardMarkup:

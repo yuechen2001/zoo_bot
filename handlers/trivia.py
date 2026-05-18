@@ -4,11 +4,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 import db
 from achievements import check_achievements
-
-TRIVIA_COOLDOWN_MINUTES = 15
-TRIVIA_WINDOW_MINUTES = 10
-COINS_CORRECT = 40
-COINS_WRONG = 5
+from game.balance import TRIVIA_COOLDOWN_MINUTES, TRIVIA_WINDOW_MINUTES, COINS_CORRECT, COINS_WRONG
 
 
 def _trivia_keyboard(tg_id: int):

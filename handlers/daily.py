@@ -3,16 +3,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 import db
 from achievements import check_achievements
-
-DAILY_COOLDOWN_HOURS = 24
-DAILY_STREAK_EXPIRY_HOURS = 48  # missing a day resets streak
-
-DAILY_TIERS = [
-    (14, 150),
-    (7, 100),
-    (3, 75),
-    (1, 50),
-]
+from game.balance import DAILY_COOLDOWN_HOURS, DAILY_STREAK_EXPIRY_HOURS, DAILY_TIERS
 
 
 def _daily_coins(streak: int) -> int:

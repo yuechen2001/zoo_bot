@@ -2,8 +2,7 @@ import random
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
-
-MAX_BET = 100
+from game.balance import MAX_BET
 
 
 async def gamble_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

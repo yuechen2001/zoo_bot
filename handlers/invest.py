@@ -3,8 +3,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 import db
 from config import INVESTMENT_HOURS, INVESTMENT_RETURN_RATE
-
-MIN_INVEST = 10
+from game.balance import MIN_INVEST
 
 
 async def invest_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

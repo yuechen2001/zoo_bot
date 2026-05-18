@@ -4,7 +4,7 @@ from telegram.ext import ContextTypes
 import datetime
 import db
 from game.mood_engine import streak_label
-from species_data import HABITATS, ENCLOSURE_LEVELS
+from species_data import HABITATS, ENCLOSURE_LEVELS, RARITY_SQUARE
 from keyboards import zoo_page_keyboard
 from config import INVESTMENT_HOURS
 
@@ -24,13 +24,6 @@ def _time_remaining(ready_at_str: str) -> str:
 ROW_LEN = 9
 BORDER_A = "🌿"
 BORDER_B = "💧"
-
-RARITY_SQUARE = {
-    "common": "⬜",
-    "rare": "🟦",
-    "epic": "🟪",
-    "legendary": "🟨",
-}
 
 RARITY_ORDER = {"legendary": 0, "epic": 1, "rare": 2, "common": 3}
 

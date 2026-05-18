@@ -1,14 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
-from species_data import HABITATS, RARITY_ORDER
-
-RARITY_SQUARE = {
-    "common": "⬜",
-    "rare": "🟦",
-    "epic": "🟪",
-    "legendary": "🟨",
-}
+from species_data import HABITATS, RARITY_ORDER, RARITY_SQUARE
 
 
 def render_directory(all_species: list, owned_ids: set) -> str:
