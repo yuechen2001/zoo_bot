@@ -131,10 +131,16 @@ async def catch_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     tg_id = query.from_user.id
     data = query.data
 
+    if data == "catch_cancel":
+        ctx.user_data.pop("pending_catch", None)
+        await query.answer("Cancelled")
+        await query.edit_message_text("🎣 Search cancelled.")
+        return
+
     if data == "catch_skip":
         ctx.user_data.pop("pending_catch", None)
         await query.answer("Skipped")
-        await query.edit_message_text("You let it go. 🌿", parse_mode="Markdown")
+        await query.edit_message_text("You let it go. 🌿")
         return
 
     # catch_attempt_<species_id>

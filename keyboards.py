@@ -122,7 +122,7 @@ def lure_keyboard(lure_counts: dict[str, int]) -> InlineKeyboardMarkup:
                 for key, item, n in chunk
             ]
         )
-    rows.append([InlineKeyboardButton("❌ Cancel", callback_data="catch_skip")])
+    rows.append([InlineKeyboardButton("❌ Cancel", callback_data="catch_cancel")])
     return InlineKeyboardMarkup(rows)
 
 
