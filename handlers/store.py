@@ -42,7 +42,7 @@ def _store_text(tg_id: int) -> str:
     for key, item in COSMETICS.items():
         lines.append(f"  {item['emoji']} *{item['name']}* — {item['price']} 🪙\n  {item['desc']}")
     lines.append(
-        "\n_Tap a button to buy. Use_ `/store use <item>` _for consumables, or /catch for lures._"
+        "\nTap a button to buy. Use `/store use <item>` for consumables, or /catch for lures."
     )
     return "\n".join(lines)
 
