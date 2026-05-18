@@ -207,18 +207,17 @@ async def test_inventory_use_breed_boost_happy_path():
 
 
 @pytest.mark.asyncio
-async def test_inventory_use_breed_accelerator_happy_path():
-    update, ctx = _make_update(args=["use", "breed_accelerator"])
+async def test_inventory_use_rare_magnet_happy_path():
+    update, ctx = _make_update(args=["use", "rare_magnet"])
     with patch("handlers.inventory.db.get_user", return_value=_make_user()), patch(
         "handlers.inventory.db.get_oldest_purchase", return_value=_purchase_row()
-    ), patch(
-        "handlers.inventory.db.get_pending_breed", return_value=_breed_row(hours_from_now=4)
-    ), patch(
-        "handlers.inventory.db.adjust_breed_time_and_consume"
-    ) as mock_adjust:
+    ), patch("handlers.inventory.db.consume_purchase") as mock_consume, patch(
+        "handlers.inventory.db.set_rare_magnet"
+    ) as mock_set:
         await inventory_command(update, ctx)
-    mock_adjust.assert_called_once()
-    assert "accelerator" in update.message.reply_text.call_args[0][0].lower()
+    mock_consume.assert_called_once()
+    mock_set.assert_called_once_with(_make_user()["user_id"], True)
+    assert "magnet" in update.message.reply_text.call_args[0][0].lower()
 
 
 # ── /inventory use mega_feed ──────────────────────────────────────────────────

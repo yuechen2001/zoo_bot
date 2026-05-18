@@ -94,6 +94,11 @@ async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     rarity = roll_encounter()
     if user["catch_net_active"]:
         rarity = "legendary"
+    elif user["rare_magnet_active"] and rarity == "common":
+        rare_candidates = db.get_species_candidates("rare", None if is_basic else habitat)
+        if rare_candidates:
+            rarity = "rare"
+        db.set_rare_magnet(tg_id, False)
     candidates = db.get_species_candidates(rarity, None if is_basic else habitat)
     species = random.choice(candidates) if candidates else None
 

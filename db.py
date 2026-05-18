@@ -713,6 +713,14 @@ def set_catch_net(user_id: int, active: bool):
         )
 
 
+def set_rare_magnet(user_id: int, active: bool):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET rare_magnet_active = ? WHERE user_id = ?",
+            (1 if active else 0, user_id),
+        )
+
+
 def get_consumable_counts(user_id: int) -> dict[str, int]:
     with get_conn() as conn:
         rows = conn.execute(

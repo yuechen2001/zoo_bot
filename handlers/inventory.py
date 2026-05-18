@@ -5,12 +5,13 @@ import db
 from game.constants import BREED_BOOST_HOURS
 from game.store_data import CONSUMABLES, LURES, COSMETICS
 
-_NO_ARG_USABLE = {"lucky_token", "mood_booster", "catch_net", "breed_boost", "breed_accelerator"}
+_NO_ARG_USABLE = {"lucky_token", "mood_booster", "catch_net", "breed_boost", "rare_magnet"}
 
 _ACTIVE_FLAGS = {
     "lucky_token": "lucky_catch_active",
     "mood_booster": "mood_booster_active",
     "catch_net": "catch_net_active",
+    "rare_magnet": "rare_magnet_active",
 }
 
 
@@ -186,15 +187,10 @@ def _apply(tg_id: int, key: str) -> str:
         db.adjust_breed_time_and_consume(pending["id"], new_ready.isoformat(), purchase["id"])
         return "⚡ Breed Boost applied! Breed time cut by 2 hours."
 
-    if key == "breed_accelerator":
-        pending = db.get_pending_breed(tg_id)
-        if not pending:
-            return "No active breed to accelerate!"
-        now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-        remaining = datetime.datetime.fromisoformat(pending["ready_at"]) - now
-        new_ready = max(now, now + remaining / 2)
-        db.adjust_breed_time_and_consume(pending["id"], new_ready.isoformat(), purchase["id"])
-        return "🚀 Breed Accelerator applied! Remaining breed time halved."
+    if key == "rare_magnet":
+        db.consume_purchase(purchase["id"])
+        db.set_rare_magnet(tg_id, True)
+        return "🧲 Rare Magnet activated! Your next /catch is guaranteed rare or higher."
 
     return "Unknown item."
 

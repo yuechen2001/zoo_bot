@@ -35,12 +35,12 @@ STORE_ITEMS: dict[str, dict] = {
         "category": "consumable",
         "desc": "Guarantees a legendary encounter and successful catch — activate from /inventory",
     },
-    "breed_accelerator": {
-        "name": "Breed Accelerator",
-        "emoji": "🚀",
-        "price": 100,
+    "rare_magnet": {
+        "name": "Rare Magnet",
+        "emoji": "🧲",
+        "price": 120,
         "category": "consumable",
-        "desc": "Halve your remaining breed time — activate from /inventory",
+        "desc": "Guarantee a rare-or-higher encounter on your next /catch — activate from /inventory",
     },
     # ── Lures ─────────────────────────────────────────────────────────────────
     "lure_basic": {

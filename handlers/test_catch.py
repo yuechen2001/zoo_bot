@@ -7,6 +7,7 @@ from handlers.catch import catch_command, catch_lure_callback, catch_callback, L
 @pytest.fixture(autouse=True)
 def stub_catch_db(monkeypatch):
     monkeypatch.setattr("handlers.catch.db.set_lucky_catch", lambda *a: None)
+    monkeypatch.setattr("handlers.catch.db.set_rare_magnet", lambda *a: None)
     monkeypatch.setattr("handlers.catch.db.get_catch_message", lambda *a: (None, None))
     monkeypatch.setattr("handlers.catch.db.set_catch_message", lambda *a: None)
 
@@ -94,7 +95,8 @@ async def test_catch_lure_callback_blocks_when_lure_not_in_inventory():
     ctx.user_data = {}
 
     with patch(
-        "handlers.catch.db.get_user", return_value={"coins": 200, "catch_net_active": 0}
+        "handlers.catch.db.get_user",
+        return_value={"coins": 200, "catch_net_active": 0, "rare_magnet_active": 0},
     ), patch("handlers.catch.db.get_oldest_purchase", return_value=None):
         await catch_lure_callback(update, ctx)
 
@@ -134,7 +136,7 @@ async def test_catch_lure_callback_generates_encounter_and_stores_pending():
 
     with patch(
         "handlers.catch.db.get_user",
-        return_value={"coins": 200, "catch_net_active": 0},
+        return_value={"coins": 200, "catch_net_active": 0, "rare_magnet_active": 0},
     ), patch("handlers.catch.db.get_oldest_purchase", return_value=lure_purchase), patch(
         "handlers.catch.db.consume_purchase"
     ), patch(
@@ -174,7 +176,7 @@ async def test_catch_lure_callback_refunds_when_no_species_found():
 
     with patch(
         "handlers.catch.db.get_user",
-        return_value={"coins": 200, "catch_net_active": 0},
+        return_value={"coins": 200, "catch_net_active": 0, "rare_magnet_active": 0},
     ), patch("handlers.catch.db.get_oldest_purchase", return_value=lure_purchase), patch(
         "handlers.catch.db.consume_purchase"
     ), patch(
@@ -213,7 +215,12 @@ class TestCatchCapacityGate:
 
         with patch(
             "handlers.catch.db.get_user",
-            return_value={"coins": 500, "lucky_catch_active": 0, "catch_net_active": 0},
+            return_value={
+                "coins": 500,
+                "lucky_catch_active": 0,
+                "catch_net_active": 0,
+                "rare_magnet_active": 0,
+            },
         ), patch("handlers.catch.db.get_conn"), patch(
             "handlers.catch.roll_catch", return_value=True
         ), patch(
@@ -247,7 +254,12 @@ class TestCatchCapacityGate:
 
         with patch(
             "handlers.catch.db.get_user",
-            return_value={"coins": 500, "lucky_catch_active": 0, "catch_net_active": 0},
+            return_value={
+                "coins": 500,
+                "lucky_catch_active": 0,
+                "catch_net_active": 0,
+                "rare_magnet_active": 0,
+            },
         ), patch("handlers.catch.db.get_conn", return_value=cm), patch(
             "handlers.catch.roll_catch", return_value=True
         ), patch(
