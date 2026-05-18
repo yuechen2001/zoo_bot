@@ -92,4 +92,4 @@ async def wild_event_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown",
         )
     except Exception:
-        pass
+        logger.exception("Failed to update wild event message %s", event_id)
