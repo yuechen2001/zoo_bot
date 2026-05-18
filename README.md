@@ -149,7 +149,7 @@ Catch rate is multiplied by 1.5× when using a habitat-specific lure. A lure is 
 
 ## Store
 
-Use `/store` to browse items. Buy with the inline buttons; use `/store use <item>` for consumables.
+Use `/store` to browse and buy items. Use `/inventory` to activate consumables and equip titles — no need to remember item keys.
 
 **Lures** (required for `/catch`):
 
