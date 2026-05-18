@@ -1,7 +1,7 @@
 import datetime
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from handlers.invest import invest_command
+from handlers.invest import invest_command, invest_deposit_callback, invest_collect_callback
 
 
 def _make_update(user_id=1):
@@ -131,3 +131,75 @@ async def test_invest_unknown_arg_shows_status_card():
         await invest_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]
     assert "invest" in reply.lower()
+
+
+# ── invest_deposit_callback / invest_collect_callback ─────────────────────────
+
+
+def _make_callback(user_id=1, data="invest_deposit_100"):
+    query = MagicMock()
+    query.from_user.id = user_id
+    query.data = data
+    query.answer = AsyncMock()
+    query.edit_message_text = AsyncMock()
+    update = MagicMock()
+    update.callback_query = query
+    ctx = MagicMock()
+    return update, query, ctx
+
+
+@pytest.mark.asyncio
+async def test_invest_deposit_callback_creates_investment():
+    update, query, ctx = _make_callback(data="invest_deposit_100")
+    inv = {"id": 1, "amount": 100, "return_amount": 125, "invested_at": "2099-01-01T00:00:00"}
+    with patch("handlers.invest.db.get_user", return_value=_make_user(coins=500)), patch(
+        "handlers.invest.db.get_active_investment", side_effect=[None, inv]
+    ), patch("handlers.invest.db.create_investment") as mock_create, patch(
+        "handlers.invest.db.add_coins"
+    ):
+        await invest_deposit_callback(update, ctx)
+    mock_create.assert_called_once()
+    query.edit_message_text.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_invest_deposit_callback_blocked_when_active():
+    update, query, ctx = _make_callback(data="invest_deposit_100")
+    existing = {"id": 1, "amount": 50, "return_amount": 63, "invested_at": "2099-01-01T00:00:00"}
+    with patch("handlers.invest.db.get_user", return_value=_make_user(coins=500)), patch(
+        "handlers.invest.db.get_active_investment", return_value=existing
+    ):
+        await invest_deposit_callback(update, ctx)
+    assert query.answer.call_args[1].get("show_alert") is True
+    query.edit_message_text.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_invest_collect_callback_succeeds():
+    update, query, ctx = _make_callback(data="invest_collect")
+    past = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        - datetime.timedelta(hours=25)
+    ).isoformat()
+    inv = {"id": 1, "amount": 100, "return_amount": 125, "invested_at": past}
+    with patch("handlers.invest.db.get_user", return_value=_make_user()), patch(
+        "handlers.invest.db.get_active_investment", return_value=inv
+    ), patch("handlers.invest.db.collect_investment") as mock_collect, patch(
+        "handlers.invest.db.add_coins"
+    ):
+        await invest_collect_callback(update, ctx)
+    mock_collect.assert_called_once_with(1)
+    query.edit_message_text.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_invest_collect_callback_blocked_when_not_ready():
+    update, query, ctx = _make_callback(data="invest_collect")
+    future = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
+    inv = {"id": 1, "amount": 100, "return_amount": 125, "invested_at": future}
+    with patch("handlers.invest.db.get_user", return_value=_make_user()), patch(
+        "handlers.invest.db.get_active_investment", return_value=inv
+    ):
+        await invest_collect_callback(update, ctx)
+    assert query.answer.call_args[1].get("show_alert") is True
+    query.edit_message_text.assert_not_called()

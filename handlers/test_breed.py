@@ -4,7 +4,13 @@ import os
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from handlers.breed import breed_command, _collect_breed
+from handlers.breed import (
+    breed_command,
+    _collect_breed,
+    breed_p1_callback,
+    breed_p2_callback,
+    breed_cancel_callback,
+)
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from conftest import make_row
@@ -232,3 +238,75 @@ async def test_breed_collect_blocked_when_enclosure_full():
 
     reply = update.message.reply_text.call_args[0][0]
     assert "full" in reply.lower()
+
+
+# ── breed_p1/p2 callbacks ─────────────────────────────────────────────────────
+
+
+def _make_callback(user_id=1, data="breed_p1_1"):
+    query = MagicMock()
+    query.from_user.id = user_id
+    query.data = data
+    query.answer = AsyncMock()
+    query.edit_message_text = AsyncMock()
+    update = MagicMock()
+    update.callback_query = query
+    ctx = MagicMock()
+    return update, query, ctx
+
+
+@pytest.mark.asyncio
+async def test_breed_p1_shows_second_picker():
+    update, query, ctx = _make_callback(data="breed_p1_1")
+    animal_a = _make_animal("a1")
+    animals = [animal_a, _make_animal("a2")]
+    with patch("handlers.breed.db.get_pending_breed", return_value=None), patch(
+        "handlers.breed.db.get_animal_by_position", return_value=animal_a
+    ), patch("handlers.breed.db.get_animals", return_value=animals):
+        await breed_p1_callback(update, ctx)
+    query.edit_message_text.assert_called_once()
+    text = query.edit_message_text.call_args[0][0]
+    assert "parent 1" in text.lower() or "parent 2" in text.lower()
+
+
+@pytest.mark.asyncio
+async def test_breed_p1_blocked_when_already_breeding():
+    update, query, ctx = _make_callback(data="breed_p1_1")
+    pending = make_row(id=1, ready_at="2099-01-01T00:00:00")
+    with patch("handlers.breed.db.get_pending_breed", return_value=pending):
+        await breed_p1_callback(update, ctx)
+    assert query.answer.call_args[1].get("show_alert") is True
+    query.edit_message_text.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_breed_p2_starts_breed():
+    update, query, ctx = _make_callback(data="breed_p2_1_2")
+    animal_a = _make_animal("a1", rarity="common")
+    animal_b = _make_animal("a2", rarity="common")
+    cm, _ = _make_conn_mock()
+    with patch("handlers.breed.db.get_user", return_value=_make_user(coins=500)), patch(
+        "handlers.breed.db.get_animal_by_position", side_effect=[animal_a, animal_b]
+    ), patch("handlers.breed.db.get_pending_breed", return_value=None), patch(
+        "handlers.breed.db.get_enclosure_level", return_value=1
+    ), patch(
+        "handlers.breed.db.get_conn", return_value=cm
+    ), patch(
+        "handlers.breed.resolve_offspring", return_value=1
+    ), patch(
+        "handlers.breed.calc_breed_ready_at", return_value="2099-01-01T00:00:00"
+    ), patch(
+        "handlers.breed.check_achievements"
+    ):
+        await breed_p2_callback(update, ctx)
+    query.edit_message_text.assert_called_once()
+    text = query.edit_message_text.call_args[0][0]
+    assert "breeding" in text.lower()
+
+
+@pytest.mark.asyncio
+async def test_breed_cancel_dismisses():
+    update, query, ctx = _make_callback(data="breed_cancel")
+    await breed_cancel_callback(update, ctx)
+    query.answer.assert_called_once_with("Cancelled")
+    query.edit_message_text.assert_called_once_with("Breed cancelled.")

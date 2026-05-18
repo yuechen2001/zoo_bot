@@ -25,9 +25,9 @@ def animal_picker_keyboard(
     rows = []
     for pos, animal in enumerate(animals, start=1):
         aid = animal["animal_id"]
-        square = RARITY_SQUARE.get(animal.get("rarity", "common"), "⬜")
+        square = RARITY_SQUARE.get(animal["rarity"], "⬜")
         label_name = animal["nickname"] or animal["species_name"]
-        if aid in disabled_ids or animal.get("is_breeding"):
+        if aid in disabled_ids or animal["is_breeding"]:
             label = f"🔒 {animal['emoji']} #{pos} {label_name}"
             rows.append([InlineKeyboardButton(label, callback_data="zoo_noop")])
         else:
