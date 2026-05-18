@@ -22,11 +22,7 @@ async def slots_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     reels = [random.choice(SYMBOLS) for _ in range(3)]
-    with db.get_conn() as conn:
-        conn.execute(
-            "UPDATE users SET coins = coins - ? WHERE user_id = ?",
-            (SPIN_COST, tg_id),
-        )
+    db.add_coins(tg_id, -SPIN_COST)
 
     counts = {s: reels.count(s) for s in set(reels)}
     max_match = max(counts.values())
@@ -42,11 +38,7 @@ async def slots_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         result_line = "No match. Better luck next time!"
 
     if winnings:
-        with db.get_conn() as conn:
-            conn.execute(
-                "UPDATE users SET coins = coins + ? WHERE user_id = ?",
-                (winnings, tg_id),
-            )
+        db.add_coins(tg_id, winnings)
 
     user = db.get_user(tg_id)
     await update.message.reply_text(

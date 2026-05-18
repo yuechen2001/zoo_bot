@@ -88,19 +88,12 @@ async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     with db.get_conn() as conn:
         offspring_species_id = resolve_offspring(rarity_a, rarity_b, conn)
-        ready_at = calc_breed_ready_at(
-            rarity_a, rarity_b, animal_a["hunger"], animal_b["hunger"], habitat_bonus
-        )
-        conn.execute("UPDATE users SET coins = coins - ? WHERE user_id = ?", (cost, tg_id))
-        conn.execute(
-            "UPDATE animals SET is_breeding = 1 WHERE animal_id IN (?, ?)",
-            (animal_a["animal_id"], animal_b["animal_id"]),
-        )
-        conn.execute(
-            "INSERT INTO breeding_queue (user_id, parent_a, parent_b, offspring_species_id, ready_at) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (tg_id, animal_a["animal_id"], animal_b["animal_id"], offspring_species_id, ready_at),
-        )
+    ready_at = calc_breed_ready_at(
+        rarity_a, rarity_b, animal_a["hunger"], animal_b["hunger"], habitat_bonus
+    )
+    db.start_breed(
+        tg_id, animal_a["animal_id"], animal_b["animal_id"], offspring_species_id, ready_at, cost
+    )
 
     bonus_line = ""
     if habitat_bonus > 0:
@@ -157,17 +150,14 @@ async def _collect_breed(update, tg_id, ctx=None):
         return
 
     animal_id = str(uuid.uuid4())
-
-    with db.get_conn() as conn:
-        conn.execute(
-            "INSERT INTO animals (animal_id, user_id, species_id) VALUES (?, ?, ?)",
-            (animal_id, tg_id, pending["offspring_species_id"]),
-        )
-        conn.execute(
-            "UPDATE animals SET is_breeding = 0 WHERE animal_id IN (?, ?)",
-            (pending["parent_a"], pending["parent_b"]),
-        )
-        conn.execute("UPDATE breeding_queue SET collected = 1 WHERE id = ?", (pending["id"],))
+    db.collect_breed(
+        tg_id,
+        animal_id,
+        pending["offspring_species_id"],
+        pending["id"],
+        pending["parent_a"],
+        pending["parent_b"],
+    )
 
     await update.message.reply_text(
         f"🥚✨ Your egg has hatched!\n\n"

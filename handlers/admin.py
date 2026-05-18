@@ -83,8 +83,7 @@ async def admin_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         from keyboards import mood_keyboard
 
         now = __import__("datetime").datetime.utcnow().isoformat()
-        with db.get_conn() as conn:
-            conn.execute("UPDATE users SET last_prompt_at = ? WHERE user_id = ?", (now, tg_id))
+        db.set_last_prompt_at(tg_id, now)
         await update.message.reply_text(
             "🕐 *Mood check-in!* How are you feeling right now?",
             parse_mode="Markdown",
@@ -180,10 +179,7 @@ async def _cmd_set_stat(update, tg_id, args, stat):
     if not animal:
         await update.message.reply_text(f"No animal at position {position}.")
         return
-    with db.get_conn() as conn:
-        conn.execute(
-            f"UPDATE animals SET {stat} = ? WHERE animal_id = ?", (value, animal["animal_id"])
-        )
+    db.admin_set_animal_stat(animal["animal_id"], stat, value)
     name = animal["nickname"] or animal["species_name"]
     await update.message.reply_text(
         f"✅ {animal['emoji']} *{name}* {stat} set to {value}.", parse_mode="Markdown"

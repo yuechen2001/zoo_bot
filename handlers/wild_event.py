@@ -38,11 +38,7 @@ async def wild_event_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await query.answer("Use /start first to join!", show_alert=True)
         return
 
-    with db.get_conn() as conn:
-        species = conn.execute(
-            "SELECT * FROM species WHERE species_id = ?", (event["species_id"],)
-        ).fetchone()
-
+    species = db.get_species(event["species_id"])
     if not species:
         await query.answer("Something went wrong.", show_alert=True)
         return
@@ -59,13 +55,7 @@ async def wild_event_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     # Require a matching habitat lure
-    with db.get_conn() as conn:
-        lure_row = conn.execute(
-            "SELECT id FROM user_purchases WHERE user_id = ? AND item_key = ? "
-            "ORDER BY purchased_at ASC LIMIT 1",
-            (tg_id, f"lure_{habitat}"),
-        ).fetchone()
-
+    lure_row = db.get_oldest_purchase(tg_id, f"lure_{habitat}")
     if not lure_row:
         await query.answer(
             f"You need a {habitat} lure to catch this! Buy one from /store.",
@@ -73,8 +63,7 @@ async def wild_event_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    with db.get_conn() as conn:
-        conn.execute("DELETE FROM user_purchases WHERE id = ?", (lure_row["id"],))
+    db.consume_purchase(lure_row["id"])
 
     # Roll catch rate with lure multiplier — wild animals can still escape
     catch_rate = min(1.0, species["catch_rate"] * LURE_MULTIPLIER)

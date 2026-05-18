@@ -136,23 +136,12 @@ async def _decay_stats():
     users = db.get_all_users_with_animals()
     for user in users:
         uid = user["user_id"]
-        # Halve decay if a foot massage is active
         massaged = (
             user["massage_active_until"] is not None
             and user["massage_active_until"]
             > datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
         )
-        decay_expr = (
-            "(SELECT hunger_decay / 2 FROM species WHERE species_id = animals.species_id)"
-            if massaged
-            else "(SELECT hunger_decay FROM species WHERE species_id = animals.species_id)"
-        )
-        with db.get_conn() as conn:
-            conn.execute(
-                f"UPDATE animals SET hunger = MAX(0, hunger - {decay_expr}) "
-                "WHERE user_id = ? AND is_breeding = 0",
-                (uid,),
-            )
+        db.decay_animal_hunger(uid, massaged)
 
 
 async def _check_starved_animals(ctx):

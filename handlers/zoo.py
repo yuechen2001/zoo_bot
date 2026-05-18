@@ -56,16 +56,7 @@ def _render_habitat(animal_emoji: str, count: int, breeding_count: int) -> str:
 
 
 def _get_breeding_ids(user_id: int) -> set:
-    with db.get_conn() as conn:
-        rows = conn.execute(
-            "SELECT parent_a, parent_b FROM breeding_queue WHERE user_id = ? AND collected = 0",
-            (user_id,),
-        ).fetchall()
-    result = set()
-    for r in rows:
-        result.add(r["parent_a"])
-        result.add(r["parent_b"])
-    return result
+    return db.get_breeding_animal_ids(user_id)
 
 
 def _group_by_habitat(animals: list) -> dict[str, dict]:

@@ -1,9 +1,10 @@
+import random
 import uuid
 import datetime
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
-from game.catch_engine import roll_encounter, pick_species, roll_catch
+from game.catch_engine import roll_encounter, roll_catch
 from keyboards import catch_keyboard, lure_keyboard
 from species_data import RARITY_LABELS, HABITATS, ENCLOSURE_LEVELS
 from config import CATCH_EXPIRY_MINUTES
@@ -59,13 +60,7 @@ async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     # Verify lure is still in inventory (race condition guard)
-    with db.get_conn() as conn:
-        purchase = conn.execute(
-            "SELECT id FROM user_purchases WHERE user_id = ? AND item_key = ? "
-            "ORDER BY purchased_at ASC LIMIT 1",
-            (tg_id, f"lure_{habitat}"),
-        ).fetchone()
-
+    purchase = db.get_oldest_purchase(tg_id, f"lure_{habitat}")
     if not purchase:
         await query.answer("You don't have that lure anymore!", show_alert=True)
         return
@@ -83,15 +78,14 @@ async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     # Consume the lure
-    with db.get_conn() as conn:
-        conn.execute("DELETE FROM user_purchases WHERE id = ?", (purchase["id"],))
+    db.consume_purchase(purchase["id"])
 
     # Generate encounter filtered to habitat
-    with db.get_conn() as conn:
-        rarity = roll_encounter()
-        if user["catch_net_active"]:
-            rarity = "legendary"
-        species = pick_species(rarity, conn, habitat=habitat)
+    rarity = roll_encounter()
+    if user["catch_net_active"]:
+        rarity = "legendary"
+    candidates = db.get_species_candidates(rarity, habitat)
+    species = random.choice(candidates) if candidates else None
 
     if not species:
         # Refund the lure
@@ -190,11 +184,7 @@ async def catch_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         ctx.user_data.pop("pending_catch", None)
         return
 
-    with db.get_conn() as conn:
-        conn.execute(
-            "UPDATE users SET coins = coins - ? WHERE user_id = ?",
-            (cost, tg_id),
-        )
+    db.add_coins(tg_id, -cost)
 
     catch_rate = pending["catch_rate"] * pending.get("lure_multiplier", 1.0)
     catch_rate = min(1.0, catch_rate)
@@ -210,11 +200,7 @@ async def catch_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     if success:
         animal_id = str(uuid.uuid4())
-        with db.get_conn() as conn:
-            conn.execute(
-                "INSERT INTO animals (animal_id, user_id, species_id) VALUES (?, ?, ?)",
-                (animal_id, tg_id, pending["species_id"]),
-            )
+        db.add_animal(animal_id, tg_id, pending["species_id"])
         await query.answer("Caught!")
         await query.edit_message_text(
             f"🎉 You caught the {pending['emoji']} *{pending['name']}*!\n\n"

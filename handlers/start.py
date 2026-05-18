@@ -1,5 +1,3 @@
-import uuid
-import random
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
@@ -25,14 +23,7 @@ async def start_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     # Give a random starter common animal and starter enclosures
-    with db.get_conn() as conn:
-        commons = conn.execute("SELECT * FROM species WHERE rarity = 'common'").fetchall()
-        starter = random.choice(commons)
-        animal_id = str(uuid.uuid4())
-        conn.execute(
-            "INSERT INTO animals (animal_id, user_id, species_id) VALUES (?, ?, ?)",
-            (animal_id, tg_id, starter["species_id"]),
-        )
+    starter = db.give_starter_animal(tg_id)
     db.give_starter_enclosures(tg_id)
 
     await update.message.reply_text(

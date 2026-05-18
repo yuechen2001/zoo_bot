@@ -51,11 +51,7 @@ async def footmassage_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     massage_until = (now + datetime.timedelta(hours=MASSAGE_DURATION_HOURS)).isoformat()
-    with db.get_conn() as conn:
-        conn.execute(
-            "UPDATE users SET coins = coins - ?, massage_active_until = ? WHERE user_id = ?",
-            (MASSAGE_COST, massage_until, tg_id),
-        )
+    db.activate_massage(tg_id, MASSAGE_COST, massage_until)
 
     await update.message.reply_text(
         f"🦶 *Foot massage time!* (-{MASSAGE_COST} 🪙)\n\n"

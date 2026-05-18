@@ -14,8 +14,7 @@ async def moodstart_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if not user:
         await update.message.reply_text("Use /start first!")
         return
-    with db.get_conn() as conn:
-        conn.execute("UPDATE users SET opted_in = 1 WHERE user_id = ?", (tg_id,))
+    db.set_opted_in(tg_id)
     await update.message.reply_text("✅ Mood prompts enabled! You'll be pinged every 30 min.")
 
 
@@ -25,11 +24,7 @@ async def moodstop_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if not user:
         await update.message.reply_text("Use /start first!")
         return
-    with db.get_conn() as conn:
-        conn.execute(
-            "UPDATE users SET opted_in = 0, consecutive_misses = 0 WHERE user_id = ?",
-            (tg_id,),
-        )
+    db.set_opted_out(tg_id)
     await update.message.reply_text(
         "⏸ Mood prompts stopped. Resume with /moodstart — your streak is preserved."
     )
@@ -62,9 +57,7 @@ async def pause_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) + delta
     ).isoformat()
 
-    with db.get_conn() as conn:
-        conn.execute("UPDATE users SET paused_until = ? WHERE user_id = ?", (paused_until, tg_id))
-
+    db.set_paused_until(tg_id, paused_until)
     label = f"{amount}{'h' if unit == 'h' else 'm'}"
     await update.message.reply_text(
         f"⏸ Paused for *{label}*. No prompts, streak frozen. Use /resume to end early.",
@@ -77,8 +70,7 @@ async def resume_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if tg_id not in ADMIN_IDS:
         await update.message.reply_text("❌ Only admins can use /resume.")
         return
-    with db.get_conn() as conn:
-        conn.execute("UPDATE users SET paused_until = NULL WHERE user_id = ?", (tg_id,))
+    db.set_paused_until(tg_id, None)
     await update.message.reply_text("▶️ Resumed! Mood prompts are back on.")
 
 
@@ -101,11 +93,7 @@ async def mood_checkin_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     # this group still get counted correctly in all_group_members_checked_in
     msg_chat_id = query.message.chat_id
     if query.message.chat.type in ("group", "supergroup") and user["group_chat_id"] != msg_chat_id:
-        with db.get_conn() as conn:
-            conn.execute(
-                "UPDATE users SET group_chat_id = ? WHERE user_id = ?",
-                (msg_chat_id, tg_id),
-            )
+        db.update_group_chat_id(tg_id, msg_chat_id)
         user = db.get_user(tg_id)
 
     # Enforce response window
@@ -133,17 +121,7 @@ async def mood_checkin_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         coins *= 2
         db.set_mood_booster(tg_id, False)
     now_str = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
-
-    with db.get_conn() as conn:
-        conn.execute(
-            "UPDATE users SET streak_windows = ?, consecutive_misses = 0, "
-            "coins = coins + ?, last_checkin_at = ? WHERE user_id = ?",
-            (new_streak, coins, now_str, tg_id),
-        )
-        conn.execute(
-            "INSERT INTO mood_checkins (user_id, emoji, coins_earned, streak_window) VALUES (?, ?, ?, ?)",
-            (tg_id, emoji, coins, new_streak),
-        )
+    db.record_checkin(tg_id, emoji, coins, new_streak, now_str)
 
     label = EMOJI_LABELS.get(emoji, emoji)
     multiplier_note = ""

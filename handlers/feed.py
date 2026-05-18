@@ -44,16 +44,7 @@ async def feed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             break
 
         new_hunger = min(100, animal["hunger"] + FEED_HUNGER)
-
-        with db.get_conn() as conn:
-            conn.execute(
-                "UPDATE users SET coins = coins - ? WHERE user_id = ?",
-                (feed_cost, tg_id),
-            )
-            conn.execute(
-                "UPDATE animals SET hunger = ?, hunger_alerted = NULL WHERE animal_id = ?",
-                (new_hunger, animal["animal_id"]),
-            )
+        db.feed_animal(tg_id, animal["animal_id"], new_hunger, feed_cost)
 
         lines.append(
             f"🍖 {animal['emoji']} *{name}*: hunger {animal['hunger']}→{new_hunger} (-{feed_cost} 🪙)"

@@ -91,12 +91,9 @@ async def test_catch_lure_callback_blocks_when_lure_not_in_inventory():
     ctx = MagicMock()
     ctx.user_data = {}
 
-    cm, inner = _make_conn_mock()
-    inner.execute.return_value.fetchone.return_value = None  # no lure in DB
-
     with patch(
         "handlers.catch.db.get_user", return_value={"coins": 200, "catch_net_active": 0}
-    ), patch("handlers.catch.db.get_conn", return_value=cm):
+    ), patch("handlers.catch.db.get_oldest_purchase", return_value=None):
         await catch_lure_callback(update, ctx)
 
     query.answer.assert_called_once()
@@ -124,9 +121,6 @@ async def test_catch_lure_callback_generates_encounter_and_stores_pending():
     lure_purchase = MagicMock()
     lure_purchase.__getitem__ = lambda self, key: 42 if key == "id" else None
 
-    cm, inner = _make_conn_mock()
-    inner.execute.return_value.fetchone.return_value = lure_purchase
-
     species = {
         "species_id": 5,
         "name": "Fox",
@@ -139,14 +133,16 @@ async def test_catch_lure_callback_generates_encounter_and_stores_pending():
     with patch(
         "handlers.catch.db.get_user",
         return_value={"coins": 200, "catch_net_active": 0},
-    ), patch("handlers.catch.db.get_conn", return_value=cm), patch(
+    ), patch("handlers.catch.db.get_oldest_purchase", return_value=lure_purchase), patch(
+        "handlers.catch.db.consume_purchase"
+    ), patch(
         "handlers.catch.db.get_enclosure_level", return_value=1
     ), patch(
         "handlers.catch.db.get_animal_count_by_habitat", return_value=0
     ), patch(
         "handlers.catch.roll_encounter", return_value="rare"
     ), patch(
-        "handlers.catch.pick_species", return_value=species
+        "handlers.catch.db.get_species_candidates", return_value=[species]
     ), patch(
         "handlers.catch.catch_keyboard", return_value=MagicMock()
     ):
@@ -174,20 +170,19 @@ async def test_catch_lure_callback_refunds_when_no_species_found():
     lure_purchase = MagicMock()
     lure_purchase.__getitem__ = lambda self, key: 42 if key == "id" else None
 
-    cm, inner = _make_conn_mock()
-    inner.execute.return_value.fetchone.return_value = lure_purchase
-
     with patch(
         "handlers.catch.db.get_user",
         return_value={"coins": 200, "catch_net_active": 0},
-    ), patch("handlers.catch.db.get_conn", return_value=cm), patch(
+    ), patch("handlers.catch.db.get_oldest_purchase", return_value=lure_purchase), patch(
+        "handlers.catch.db.consume_purchase"
+    ), patch(
         "handlers.catch.db.get_enclosure_level", return_value=1
     ), patch(
         "handlers.catch.db.get_animal_count_by_habitat", return_value=0
     ), patch(
         "handlers.catch.roll_encounter", return_value="rare"
     ), patch(
-        "handlers.catch.pick_species", return_value=None
+        "handlers.catch.db.get_species_candidates", return_value=[]
     ), patch(
         "handlers.catch.db.record_purchase"
     ) as mock_refund:
