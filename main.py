@@ -27,6 +27,7 @@ from scheduler import (
 )
 from handlers import (
     achievements_command,
+    achievements_tab_callback,
     admin_command,
     start_command,
     autofeed_command,
@@ -43,6 +44,7 @@ from handlers import (
     moodstop_command,
     mood_checkin_callback,
     help_command,
+    help_tab_callback,
     trivia_command,
     trivia_callback,
     gamble_command,
@@ -55,11 +57,12 @@ from handlers import (
     enclosures_command,
     enclosure_upgrade_callback,
     directory_command,
+    directory_page_callback,
     inventory_command,
     inventory_callback,
 )
 from handlers.gift import gift_command
-from handlers.store import store_command, store_callback
+from handlers.store import store_command, store_callback, store_tab_callback
 from handlers.footmassage import footmassage_command
 from handlers.wild_event import wild_event_callback
 
@@ -133,10 +136,18 @@ async def handle_callback(update, ctx):
         await zoo_page_callback(update, ctx)
     elif data.startswith("wild_catch_"):
         await wild_event_callback(update, ctx)
+    elif data.startswith("store_tab_"):
+        await store_tab_callback(update, ctx)
     elif data.startswith("store_buy_"):
         await store_callback(update, ctx)
     elif data.startswith("inv_use_") or data.startswith("inv_equip_"):
         await inventory_callback(update, ctx)
+    elif data.startswith("dir_page_"):
+        await directory_page_callback(update, ctx)
+    elif data.startswith("ach_tab_"):
+        await achievements_tab_callback(update, ctx)
+    elif data.startswith("help_tab_"):
+        await help_tab_callback(update, ctx)
     elif data == "zoo_noop":
         await update.callback_query.answer()
     else:

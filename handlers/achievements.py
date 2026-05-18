@@ -4,15 +4,7 @@ import db
 from game.achievements import ACHIEVEMENTS
 
 
-async def achievements_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    tg_id = update.effective_user.id
-    user = db.get_user(tg_id)
-
-    if not user:
-        await update.message.reply_text("Use /start first!")
-        return
-
-    earned_keys = db.get_achievement_keys(tg_id)
+def render_achievements(earned_keys: set, filter_type: str = "all") -> str:
     total = len(ACHIEVEMENTS)
     count = len(earned_keys)
 
@@ -27,12 +19,65 @@ async def achievements_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     parts = [f"🏆 *Achievements* ({count}/{total})\n"]
 
-    if earned_lines:
-        parts.append("\n".join(earned_lines))
+    if filter_type == "earned":
+        if earned_lines:
+            parts.append("\n".join(earned_lines))
+        else:
+            parts.append("_None yet — get out there!_")
+    elif filter_type == "locked":
+        if locked_lines:
+            parts.append("\n".join(locked_lines))
+        else:
+            parts.append("_You've unlocked everything!_ 🎉")
     else:
-        parts.append("_None yet — get out there!_")
+        if earned_lines:
+            parts.append("\n".join(earned_lines))
+        else:
+            parts.append("_None yet — get out there!_")
+        if locked_lines:
+            parts.append("\n" + "\n".join(locked_lines))
 
-    if locked_lines:
-        parts.append("\n" + "\n".join(locked_lines))
+    return "\n".join(parts)
 
-    await update.message.reply_text("\n".join(parts), parse_mode="Markdown")
+
+async def achievements_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    tg_id = update.effective_user.id
+    user = db.get_user(tg_id)
+
+    if not user:
+        await update.message.reply_text("Use /start first!")
+        return
+
+    from keyboards import achievements_keyboard
+
+    earned_keys = db.get_achievement_keys(tg_id)
+    text = render_achievements(earned_keys, "all")
+    await update.message.reply_text(
+        text, parse_mode="Markdown", reply_markup=achievements_keyboard(tg_id, "all")
+    )
+
+
+async def achievements_tab_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    parts = query.data.split("_", 3)  # ach_tab_{user_id}_{filter}
+    user_id = int(parts[2])
+    filter_type = parts[3]
+
+    if query.from_user.id != user_id:
+        await query.answer("Use /achievements to see your own.", show_alert=True)
+        return
+
+    from keyboards import achievements_keyboard
+
+    earned_keys = db.get_achievement_keys(user_id)
+    text = render_achievements(earned_keys, filter_type)
+    try:
+        await query.edit_message_text(
+            text,
+            parse_mode="Markdown",
+            reply_markup=achievements_keyboard(user_id, filter_type),
+        )
+    except Exception:
+        pass

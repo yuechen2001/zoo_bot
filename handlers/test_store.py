@@ -82,7 +82,7 @@ def test_store_text_references_inventory():
 
 
 @pytest.mark.asyncio
-async def test_store_shows_items():
+async def test_store_shows_consumables_tab_by_default():
     update, ctx = _make_update(args=[])
     with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
         "handlers.store.db.get_owned_title_keys", return_value=set()
@@ -91,7 +91,8 @@ async def test_store_shows_items():
     reply = update.message.reply_text.call_args[0][0]
     assert "Mega Feed" in reply
     assert "Lucky Token" in reply
-    assert "Zookeeper" in reply
+    # Titles are on a separate tab
+    assert "Zookeeper" not in reply
 
 
 @pytest.mark.asyncio

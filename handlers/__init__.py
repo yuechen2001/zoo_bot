@@ -1,4 +1,4 @@
-from .achievements import achievements_command
+from .achievements import achievements_command, achievements_tab_callback
 from .autofeed import autofeed_command
 from .admin import admin_command
 from .start import start_command
@@ -14,6 +14,7 @@ from .mood import (
     resume_command,
     mood_checkin_callback,
     help_command,
+    help_tab_callback,
 )
 from .trivia import trivia_command, trivia_callback
 from .gamble import gamble_command
@@ -23,7 +24,7 @@ from .trade import trade_command, trade_callback
 from .invest import invest_command
 from .sell import sell_command
 from .enclosures import enclosures_command, enclosure_upgrade_callback
-from .directory import directory_command
+from .directory import directory_command, directory_page_callback
 from .inventory import inventory_command, inventory_callback
 
 __all__ = [
@@ -58,6 +59,9 @@ __all__ = [
     "enclosures_command",
     "enclosure_upgrade_callback",
     "directory_command",
+    "directory_page_callback",
+    "achievements_tab_callback",
+    "help_tab_callback",
     "inventory_command",
     "inventory_callback",
 ]

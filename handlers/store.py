@@ -3,7 +3,7 @@ from telegram.ext import ContextTypes
 import db
 from game.achievements import check_achievements
 from game.store_data import STORE_ITEMS, CONSUMABLES, LURES, COSMETICS
-from keyboards import store_keyboard
+from keyboards import store_tab_keyboard
 
 _ACTIVE_FLAGS = {
     "lucky_token": "lucky_catch_active",
@@ -12,7 +12,53 @@ _ACTIVE_FLAGS = {
 }
 
 
+def _store_section_text(section: str, tg_id: int) -> str:
+    counts = db.get_consumable_counts(tg_id)
+    user = db.get_user(tg_id)
+
+    if section == "consumables":
+        lines = [
+            "🏪 <b>Zoo Store — Consumables</b>\n",
+            "<i>Sit in your bag until used via /inventory.</i>\n",
+        ]
+        for key, item in CONSUMABLES.items():
+            line = f"  {item['emoji']} <b>{item['name']}</b> — {item['price']} 🪙\n  {item['desc']}"
+            badges = []
+            n = counts.get(key, 0)
+            if n:
+                badges.append(f"×{n} in bag")
+            flag_col = _ACTIVE_FLAGS.get(key)
+            if flag_col and user and user[flag_col]:
+                badges.append("active")
+            if badges:
+                line += f"  <i>({', '.join(badges)})</i>"
+            lines.append(line)
+    elif section == "lures":
+        lines = [
+            "🏪 <b>Zoo Store — Lures</b> 🎣\n",
+            "<i>Each /catch requires a lure. Habitat lures give 1.5× catch rate.</i>\n",
+        ]
+        for key, item in LURES.items():
+            line = f"  {item['emoji']} <b>{item['name']}</b> — {item['price']} 🪙\n  {item['desc']}"
+            n = counts.get(key, 0)
+            if n:
+                line += f"  <i>(×{n} in bag)</i>"
+            lines.append(line)
+    else:  # titles
+        lines = [
+            "🏪 <b>Zoo Store — Titles</b>\n",
+            "<i>Shown next to your zoo name. Equip from /inventory.</i>\n",
+        ]
+        for key, item in COSMETICS.items():
+            lines.append(
+                f"  {item['emoji']} <b>{item['name']}</b> — {item['price']} 🪙\n  {item['desc']}"
+            )
+
+    return "\n".join(lines)
+
+
 def _store_text(tg_id: int) -> str:
+    """Legacy full-store text — kept for tests."""
     counts = db.get_consumable_counts(tg_id)
     user = db.get_user(tg_id)
     lines = ["🏪 <b>Zoo Store</b>\n"]
@@ -55,8 +101,11 @@ async def store_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     args = ctx.args or []
     if not args or args[0].lower() != "buy":
         owned = db.get_owned_title_keys(tg_id)
+        counts = db.get_consumable_counts(tg_id)
         await update.message.reply_text(
-            _store_text(tg_id), parse_mode="HTML", reply_markup=store_keyboard(owned)
+            _store_section_text("consumables", tg_id),
+            parse_mode="HTML",
+            reply_markup=store_tab_keyboard("consumables", owned, counts),
         )
         return
 
@@ -64,6 +113,29 @@ async def store_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Usage: `/store buy <item_key>`", parse_mode="Markdown")
         return
     await _buy(update, tg_id, user, args[1].lower())
+
+
+async def store_tab_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    tg_id = query.from_user.id
+
+    user = db.get_user(tg_id)
+    if not user:
+        await query.answer("Use /start first!", show_alert=True)
+        return
+
+    section = query.data.removeprefix("store_tab_")
+    owned = db.get_owned_title_keys(tg_id)
+    counts = db.get_consumable_counts(tg_id)
+    try:
+        await query.edit_message_text(
+            _store_section_text(section, tg_id),
+            parse_mode="HTML",
+            reply_markup=store_tab_keyboard(section, owned, counts),
+        )
+    except Exception:
+        pass
+    await query.answer()
 
 
 async def store_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -95,11 +167,16 @@ async def store_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         db.deduct_coins(tg_id, item["price"])
         db.record_purchase(tg_id, key)
         owned = db.get_owned_title_keys(tg_id)
+        counts = db.get_consumable_counts(tg_id)
         await query.answer(
             f"✅ Purchased {item['emoji']} {item['name']}! Use /inventory to equip it."
         )
         try:
-            await query.edit_message_reply_markup(reply_markup=store_keyboard(owned))
+            await query.edit_message_text(
+                _store_section_text("titles", tg_id),
+                parse_mode="HTML",
+                reply_markup=store_tab_keyboard("titles", owned, counts),
+            )
         except Exception:
             pass
         return

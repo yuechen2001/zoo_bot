@@ -154,14 +154,13 @@ async def mood_checkin_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await check_achievements(tg_id, "checkin", ctx)
 
 
-async def help_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "🦁 *Zoo Bot — Commands*\n\n"
-        "*Your zoo:*\n"
+_HELP_SECTIONS = {
+    "zoo": (
+        "🦁 *Zoo Bot — Your Zoo*\n\n"
         "/start — join and get your starter animal\n"
         "/zoo — view your zoo (one habitat per page, tap ◀ ▶ to browse)\n"
-        "/catch — search for a wild animal\n"
-        "/feed <numbers> — feed animal(s) (10 🪙 each)\n"
+        "/catch — search for a wild animal (requires a lure from /store)\n"
+        "/feed <numbers> — feed animal(s) (cost varies by rarity)\n"
         "/name <number> <name> — nickname an animal\n"
         "/sell <number> — sell an animal for coins\n"
         "/gift <number> @user — give an animal to another player\n"
@@ -169,21 +168,29 @@ async def help_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "/autofeed off — disable auto-feed\n"
         "/directory — browse all species & see which you own\n"
         "/achievements — view your milestones\n"
-        "/footmassage — halve animal hunger decay for 1h (25 🪙, 4h cooldown)\n\n"
-        "*Enclosures:*\n"
+        "/footmassage — halve animal hunger decay for 1h (25 🪙, 4h cooldown)\n"
         "/enclosures — view and upgrade your habitat enclosures\n"
-        "/enclosures collect — claim your pending enclosure income\n\n"
-        "*Breeding:*\n"
+        "/enclosures collect — claim your pending enclosure income"
+    ),
+    "breeding": (
+        "🥚 *Zoo Bot — Breeding*\n\n"
         "/breed <a> <b> — breed two animals together\n"
         "/breed collect — claim your finished offspring (enclosure must have space)\n"
         "/breed status — check time remaining on active breed\n\n"
-        "*Store:*\n"
-        "/store — browse consumables and cosmetic titles\n"
-        "/store buy <item> — purchase an item\n"
+        "💡 Same-habitat pairs get a breed time bonus from enclosure upgrades.\n"
+        "💡 Well-fed animals breed faster."
+    ),
+    "store": (
+        "🏪 *Zoo Bot — Store & Inventory*\n\n"
+        "/store — browse consumables, lures, and cosmetic titles\n"
+        "/store buy <item> — purchase an item directly\n"
         "/inventory — view your bag and owned titles\n"
         "/inventory use <item> — activate a consumable\n"
         "/inventory equip <title> — set your zoo title\n\n"
-        "*Earn coins:*\n"
+        "💡 Each habitat has its own lure — habitat lures give 1.5× catch rate."
+    ),
+    "coins": (
+        "🪙 *Zoo Bot — Earning Coins*\n\n"
         "/daily — claim daily coins (50→75→100→150 on consecutive days)\n"
         "/trivia — animal trivia (+40 correct, +5 wrong, 4h cooldown)\n"
         "/gamble <amount> — coin flip bet (max 100 🪙)\n"
@@ -191,12 +198,41 @@ async def help_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "/trade @user <yours> <theirs> — offer an animal swap\n"
         "/invest <amount> — invest coins (25% return after 24h, shown in /zoo)\n"
         "/invest collect — collect your matured investment\n\n"
+        "💡 Mood prompts earn coins too — see the Mood tab."
+    ),
+    "more": (
+        "📋 *Zoo Bot — More*\n\n"
         "*Mood prompts:*\n"
         "/moodstart — opt in to prompts\n"
         "/moodstop — opt out (streak preserved)\n\n"
-        "*Admin:*\n"
-        "/admin help — full list of admin commands\n\n"
         "⏱ Respond within *15 min* of a prompt to earn coins!\n"
-        "🔥 Longer streaks = coin multiplier (up to 3×)",
+        "🔥 Longer streaks = coin multiplier (up to 3×)\n\n"
+        "*Admin:*\n"
+        "/admin help — full list of admin commands"
+    ),
+}
+
+
+async def help_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    from keyboards import help_keyboard
+
+    await update.message.reply_text(
+        _HELP_SECTIONS["zoo"],
         parse_mode="Markdown",
+        reply_markup=help_keyboard("zoo"),
     )
+
+
+async def help_tab_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    from keyboards import help_keyboard
+
+    query = update.callback_query
+    await query.answer()
+    section = query.data.removeprefix("help_tab_")
+    text = _HELP_SECTIONS.get(section, _HELP_SECTIONS["zoo"])
+    try:
+        await query.edit_message_text(
+            text, parse_mode="Markdown", reply_markup=help_keyboard(section)
+        )
+    except Exception:
+        pass

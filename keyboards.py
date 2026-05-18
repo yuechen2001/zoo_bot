@@ -23,6 +23,103 @@ def catch_keyboard(species_id: int, cost: int):
     )
 
 
+def store_tab_keyboard(section: str, owned_keys: set, counts: dict) -> InlineKeyboardMarkup:
+    from game.store_data import CONSUMABLES, LURES, COSMETICS
+
+    tab_defs = [("consumables", "🧪 Consumables"), ("lures", "🎣 Lures"), ("titles", "🎩 Titles")]
+    tab_row = []
+    for key, label in tab_defs:
+        if key == section:
+            tab_row.append(InlineKeyboardButton(f"· {label}", callback_data="zoo_noop"))
+        else:
+            tab_row.append(InlineKeyboardButton(label, callback_data=f"store_tab_{key}"))
+
+    rows = [tab_row]
+
+    if section == "consumables":
+        btns = [
+            InlineKeyboardButton(
+                f"{item['emoji']} {item['price']} 🪙",
+                callback_data=f"store_buy_{key}",
+            )
+            for key, item in CONSUMABLES.items()
+        ]
+    elif section == "lures":
+        btns = [
+            InlineKeyboardButton(
+                f"{item['emoji']} {item['price']} 🪙",
+                callback_data=f"store_buy_{key}",
+            )
+            for key, item in LURES.items()
+        ]
+    else:
+        btns = [
+            InlineKeyboardButton(
+                (
+                    f"✅ {item['emoji']}"
+                    if key in owned_keys
+                    else f"{item['emoji']} {item['price']} 🪙"
+                ),
+                callback_data="zoo_noop" if key in owned_keys else f"store_buy_{key}",
+            )
+            for key, item in COSMETICS.items()
+        ]
+
+    for i in range(0, len(btns), 3):
+        rows.append(btns[i : i + 3])
+
+    return InlineKeyboardMarkup(rows)
+
+
+def help_keyboard(current_section: str) -> InlineKeyboardMarkup:
+    sections = [
+        ("zoo", "🦁 Zoo"),
+        ("breeding", "🥚 Breeding"),
+        ("store", "🏪 Store"),
+        ("coins", "🪙 Coins"),
+        ("more", "📋 More"),
+    ]
+    row1 = []
+    row2 = []
+    for i, (key, label) in enumerate(sections):
+        btn = (
+            InlineKeyboardButton(f"· {label}", callback_data="zoo_noop")
+            if key == current_section
+            else InlineKeyboardButton(label, callback_data=f"help_tab_{key}")
+        )
+        (row1 if i < 3 else row2).append(btn)
+    return InlineKeyboardMarkup([row1, row2])
+
+
+def achievements_keyboard(user_id: int, current_filter: str) -> InlineKeyboardMarkup:
+    tabs = [("earned", "🏆 Earned"), ("all", "All"), ("locked", "🔒 Locked")]
+    row = []
+    for key, label in tabs:
+        if key == current_filter:
+            row.append(InlineKeyboardButton(f"· {label}", callback_data="zoo_noop"))
+        else:
+            row.append(InlineKeyboardButton(label, callback_data=f"ach_tab_{user_id}_{key}"))
+    return InlineKeyboardMarkup([row])
+
+
+def directory_page_keyboard(user_id: int, page: int, habitat_keys: list) -> InlineKeyboardMarkup:
+    buttons = []
+    if page > 0:
+        prev_emoji = HABITATS[habitat_keys[page - 1]]["emoji"]
+        buttons.append(
+            InlineKeyboardButton(f"◀ {prev_emoji}", callback_data=f"dir_page_{user_id}_{page - 1}")
+        )
+    buttons.append(
+        InlineKeyboardButton(f"{page + 1} / {len(habitat_keys)}", callback_data="zoo_noop")
+    )
+    if page < len(habitat_keys) - 1:
+        next_emoji = HABITATS[habitat_keys[page + 1]]["emoji"]
+        buttons.append(
+            InlineKeyboardButton(f"{next_emoji} ▶", callback_data=f"dir_page_{user_id}_{page + 1}")
+        )
+    return InlineKeyboardMarkup([buttons])
+
+
 def breed_collect_keyboard():
     return InlineKeyboardMarkup(
         [

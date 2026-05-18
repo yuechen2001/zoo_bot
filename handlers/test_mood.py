@@ -352,10 +352,14 @@ async def test_resume_accepted_for_admin():
 
 @pytest.mark.asyncio
 async def test_help_footmassage_in_zoo_section():
+    from handlers.mood import _HELP_SECTIONS
+
+    # /footmassage is in the zoo tab
+    assert "/footmassage" in _HELP_SECTIONS["zoo"]
+    # /footmassage is not in the mood/more tab
+    assert "/footmassage" not in _HELP_SECTIONS["more"]
+    # help_command sends the zoo tab first
     update = _make_cmd_update()
     await help_command(update, MagicMock())
     text = update.message.reply_text.call_args[0][0]
-    zoo_section = text.split("*Enclosures:*")[0]
-    assert "/footmassage" in zoo_section
-    mood_section = text.split("*Mood prompts:*")[1]
-    assert "/footmassage" not in mood_section
+    assert "/footmassage" in text

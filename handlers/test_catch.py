@@ -5,8 +5,10 @@ from handlers.catch import catch_command, catch_lure_callback, catch_callback, L
 
 
 @pytest.fixture(autouse=True)
-def stub_lucky_catch(monkeypatch):
+def stub_catch_db(monkeypatch):
     monkeypatch.setattr("handlers.catch.db.set_lucky_catch", lambda *a: None)
+    monkeypatch.setattr("handlers.catch.db.get_catch_message", lambda *a: (None, None))
+    monkeypatch.setattr("handlers.catch.db.set_catch_message", lambda *a: None)
 
 
 def _make_conn_mock():

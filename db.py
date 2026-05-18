@@ -1247,3 +1247,24 @@ def set_setting(key: str, value: str) -> None:
             "ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
             (key, value),
         )
+
+
+# ── Catch message persistence ─────────────────────────────────────────────────
+
+
+def get_catch_message(user_id: int) -> tuple[int | None, int | None]:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT catch_chat_id, catch_message_id FROM users WHERE user_id = ?", (user_id,)
+        ).fetchone()
+        if row:
+            return row["catch_chat_id"], row["catch_message_id"]
+        return None, None
+
+
+def set_catch_message(user_id: int, chat_id: int, message_id: int) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET catch_chat_id = ?, catch_message_id = ? WHERE user_id = ?",
+            (chat_id, message_id, user_id),
+        )

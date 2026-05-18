@@ -11,7 +11,7 @@ from config import (
     WILD_EVENT_MAX_MINUTES,
     WILD_EVENT_EXPIRY_MINUTES,
 )
-from keyboards import mood_keyboard
+from keyboards import mood_keyboard, breed_collect_keyboard
 from game.species_data import ENCLOSURE_LEVELS, HABITATS, RARITY_LABELS
 from game.constants import WILD_EVENT_RARITY_WEIGHTS
 from utils import format_mention
@@ -196,6 +196,7 @@ async def _check_breed_completions(ctx):
                 f"→ {breed['emoji_offspring']} {breed['name_offspring']}\n\n"
                 f"Use `/breed collect` to claim your new animal!",
                 parse_mode="Markdown",
+                reply_markup=breed_collect_keyboard(),
             )
             db.mark_breed_notified(breed["id"])
         except Exception:
