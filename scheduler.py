@@ -1,5 +1,6 @@
 import datetime
 import logging
+import telegram
 import db
 import random
 from config import (
@@ -356,6 +357,8 @@ async def _cleanup_expired_prompts(ctx):
                     message_id=info["message_id"],
                     reply_markup=None,
                 )
+            except telegram.error.BadRequest:
+                pass  # already removed or message deleted — nothing to do
             except Exception:
                 logger.exception("Failed to remove prompt markup in %s", group_chat_id)
             to_remove.append(group_chat_id)
