@@ -9,5 +9,6 @@ CREATE TABLE IF NOT EXISTS user_purchases (
 );
 
 -- down
+ALTER TABLE users DROP COLUMN lucky_catch_active;
+ALTER TABLE users DROP COLUMN active_title;
 DROP TABLE IF EXISTS user_purchases;
-SELECT 1;
