@@ -81,6 +81,7 @@ async def post_init(application):
             BotCommand("admin", "Admin & mod tools — /admin help for full list"),
             BotCommand("start", "Join and get your starter animal"),
             BotCommand("zoo", "See your zoo"),
+            BotCommand("footmassage", "Halve hunger decay for 1h (25 🪙, 4h cooldown)"),
             BotCommand("catch", "Search for a wild animal"),
             BotCommand("feed", "Feed animals (10 🪙 each)"),
             BotCommand("breed", "Breed two animals"),
@@ -100,7 +101,6 @@ async def post_init(application):
             BotCommand("autofeed", "Auto-feed animals below a hunger threshold each tick"),
             BotCommand("gift", "Give an animal to another player"),
             BotCommand("store", "Browse the item store"),
-            BotCommand("footmassage", "Halve hunger decay for 1h (25 🪙, 4h cooldown)"),
             BotCommand("help", "Show all commands"),
         ]
     )
