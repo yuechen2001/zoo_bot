@@ -1,6 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
+from achievements import check_achievements
 from species_data import HABITATS, ENCLOSURE_LEVELS, MAX_ENCLOSURE_LEVEL
 from keyboards import enclosure_upgrade_keyboard
 
@@ -105,3 +106,4 @@ async def enclosure_upgrade_callback(update: Update, ctx: ContextTypes.DEFAULT_T
     new_level = db.get_enclosure_level(tg_id, habitat)
     await query.answer(f"{h_info['emoji']} {h_info['name']} upgraded to Lv {new_level}!")
     await query.edit_message_text(text, parse_mode="Markdown", reply_markup=keyboard)
+    await check_achievements(tg_id, "enclosure", ctx)

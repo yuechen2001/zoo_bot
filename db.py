@@ -568,12 +568,12 @@ def claim_wild_event(event_id: int, user_id: int) -> bool:
         return row is not None and row["caught_by_user_id"] == user_id
 
 
-def get_expired_wild_events(expiry_hours: int) -> list:
+def get_expired_wild_events(expiry_minutes: int) -> list:
     with get_conn() as conn:
         return conn.execute(
             "SELECT * FROM wild_events WHERE caught_by_user_id IS NULL "
-            "AND datetime(created_at) <= datetime('now', ? || ' hours')",
-            (f"-{expiry_hours}",),
+            "AND datetime(created_at) <= datetime('now', ? || ' minutes')",
+            (f"-{expiry_minutes}",),
         ).fetchall()
 
 
@@ -583,6 +583,14 @@ def get_wild_event(event_id: int):
 
 
 # ── Enclosure collect ─────────────────────────────────────────────────────────
+
+
+def get_pending_enclosure_coins(user_id: int) -> int:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT pending_enclosure_coins FROM users WHERE user_id = ?", (user_id,)
+        ).fetchone()
+        return row["pending_enclosure_coins"] if row else 0
 
 
 def add_pending_enclosure_coins(user_id: int, amount: int):
@@ -648,3 +656,21 @@ def get_active_group_chats() -> list[int]:
             "SELECT DISTINCT group_chat_id FROM users WHERE group_chat_id IS NOT NULL"
         ).fetchall()
         return [r["group_chat_id"] for r in rows]
+
+
+# ── Bot settings ──────────────────────────────────────────────────────────────
+
+
+def get_setting(key: str) -> str | None:
+    with get_conn() as conn:
+        row = conn.execute("SELECT value FROM bot_settings WHERE key = ?", (key,)).fetchone()
+        return row["value"] if row else None
+
+
+def set_setting(key: str, value: str) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO bot_settings (key, value, updated_at) VALUES (?, ?, datetime('now')) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+            (key, value),
+        )

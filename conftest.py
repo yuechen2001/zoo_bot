@@ -40,16 +40,22 @@ def conn():
             PRIMARY KEY (user_id, habitat)
         );
         CREATE TABLE users (
-            user_id            INTEGER PRIMARY KEY,
-            username           TEXT,
-            group_chat_id      INTEGER,
-            coins              INTEGER NOT NULL DEFAULT 100,
-            streak_windows     INTEGER NOT NULL DEFAULT 0,
-            consecutive_misses INTEGER NOT NULL DEFAULT 0,
-            last_prompt_at     TEXT,
-            last_checkin_at    TEXT,
-            paused_until       TEXT,
-            opted_in           INTEGER NOT NULL DEFAULT 1
+            user_id                 INTEGER PRIMARY KEY,
+            username                TEXT,
+            group_chat_id           INTEGER,
+            coins                   INTEGER NOT NULL DEFAULT 100,
+            streak_windows          INTEGER NOT NULL DEFAULT 0,
+            consecutive_misses      INTEGER NOT NULL DEFAULT 0,
+            last_prompt_at          TEXT,
+            last_checkin_at         TEXT,
+            paused_until            TEXT,
+            opted_in                INTEGER NOT NULL DEFAULT 1,
+            autofeed_threshold      INTEGER,
+            autofeed_max_coins      INTEGER,
+            pending_enclosure_coins INTEGER NOT NULL DEFAULT 0,
+            lucky_catch_active      INTEGER NOT NULL DEFAULT 0,
+            active_title            TEXT,
+            massage_active_until    TEXT
         );
         CREATE TABLE animals (
             animal_id   TEXT PRIMARY KEY,
@@ -81,6 +87,11 @@ def conn():
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id     INTEGER,
             claimed_at  TEXT NOT NULL
+        );
+        CREATE TABLE bot_settings (
+            key        TEXT PRIMARY KEY,
+            value      TEXT NOT NULL,
+            updated_at TEXT DEFAULT (datetime('now'))
         );
     """
     )

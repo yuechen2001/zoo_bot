@@ -31,8 +31,8 @@ def _make_event(caught_by=None, species_id=1, group_chat_id=-100):
     )
 
 
-def _make_species(habitat="woodland"):
-    return make_row(species_id=1, name="Frog", emoji="🐸", habitat=habitat)
+def _make_species(habitat="woodland", catch_rate=0.9):
+    return make_row(species_id=1, name="Frog", emoji="🐸", habitat=habitat, catch_rate=catch_rate)
 
 
 def _make_user():
@@ -105,7 +105,9 @@ async def test_wild_event_race_condition_lost():
         "handlers.wild_event.db.get_animal_count_by_habitat", return_value=0
     ), patch(
         "handlers.wild_event.db.claim_wild_event", return_value=False
-    ):
+    ), patch(
+        "handlers.wild_event.random.random", return_value=0.0
+    ):  # force catch rate pass so we reach claim_wild_event
         inner = MagicMock()
         inner.execute.return_value.fetchone.return_value = species
         mock_conn.return_value.__enter__ = MagicMock(return_value=inner)
@@ -130,6 +132,8 @@ async def test_wild_event_success():
         "handlers.wild_event.db.claim_wild_event", return_value=True
     ), patch(
         "handlers.wild_event.db.add_animal"
+    ), patch(
+        "handlers.wild_event.check_achievements"
     ):
         inner = MagicMock()
         inner.execute.return_value.fetchone.return_value = species

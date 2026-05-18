@@ -95,6 +95,8 @@ async def test_enclosure_income_sends_named_group_message():
         "scheduler.db.get_enclosures", return_value={"woodland": 2}
     ), patch("scheduler.db.get_animal_count_by_habitat", return_value=2), patch(
         "scheduler.db.add_pending_enclosure_coins"
+    ), patch(
+        "scheduler.db.get_pending_enclosure_coins", return_value=6
     ):
         await _tick_enclosure_income(ctx)
 

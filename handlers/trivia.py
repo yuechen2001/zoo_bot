@@ -3,6 +3,7 @@ import datetime
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 import db
+from achievements import check_achievements
 
 TRIVIA_COOLDOWN_MINUTES = 15
 TRIVIA_WINDOW_MINUTES = 10
@@ -128,3 +129,4 @@ async def trivia_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             f"❌ *Wrong!* The correct answer was *{trivia['answer']}*.\n💰 +{coins} coins for trying.",
             parse_mode="Markdown",
         )
+    await check_achievements(tg_id, "trivia", ctx)

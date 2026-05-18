@@ -1,7 +1,9 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
+from achievements import check_achievements
 from species_data import ENCLOSURE_LEVELS
+from utils import format_mention
 
 
 async def gift_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -60,9 +62,11 @@ async def gift_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     db.transfer_animal(animal["animal_id"], recipient["user_id"])
 
     name = animal["nickname"] or animal["species_name"]
+    sender_mention = format_mention(sender["username"], tg_id)
     chat_id = sender["group_chat_id"] or tg_id
     await ctx.bot.send_message(
         chat_id,
-        f"🎁 *{sender['username'] or 'Someone'}* gifted {animal['emoji']} *{name}* to *@{username}*!",
+        f"🎁 *{sender_mention}* gifted {animal['emoji']} *{name}* to *@{username}*!",
         parse_mode="Markdown",
     )
+    await check_achievements(tg_id, "gift", ctx)

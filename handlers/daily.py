@@ -2,6 +2,7 @@ import datetime
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
+from achievements import check_achievements
 
 DAILY_COOLDOWN_HOURS = 24
 DAILY_STREAK_EXPIRY_HOURS = 48  # missing a day resets streak
@@ -91,3 +92,4 @@ async def daily_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         f"{next_line}",
         parse_mode="Markdown",
     )
+    await check_achievements(tg_id, "daily", ctx)

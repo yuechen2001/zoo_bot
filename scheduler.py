@@ -8,26 +8,34 @@ from config import (
     BREED_READY_REMINDER_MINUTES,
     WILD_EVENT_MIN_MINUTES,
     WILD_EVENT_MAX_MINUTES,
-    WILD_EVENT_EXPIRY_HOURS,
+    WILD_EVENT_EXPIRY_MINUTES,
 )
 from keyboards import mood_keyboard
 from species_data import ENCLOSURE_LEVELS
+from utils import format_mention
 
 logger = logging.getLogger(__name__)
 
 
+def _now_iso() -> str:
+    return datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
+
+
 async def prompt_tick(ctx):
     """Runs every PROMPT_INTERVAL_MINUTES. Sends mood prompts."""
+    db.set_setting("last_prompt_tick_at", _now_iso())
     await _send_mood_prompts(ctx)
 
 
 async def hunger_tick(ctx):
     """Runs every HUNGER_INTERVAL_MINUTES. Decays animal hunger."""
+    db.set_setting("last_hunger_tick_at", _now_iso())
     await _decay_stats()
 
 
 async def job_tick(ctx):
     """Runs every JOB_INTERVAL_MINUTES. Checks starvation, breeding, alerts, autofeed."""
+    db.set_setting("last_job_tick_at", _now_iso())
     await _check_starved_animals(ctx)
     await _check_breed_completions(ctx)
     await _check_hunger_alerts(ctx)
@@ -41,7 +49,8 @@ async def cleanup(ctx):
 
 
 async def enclosure_income(ctx):
-    """Runs every hour. Awards passive coin income from enclosures."""
+    """Runs every hour. Credits pending enclosure coins and notifies."""
+    db.set_setting("last_enclosure_tick_at", _now_iso())
     await _tick_enclosure_income(ctx)
 
 
@@ -125,12 +134,23 @@ async def _send_mood_prompts(ctx):
 async def _decay_stats():
     users = db.get_all_users_with_animals()
     for user in users:
+        uid = user["user_id"]
+        # Halve decay if a foot massage is active
+        massaged = (
+            user["massage_active_until"] is not None
+            and user["massage_active_until"]
+            > datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
+        )
+        decay_expr = (
+            "(SELECT hunger_decay / 2 FROM species WHERE species_id = animals.species_id)"
+            if massaged
+            else "(SELECT hunger_decay FROM species WHERE species_id = animals.species_id)"
+        )
         with db.get_conn() as conn:
             conn.execute(
-                "UPDATE animals SET "
-                "hunger = MAX(0, hunger - (SELECT hunger_decay FROM species WHERE species_id = animals.species_id)) "
+                f"UPDATE animals SET hunger = MAX(0, hunger - {decay_expr}) "
                 "WHERE user_id = ? AND is_breeding = 0",
-                (user["user_id"],),
+                (uid,),
             )
 
 
@@ -175,7 +195,7 @@ async def _check_breed_completions(ctx):
             continue
         is_reminder = breed["last_notified_at"] is not None
         prefix = "🔔 *Breed ready reminder!*" if is_reminder else "🥚 *Breeding complete!*"
-        mention = f"@{breed['username']}" if breed["username"] else f"user {breed['user_id']}"
+        mention = format_mention(breed["username"], breed["user_id"])
         try:
             await ctx.bot.send_message(
                 group_chat_id,
@@ -235,14 +255,15 @@ async def _tick_enclosure_income(ctx):
             total_coins += rate * count
         if total_coins > 0:
             db.add_pending_enclosure_coins(uid, total_coins)
-            name = user["username"] or f"user {uid}"
+            pending_total = db.get_pending_enclosure_coins(uid)
+            mention = format_mention(user["username"], uid)
             if user["group_chat_id"]:
-                group_earnings[user["group_chat_id"]].append((name, total_coins))
+                group_earnings[user["group_chat_id"]].append((mention, total_coins, pending_total))
 
     for group_chat_id, earnings in group_earnings.items():
         lines = ["🏦 *Enclosure income ready!*"]
-        for name, coins in earnings:
-            lines.append(f"  {name}: +{coins} 🪙")
+        for mention, coins, pending_total in earnings:
+            lines.append(f"  {mention}: +{coins} 🪙 (total pending: {pending_total} 🪙)")
         lines.append("\nUse `/enclosures collect` to claim.")
         try:
             await ctx.bot.send_message(group_chat_id, "\n".join(lines), parse_mode="Markdown")
@@ -315,7 +336,7 @@ async def _autofeed(ctx):
                 lines = "\n".join(fed_lines)
                 await ctx.bot.send_message(
                     chat_id,
-                    f"🍖 *Auto-feed* (@{user['username'] or uid})\n{lines}\n\nBalance: {remaining} 🪙",
+                    f"🍖 *Auto-feed* ({format_mention(user['username'], uid)})\n{lines}\n\nBalance: {remaining} 🪙",
                     parse_mode="Markdown",
                 )
         except Exception:
@@ -377,12 +398,17 @@ async def wild_event_tick(ctx):
                 logger.exception("Failed to send wild event to %s", group_chat_id)
 
     delay = random.randint(WILD_EVENT_MIN_MINUTES, WILD_EVENT_MAX_MINUTES) * 60
+    next_at = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        + datetime.timedelta(seconds=delay)
+    ).isoformat()
+    db.set_setting("next_wild_event_at", next_at)
     ctx.job_queue.run_once(wild_event_tick, delay, name="wild_event_tick")
 
 
 async def cleanup_expired_wild_events(ctx):
     """Expire unclaimed wild events and edit their messages to show they're gone."""
-    expired = db.get_expired_wild_events(WILD_EVENT_EXPIRY_HOURS)
+    expired = db.get_expired_wild_events(WILD_EVENT_EXPIRY_MINUTES)
     for event in expired:
         try:
             await ctx.bot.edit_message_text(

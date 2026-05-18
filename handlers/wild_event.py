@@ -1,9 +1,12 @@
+import random
 import uuid
 import logging
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 import db
+from achievements import check_achievements
 from species_data import ENCLOSURE_LEVELS
+from utils import format_mention
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +56,14 @@ async def wild_event_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # Roll catch rate — wild animals can escape even when tapped first
+    if not random.random() < species["catch_rate"]:
+        await query.answer(
+            f"🌿 {species['emoji']} {species['name']} got away! Someone else might still catch it.",
+            show_alert=True,
+        )
+        return
+
     claimed = db.claim_wild_event(event_id, tg_id)
     if not claimed:
         await query.answer("Too slow — someone already caught it!", show_alert=True)
@@ -61,12 +72,13 @@ async def wild_event_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     animal_id = str(uuid.uuid4())
     db.add_animal(animal_id, tg_id, species["species_id"])
 
-    username = query.from_user.username or query.from_user.first_name
+    mention = format_mention(query.from_user.username, tg_id)
     await query.answer(f"🎉 You caught {species['emoji']} {species['name']}!", show_alert=True)
+    await check_achievements(tg_id, "wild_catch", ctx)
     try:
         await query.edit_message_text(
             f"🌿 *Wild event over!*\n"
-            f"{species['emoji']} *{species['name']}* was caught by *@{username}*!",
+            f"{species['emoji']} *{species['name']}* was caught by *{mention}*!",
             parse_mode="Markdown",
         )
     except Exception:

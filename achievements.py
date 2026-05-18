@@ -1,4 +1,19 @@
 import db
+from species_data import MAX_ENCLOSURE_LEVEL
+
+
+def _count(query: str, user_id: int) -> int:
+    with db.get_conn() as conn:
+        return conn.execute(query, (user_id,)).fetchone()[0]
+
+
+def _has_max_enclosure(user_id: int) -> bool:
+    with db.get_conn() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM user_enclosures WHERE user_id = ? AND level = ?",
+            (user_id, MAX_ENCLOSURE_LEVEL),
+        ).fetchone()
+        return row[0] > 0
 
 
 def _animal_count(user_id):
@@ -242,6 +257,84 @@ ACHIEVEMENTS = {
         "desc": "Feed an animal for the first time",
         "trigger": "feed",
         "check": lambda uid, u: True,
+    },
+    # ── Trivia ────────────────────────────────────────────────────────────────
+    "first_trivia": {
+        "emoji": "🧠",
+        "name": "Curious Mind",
+        "desc": "Answer your first trivia question",
+        "trigger": "trivia",
+        "check": lambda uid, u: True,
+    },
+    "trivia_10": {
+        "emoji": "📚",
+        "name": "Quiz Whiz",
+        "desc": "Answer 10 trivia questions",
+        "trigger": "trivia",
+        "check": lambda uid, u: _count("SELECT COUNT(*) FROM trivia_log WHERE user_id=?", uid)
+        >= 10,
+    },
+    # ── Daily ─────────────────────────────────────────────────────────────────
+    "first_daily": {
+        "emoji": "🌅",
+        "name": "Early Bird",
+        "desc": "Claim your first daily reward",
+        "trigger": "daily",
+        "check": lambda uid, u: True,
+    },
+    # ── Wild events ───────────────────────────────────────────────────────────
+    "first_wild": {
+        "emoji": "⚡",
+        "name": "Quick Reflexes",
+        "desc": "Catch your first wild event animal",
+        "trigger": "wild_catch",
+        "check": lambda uid, u: True,
+    },
+    # ── Store ─────────────────────────────────────────────────────────────────
+    "first_purchase": {
+        "emoji": "🛍",
+        "name": "Shopkeeper",
+        "desc": "Buy your first item from the store",
+        "trigger": "store",
+        "check": lambda uid, u: True,
+    },
+    # ── Gifts ─────────────────────────────────────────────────────────────────
+    "first_gift": {
+        "emoji": "🎁",
+        "name": "Generous Soul",
+        "desc": "Give an animal to another player",
+        "trigger": "gift",
+        "check": lambda uid, u: True,
+    },
+    # ── Enclosures ────────────────────────────────────────────────────────────
+    "first_upgrade": {
+        "emoji": "🏗",
+        "name": "Builder",
+        "desc": "Upgrade an enclosure for the first time",
+        "trigger": "enclosure",
+        "check": lambda uid, u: True,
+    },
+    "max_enclosure": {
+        "emoji": "🏛",
+        "name": "Master Architect",
+        "desc": "Reach max level on any enclosure",
+        "trigger": "enclosure",
+        "check": lambda uid, u: _has_max_enclosure(uid),
+    },
+    # ── Coins ─────────────────────────────────────────────────────────────────
+    "coins_1000": {
+        "emoji": "💎",
+        "name": "Wealthy",
+        "desc": "Accumulate 1,000 coins",
+        "trigger": "checkin",
+        "check": lambda uid, u: (u["coins"] or 0) >= 1000,
+    },
+    "coins_5000": {
+        "emoji": "🏦",
+        "name": "Tycoon",
+        "desc": "Accumulate 5,000 coins",
+        "trigger": "checkin",
+        "check": lambda uid, u: (u["coins"] or 0) >= 5000,
     },
 }
 

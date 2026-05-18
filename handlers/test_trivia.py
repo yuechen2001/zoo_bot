@@ -10,6 +10,11 @@ from handlers.trivia import (
 )
 
 
+@pytest.fixture(autouse=True)
+def no_achievements(monkeypatch):
+    monkeypatch.setattr("handlers.trivia.check_achievements", AsyncMock())
+
+
 def _make_conn_mock(last_asked=None):
     """Return a mock context manager whose execute().fetchone() returns the given row."""
     inner = MagicMock()

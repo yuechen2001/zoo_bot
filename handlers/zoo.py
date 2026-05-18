@@ -176,8 +176,9 @@ def render_zoo_page(
         invested_at = datetime.datetime.fromisoformat(investment["invested_at"])
         matures_at = (invested_at + datetime.timedelta(hours=INVESTMENT_HOURS)).isoformat()
         inv_time = _time_remaining(matures_at)
-        profit = investment["return_amount"] - investment["amount"]
-        lines.append(f"💹 Investment: +{profit}🪙 in {inv_time}")
+        lines.append(
+            f"💹 Investment: {investment['amount']} 🪙 → {investment['return_amount']} 🪙 ({inv_time})"
+        )
 
     if active_breed:
         breed_time = _time_remaining(active_breed["ready_at"])

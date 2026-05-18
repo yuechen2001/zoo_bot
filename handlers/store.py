@@ -2,6 +2,7 @@ import datetime
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
+from achievements import check_achievements
 from game.store_data import STORE_ITEMS, CONSUMABLES, COSMETICS
 from keyboards import store_keyboard
 
@@ -157,6 +158,8 @@ async def store_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await query.answer(
             "🎯 Lucky Token activated! Next /catch has 2× catch rate.", show_alert=True
         )
+
+    await check_achievements(tg_id, "store", ctx)
 
 
 async def _buy(update, tg_id: int, user, item_key: str):
