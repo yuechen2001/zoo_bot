@@ -59,9 +59,8 @@ async def store_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     args = ctx.args or []
     if not args:
         owned = db.get_owned_title_keys(tg_id)
-        counts = db.get_consumable_counts(tg_id)
         await update.message.reply_text(
-            _store_text(tg_id), parse_mode="HTML", reply_markup=store_keyboard(owned, counts)
+            _store_text(tg_id), parse_mode="HTML", reply_markup=store_keyboard(owned)
         )
         return
 
@@ -118,9 +117,8 @@ async def store_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     else:
         owned = db.get_owned_title_keys(tg_id)
-        counts = db.get_consumable_counts(tg_id)
         await update.message.reply_text(
-            _store_text(tg_id), parse_mode="HTML", reply_markup=store_keyboard(owned, counts)
+            _store_text(tg_id), parse_mode="HTML", reply_markup=store_keyboard(owned)
         )
 
 
@@ -156,15 +154,16 @@ async def store_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     # Cosmetic
     if item["category"] == "cosmetic":
         if db.has_purchased(tg_id, key):
-            await query.answer(f"You already own {item['name']}! Tap Equip to wear it.")
+            await query.answer(f"You already own {item['name']}! Use /inventory to equip it.")
             return
         db.deduct_coins(tg_id, item["price"])
         db.record_purchase(tg_id, key)
         owned = db.get_owned_title_keys(tg_id)
-        counts = db.get_consumable_counts(tg_id)
-        await query.answer(f"✅ Purchased {item['emoji']} {item['name']}! Tap Equip to wear it.")
+        await query.answer(
+            f"✅ Purchased {item['emoji']} {item['name']}! Use /inventory to equip it."
+        )
         try:
-            await query.edit_message_reply_markup(reply_markup=store_keyboard(owned, counts))
+            await query.edit_message_reply_markup(reply_markup=store_keyboard(owned))
         except Exception:
             pass
         return

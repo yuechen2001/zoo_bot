@@ -60,15 +60,14 @@ def zoo_page_keyboard(owner_id: int, page: int, habitat_keys: list[str]) -> Inli
     return InlineKeyboardMarkup([buttons])
 
 
-def store_keyboard(owned_keys: set, counts: dict[str, int] | None = None) -> InlineKeyboardMarkup:
+def store_keyboard(owned_keys: set) -> InlineKeyboardMarkup:
     from game.store_data import CONSUMABLES, LURES, COSMETICS
 
-    counts = counts or {}
     rows = []
 
     consumable_buttons = [
         InlineKeyboardButton(
-            f"{item['emoji']} {item['price']} 🪙" + (f" ×{counts[key]}" if counts.get(key) else ""),
+            f"{item['emoji']} {item['price']} 🪙",
             callback_data=f"store_buy_{key}",
         )
         for key, item in CONSUMABLES.items()
@@ -78,7 +77,7 @@ def store_keyboard(owned_keys: set, counts: dict[str, int] | None = None) -> Inl
 
     lure_buttons = [
         InlineKeyboardButton(
-            f"{item['emoji']} {item['price']} 🪙" + (f" ×{counts[key]}" if counts.get(key) else ""),
+            f"{item['emoji']} {item['price']} 🪙",
             callback_data=f"store_buy_{key}",
         )
         for key, item in LURES.items()
@@ -88,12 +87,8 @@ def store_keyboard(owned_keys: set, counts: dict[str, int] | None = None) -> Inl
 
     cosmetic_row = [
         InlineKeyboardButton(
-            (
-                f"✅ {item['emoji']} Equip"
-                if key in owned_keys
-                else f"{item['emoji']} {item['price']} 🪙"
-            ),
-            callback_data=f"store_equip_{key}" if key in owned_keys else f"store_buy_{key}",
+            f"✅ {item['emoji']}" if key in owned_keys else f"{item['emoji']} {item['price']} 🪙",
+            callback_data="zoo_noop" if key in owned_keys else f"store_buy_{key}",
         )
         for key, item in COSMETICS.items()
     ]
