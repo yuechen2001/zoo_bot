@@ -47,15 +47,6 @@ def _store_text(tg_id: int) -> str:
     return "\n".join(lines)
 
 
-def _owned_cosmetic_keys(tg_id: int) -> set:
-    with db.get_conn() as conn:
-        rows = conn.execute(
-            "SELECT DISTINCT item_key FROM user_purchases WHERE user_id = ? AND item_key LIKE 'title_%'",
-            (tg_id,),
-        ).fetchall()
-    return {r["item_key"] for r in rows}
-
-
 async def store_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     tg_id = update.effective_user.id
     user = db.get_user(tg_id)
@@ -65,7 +56,7 @@ async def store_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     args = ctx.args or []
     if not args:
-        owned = _owned_cosmetic_keys(tg_id)
+        owned = db.get_owned_title_keys(tg_id)
         counts = db.get_consumable_counts(tg_id)
         await update.message.reply_text(
             _store_text(tg_id), parse_mode="Markdown", reply_markup=store_keyboard(owned, counts)
@@ -124,7 +115,7 @@ async def store_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await _equip_title(update, tg_id, args[1].lower())
 
     else:
-        owned = _owned_cosmetic_keys(tg_id)
+        owned = db.get_owned_title_keys(tg_id)
         counts = db.get_consumable_counts(tg_id)
         await update.message.reply_text(
             _store_text(tg_id), parse_mode="Markdown", reply_markup=store_keyboard(owned, counts)
@@ -165,12 +156,9 @@ async def store_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         if db.has_purchased(tg_id, key):
             await query.answer(f"You already own {item['name']}! Tap Equip to wear it.")
             return
-        with db.get_conn() as conn:
-            conn.execute(
-                "UPDATE users SET coins = coins - ? WHERE user_id = ?", (item["price"], tg_id)
-            )
+        db.deduct_coins(tg_id, item["price"])
         db.record_purchase(tg_id, key)
-        owned = _owned_cosmetic_keys(tg_id)
+        owned = db.get_owned_title_keys(tg_id)
         counts = db.get_consumable_counts(tg_id)
         await query.answer(f"✅ Purchased {item['emoji']} {item['name']}! Tap Equip to wear it.")
         try:
@@ -180,8 +168,7 @@ async def store_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     # Consumables and lures — all go to inventory
-    with db.get_conn() as conn:
-        conn.execute("UPDATE users SET coins = coins - ? WHERE user_id = ?", (item["price"], tg_id))
+    db.deduct_coins(tg_id, item["price"])
     db.record_purchase(tg_id, key)
     if key.startswith("lure_"):
         msg = f"✅ {item['emoji']} {item['name']} added to your bag! Use /catch to apply it."
@@ -215,10 +202,7 @@ async def _buy(update, tg_id: int, user, item_key: str):
                 parse_mode="Markdown",
             )
             return
-        with db.get_conn() as conn:
-            conn.execute(
-                "UPDATE users SET coins = coins - ? WHERE user_id = ?", (item["price"], tg_id)
-            )
+        db.deduct_coins(tg_id, item["price"])
         db.record_purchase(tg_id, item_key)
         await update.message.reply_text(
             f"✅ Purchased {item['emoji']} *{item['name']}*!\n"
@@ -228,8 +212,7 @@ async def _buy(update, tg_id: int, user, item_key: str):
         return
 
     # Consumables and lures — all go to inventory
-    with db.get_conn() as conn:
-        conn.execute("UPDATE users SET coins = coins - ? WHERE user_id = ?", (item["price"], tg_id))
+    db.deduct_coins(tg_id, item["price"])
     db.record_purchase(tg_id, item_key)
     if item_key.startswith("lure_"):
         await update.message.reply_text(
@@ -246,13 +229,7 @@ async def _buy(update, tg_id: int, user, item_key: str):
 
 
 async def _use_mega_feed(update, tg_id: int, position: int):
-    with db.get_conn() as conn:
-        purchase = conn.execute(
-            "SELECT id FROM user_purchases WHERE user_id = ? AND item_key = 'mega_feed' "
-            "ORDER BY purchased_at ASC LIMIT 1",
-            (tg_id,),
-        ).fetchone()
-
+    purchase = db.get_oldest_purchase(tg_id, "mega_feed")
     if not purchase:
         await update.message.reply_text(
             "You don't have a Mega Feed. Buy one with `/store buy mega_feed`.",
@@ -268,13 +245,7 @@ async def _use_mega_feed(update, tg_id: int, position: int):
         )
         return
 
-    with db.get_conn() as conn:
-        conn.execute(
-            "UPDATE animals SET hunger = 100, hunger_alerted = NULL WHERE animal_id = ?",
-            (animal["animal_id"],),
-        )
-        conn.execute("DELETE FROM user_purchases WHERE id = ?", (purchase["id"],))
-
+    db.feed_animal_and_consume(animal["animal_id"], purchase["id"])
     name = animal["nickname"] or animal["species_name"]
     await update.message.reply_text(
         f"🍖 *Mega Feed* applied! {animal['emoji']} *{name}* hunger restored to 100.",
@@ -283,13 +254,7 @@ async def _use_mega_feed(update, tg_id: int, position: int):
 
 
 async def _use_breed_boost(update, tg_id: int):
-    with db.get_conn() as conn:
-        purchase = conn.execute(
-            "SELECT id FROM user_purchases WHERE user_id = ? AND item_key = 'breed_boost' "
-            "ORDER BY purchased_at ASC LIMIT 1",
-            (tg_id,),
-        ).fetchone()
-
+    purchase = db.get_oldest_purchase(tg_id, "breed_boost")
     if not purchase:
         await update.message.reply_text(
             "You don't have a Breed Boost. Buy one with `/store buy breed_boost`.",
@@ -306,25 +271,14 @@ async def _use_breed_boost(update, tg_id: int):
     new_ready = max(
         now, datetime.datetime.fromisoformat(pending["ready_at"]) - datetime.timedelta(hours=2)
     )
-    with db.get_conn() as conn:
-        conn.execute(
-            "UPDATE breeding_queue SET ready_at = ? WHERE id = ?",
-            (new_ready.isoformat(), pending["id"]),
-        )
-        conn.execute("DELETE FROM user_purchases WHERE id = ?", (purchase["id"],))
+    db.adjust_breed_time_and_consume(pending["id"], new_ready.isoformat(), purchase["id"])
     await update.message.reply_text(
         "⚡ *Breed Boost* applied! Breed time cut by 2 hours.", parse_mode="Markdown"
     )
 
 
 async def _use_lucky_token(update, tg_id: int):
-    with db.get_conn() as conn:
-        purchase = conn.execute(
-            "SELECT id FROM user_purchases WHERE user_id = ? AND item_key = 'lucky_token' "
-            "ORDER BY purchased_at ASC LIMIT 1",
-            (tg_id,),
-        ).fetchone()
-
+    purchase = db.get_oldest_purchase(tg_id, "lucky_token")
     if not purchase:
         await update.message.reply_text(
             "You don't have a Lucky Token. Buy one with `/store buy lucky_token`.",
@@ -332,8 +286,7 @@ async def _use_lucky_token(update, tg_id: int):
         )
         return
 
-    with db.get_conn() as conn:
-        conn.execute("DELETE FROM user_purchases WHERE id = ?", (purchase["id"],))
+    db.consume_purchase(purchase["id"])
     db.set_lucky_catch(tg_id, True)
     await update.message.reply_text(
         "🎯 *Lucky Token* activated! Your next /catch has 2× catch rate.", parse_mode="Markdown"
@@ -341,13 +294,7 @@ async def _use_lucky_token(update, tg_id: int):
 
 
 async def _use_mood_booster(update, tg_id: int):
-    with db.get_conn() as conn:
-        purchase = conn.execute(
-            "SELECT id FROM user_purchases WHERE user_id = ? AND item_key = 'mood_booster' "
-            "ORDER BY purchased_at ASC LIMIT 1",
-            (tg_id,),
-        ).fetchone()
-
+    purchase = db.get_oldest_purchase(tg_id, "mood_booster")
     if not purchase:
         await update.message.reply_text(
             "You don't have a Mood Booster. Buy one with `/store buy mood_booster`.",
@@ -355,8 +302,7 @@ async def _use_mood_booster(update, tg_id: int):
         )
         return
 
-    with db.get_conn() as conn:
-        conn.execute("DELETE FROM user_purchases WHERE id = ?", (purchase["id"],))
+    db.consume_purchase(purchase["id"])
     db.set_mood_booster(tg_id, True)
     await update.message.reply_text(
         "✨ *Mood Booster* activated! Your next mood check-in earns double coins.",
@@ -365,13 +311,7 @@ async def _use_mood_booster(update, tg_id: int):
 
 
 async def _use_catch_net(update, tg_id: int):
-    with db.get_conn() as conn:
-        purchase = conn.execute(
-            "SELECT id FROM user_purchases WHERE user_id = ? AND item_key = 'catch_net' "
-            "ORDER BY purchased_at ASC LIMIT 1",
-            (tg_id,),
-        ).fetchone()
-
+    purchase = db.get_oldest_purchase(tg_id, "catch_net")
     if not purchase:
         await update.message.reply_text(
             "You don't have a Catch Net. Buy one with `/store buy catch_net`.",
@@ -379,8 +319,7 @@ async def _use_catch_net(update, tg_id: int):
         )
         return
 
-    with db.get_conn() as conn:
-        conn.execute("DELETE FROM user_purchases WHERE id = ?", (purchase["id"],))
+    db.consume_purchase(purchase["id"])
     db.set_catch_net(tg_id, True)
     await update.message.reply_text(
         "🪤 *Catch Net* activated! Your next /catch will encounter a legendary and is guaranteed to succeed.",
@@ -389,13 +328,7 @@ async def _use_catch_net(update, tg_id: int):
 
 
 async def _use_breed_accelerator(update, tg_id: int):
-    with db.get_conn() as conn:
-        purchase = conn.execute(
-            "SELECT id FROM user_purchases WHERE user_id = ? AND item_key = 'breed_accelerator' "
-            "ORDER BY purchased_at ASC LIMIT 1",
-            (tg_id,),
-        ).fetchone()
-
+    purchase = db.get_oldest_purchase(tg_id, "breed_accelerator")
     if not purchase:
         await update.message.reply_text(
             "You don't have a Breed Accelerator. Buy one with `/store buy breed_accelerator`.",
@@ -412,12 +345,7 @@ async def _use_breed_accelerator(update, tg_id: int):
     ready_at = datetime.datetime.fromisoformat(pending["ready_at"])
     remaining = ready_at - now
     new_ready = max(now, now + remaining / 2)
-    with db.get_conn() as conn:
-        conn.execute(
-            "UPDATE breeding_queue SET ready_at = ? WHERE id = ?",
-            (new_ready.isoformat(), pending["id"]),
-        )
-        conn.execute("DELETE FROM user_purchases WHERE id = ?", (purchase["id"],))
+    db.adjust_breed_time_and_consume(pending["id"], new_ready.isoformat(), purchase["id"])
     await update.message.reply_text(
         "🚀 *Breed Accelerator* applied! Remaining breed time halved.", parse_mode="Markdown"
     )

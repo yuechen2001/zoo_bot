@@ -48,7 +48,15 @@ def _parse(path: Path) -> tuple[str, str]:
 
 def _apply(conn: sqlite3.Connection, path: Path) -> None:
     up_sql, _ = _parse(path)
-    conn.executescript(up_sql)
+    if not up_sql:
+        raise ValueError(f"{path.name} has no '-- up' section — add one before applying")
+    for stmt in [s.strip() for s in up_sql.split(";") if s.strip()]:
+        try:
+            conn.execute(stmt)
+        except sqlite3.OperationalError as e:
+            # Idempotent ADD COLUMN: skip if column already exists (repair migrations)
+            if "duplicate column name" not in str(e).lower():
+                raise
     conn.execute("INSERT INTO schema_migrations (version) VALUES (?)", (path.stem,))
     conn.commit()
     print(f"  ✓ applied   {path.stem}")

@@ -675,6 +675,251 @@ def get_consumable_counts(user_id: int) -> dict[str, int]:
     return {r["item_key"]: r["n"] for r in rows}
 
 
+def get_owned_title_keys(user_id: int) -> set[str]:
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT DISTINCT item_key FROM user_purchases WHERE user_id = ? AND item_key LIKE 'title_%'",
+            (user_id,),
+        ).fetchall()
+    return {r["item_key"] for r in rows}
+
+
+def deduct_coins(user_id: int, amount: int):
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET coins = coins - ? WHERE user_id = ?", (amount, user_id))
+
+
+def get_oldest_purchase(user_id: int, item_key: str):
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT id FROM user_purchases WHERE user_id = ? AND item_key = ? "
+            "ORDER BY purchased_at ASC LIMIT 1",
+            (user_id, item_key),
+        ).fetchone()
+
+
+def consume_purchase(purchase_id: int):
+    with get_conn() as conn:
+        conn.execute("DELETE FROM user_purchases WHERE id = ?", (purchase_id,))
+
+
+def feed_animal_and_consume(animal_id: str, purchase_id: int):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE animals SET hunger = 100, hunger_alerted = NULL WHERE animal_id = ?",
+            (animal_id,),
+        )
+        conn.execute("DELETE FROM user_purchases WHERE id = ?", (purchase_id,))
+
+
+def adjust_breed_time_and_consume(breed_id: int, new_ready_at: str, purchase_id: int):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE breeding_queue SET ready_at = ? WHERE id = ?",
+            (new_ready_at, breed_id),
+        )
+        conn.execute("DELETE FROM user_purchases WHERE id = ?", (purchase_id,))
+
+
+# ── User state helpers ────────────────────────────────────────────────────────
+
+
+def set_opted_in(user_id: int) -> None:
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET opted_in = 1 WHERE user_id = ?", (user_id,))
+
+
+def set_opted_out(user_id: int) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET opted_in = 0, consecutive_misses = 0 WHERE user_id = ?", (user_id,)
+        )
+
+
+def set_paused_until(user_id: int, paused_until: str | None) -> None:
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET paused_until = ? WHERE user_id = ?", (paused_until, user_id))
+
+
+def update_group_chat_id(user_id: int, group_chat_id: int) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET group_chat_id = ? WHERE user_id = ?", (group_chat_id, user_id)
+        )
+
+
+def set_last_prompt_at(user_id: int, now_str: str) -> None:
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET last_prompt_at = ? WHERE user_id = ?", (now_str, user_id))
+
+
+def record_checkin(user_id: int, emoji: str, coins: int, new_streak: int, now_str: str) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET streak_windows = ?, consecutive_misses = 0, "
+            "coins = coins + ?, last_checkin_at = ? WHERE user_id = ?",
+            (new_streak, coins, now_str, user_id),
+        )
+        conn.execute(
+            "INSERT INTO mood_checkins (user_id, emoji, coins_earned, streak_window) "
+            "VALUES (?, ?, ?, ?)",
+            (user_id, emoji, coins, new_streak),
+        )
+
+
+# ── Massage ───────────────────────────────────────────────────────────────────
+
+
+def activate_massage(user_id: int, cost: int, massage_until: str) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET coins = coins - ?, massage_active_until = ? WHERE user_id = ?",
+            (cost, massage_until, user_id),
+        )
+
+
+# ── Feed ──────────────────────────────────────────────────────────────────────
+
+
+def feed_animal(user_id: int, animal_id: str, new_hunger: int, feed_cost: int) -> None:
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET coins = coins - ? WHERE user_id = ?", (feed_cost, user_id))
+        conn.execute(
+            "UPDATE animals SET hunger = ?, hunger_alerted = NULL WHERE animal_id = ?",
+            (new_hunger, animal_id),
+        )
+
+
+# ── Breed ──────────────────────────────────────────────────────────────────────
+
+
+def start_breed(
+    user_id: int,
+    animal_a_id: str,
+    animal_b_id: str,
+    offspring_species_id: int,
+    ready_at: str,
+    cost: int,
+) -> None:
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET coins = coins - ? WHERE user_id = ?", (cost, user_id))
+        conn.execute(
+            "UPDATE animals SET is_breeding = 1 WHERE animal_id IN (?, ?)",
+            (animal_a_id, animal_b_id),
+        )
+        conn.execute(
+            "INSERT INTO breeding_queue "
+            "(user_id, parent_a, parent_b, offspring_species_id, ready_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (user_id, animal_a_id, animal_b_id, offspring_species_id, ready_at),
+        )
+
+
+def collect_breed(
+    user_id: int,
+    animal_id: str,
+    offspring_species_id: int,
+    breed_id: int,
+    parent_a: str,
+    parent_b: str,
+) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO animals (animal_id, user_id, species_id) VALUES (?, ?, ?)",
+            (animal_id, user_id, offspring_species_id),
+        )
+        conn.execute(
+            "UPDATE animals SET is_breeding = 0 WHERE animal_id IN (?, ?)",
+            (parent_a, parent_b),
+        )
+        conn.execute("UPDATE breeding_queue SET collected = 1 WHERE id = ?", (breed_id,))
+
+
+# ── Starter animal ────────────────────────────────────────────────────────────
+
+
+def give_starter_animal(user_id: int):
+    import random as _random
+    import uuid as _uuid
+
+    with get_conn() as conn:
+        commons = conn.execute("SELECT * FROM species WHERE rarity = 'common'").fetchall()
+        starter = _random.choice(commons)
+        animal_id = str(_uuid.uuid4())
+        conn.execute(
+            "INSERT INTO animals (animal_id, user_id, species_id) VALUES (?, ?, ?)",
+            (animal_id, user_id, starter["species_id"]),
+        )
+    return starter
+
+
+# ── Species candidates ────────────────────────────────────────────────────────
+
+
+def get_species_candidates(rarity: str, habitat: str | None = None) -> list:
+    with get_conn() as conn:
+        if habitat:
+            return conn.execute(
+                "SELECT * FROM species WHERE rarity = ? AND habitat = ?", (rarity, habitat)
+            ).fetchall()
+        return conn.execute("SELECT * FROM species WHERE rarity = ?", (rarity,)).fetchall()
+
+
+# ── Zoo helpers ───────────────────────────────────────────────────────────────
+
+
+def get_breeding_animal_ids(user_id: int) -> set:
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT parent_a, parent_b FROM breeding_queue WHERE user_id = ? AND collected = 0",
+            (user_id,),
+        ).fetchall()
+    result = set()
+    for r in rows:
+        result.add(r["parent_a"])
+        result.add(r["parent_b"])
+    return result
+
+
+# ── Store atomic helpers ──────────────────────────────────────────────────────
+
+
+def buy_item(user_id: int, item_key: str, price: int) -> None:
+    """Atomically deduct coins and record the purchase."""
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET coins = coins - ? WHERE user_id = ?", (price, user_id))
+        conn.execute(
+            "INSERT INTO user_purchases (user_id, item_key) VALUES (?, ?)", (user_id, item_key)
+        )
+
+
+# ── Scheduler helpers ─────────────────────────────────────────────────────────
+
+
+def decay_animal_hunger(user_id: int, massaged: bool) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE animals SET hunger = MAX(0, hunger - "
+            "(SELECT CASE WHEN ? THEN hunger_decay / 2 ELSE hunger_decay END "
+            "FROM species WHERE species_id = animals.species_id)) "
+            "WHERE user_id = ? AND is_breeding = 0",
+            (1 if massaged else 0, user_id),
+        )
+
+
+# ── Admin helpers ─────────────────────────────────────────────────────────────
+
+_ANIMAL_STAT_SQL: dict[str, str] = {
+    "hunger": "UPDATE animals SET hunger = ? WHERE animal_id = ?",
+}
+
+
+def admin_set_animal_stat(animal_id: str, stat: str, value: int) -> None:
+    sql = _ANIMAL_STAT_SQL[stat]  # KeyError for unrecognised stats — caller validates
+    with get_conn() as conn:
+        conn.execute(sql, (value, animal_id))
+
+
 def get_active_group_chats() -> list[int]:
     with get_conn() as conn:
         rows = conn.execute(
