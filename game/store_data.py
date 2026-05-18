@@ -42,6 +42,49 @@ STORE_ITEMS: dict[str, dict] = {
         "category": "consumable",
         "desc": "Halve your remaining breed time — use with /store use breed_accelerator",
     },
+    # ── Lures ─────────────────────────────────────────────────────────────────
+    "lure_woodland": {
+        "name": "Woodland Lure",
+        "emoji": "🌲",
+        "price": 80,
+        "category": "consumable",
+        "desc": "Attract a Woodland animal with 1.5× catch rate — select via /catch",
+    },
+    "lure_savanna": {
+        "name": "Savanna Lure",
+        "emoji": "🌾",
+        "price": 80,
+        "category": "consumable",
+        "desc": "Attract a Savanna animal with 1.5× catch rate — select via /catch",
+    },
+    "lure_tropical": {
+        "name": "Tropical Lure",
+        "emoji": "🌴",
+        "price": 80,
+        "category": "consumable",
+        "desc": "Attract a Tropical animal with 1.5× catch rate — select via /catch",
+    },
+    "lure_aquatic": {
+        "name": "Aquatic Lure",
+        "emoji": "🐠",
+        "price": 80,
+        "category": "consumable",
+        "desc": "Attract an Aquatic animal with 1.5× catch rate — select via /catch",
+    },
+    "lure_tundra": {
+        "name": "Tundra Lure",
+        "emoji": "❄️",
+        "price": 80,
+        "category": "consumable",
+        "desc": "Attract a Tundra animal with 1.5× catch rate — select via /catch",
+    },
+    "lure_mythic": {
+        "name": "Mythic Lure",
+        "emoji": "🌟",
+        "price": 200,
+        "category": "consumable",
+        "desc": "Attract a Mythic animal with 1.5× catch rate — select via /catch",
+    },
     # ── Cosmetics ─────────────────────────────────────────────────────────────
     "title_keeper": {
         "name": "Zookeeper",
@@ -66,5 +109,10 @@ STORE_ITEMS: dict[str, dict] = {
     },
 }
 
-CONSUMABLES = {k: v for k, v in STORE_ITEMS.items() if v["category"] == "consumable"}
+LURES = {k: v for k, v in STORE_ITEMS.items() if k.startswith("lure_")}
+CONSUMABLES = {
+    k: v
+    for k, v in STORE_ITEMS.items()
+    if v["category"] == "consumable" and not k.startswith("lure_")
+}
 COSMETICS = {k: v for k, v in STORE_ITEMS.items() if v["category"] == "cosmetic"}

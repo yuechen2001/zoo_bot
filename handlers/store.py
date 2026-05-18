@@ -3,7 +3,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 import db
 from achievements import check_achievements
-from game.store_data import STORE_ITEMS, CONSUMABLES, COSMETICS
+from game.store_data import STORE_ITEMS, CONSUMABLES, LURES, COSMETICS
 from keyboards import store_keyboard
 
 # Maps consumable keys to the flag column that tracks "currently active" state
@@ -31,10 +31,19 @@ def _store_text(tg_id: int) -> str:
         if badges:
             line += f"  _({', '.join(badges)})_"
         lines.append(line)
+    lines.append("\n*Lures* 🎣 (catching now requires a lure — select via /catch):")
+    for key, item in LURES.items():
+        line = f"  {item['emoji']} *{item['name']}* — {item['price']} 🪙\n  {item['desc']}"
+        n = counts.get(key, 0)
+        if n:
+            line += f"  _(×{n} in bag)_"
+        lines.append(line)
     lines.append("\n*Titles* (shown in your /zoo):")
     for key, item in COSMETICS.items():
         lines.append(f"  {item['emoji']} *{item['name']}* — {item['price']} 🪙\n  {item['desc']}")
-    lines.append("\n_Tap a button to buy. Use_ `/store use <item>` _to activate consumables._")
+    lines.append(
+        "\n_Tap a button to buy. Use_ `/store use <item>` _for consumables, or /catch for lures._"
+    )
     return "\n".join(lines)
 
 
@@ -96,6 +105,10 @@ async def store_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             await _use_catch_net(update, tg_id)
         elif item_key == "breed_accelerator":
             await _use_breed_accelerator(update, tg_id)
+        elif item_key.startswith("lure_"):
+            await update.message.reply_text(
+                "Lures are used via /catch — just run /catch to pick your lure!"
+            )
         else:
             await update.message.reply_text(
                 f"Unknown item `{item_key}`. Use `/store` to see available items.",
@@ -166,14 +179,15 @@ async def store_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             pass
         return
 
-    # Consumables — all go to inventory
+    # Consumables and lures — all go to inventory
     with db.get_conn() as conn:
         conn.execute("UPDATE users SET coins = coins - ? WHERE user_id = ?", (item["price"], tg_id))
     db.record_purchase(tg_id, key)
-    await query.answer(
-        f"✅ {item['emoji']} {item['name']} added to your bag! Use /store use {key} to activate.",
-        show_alert=True,
-    )
+    if key.startswith("lure_"):
+        msg = f"✅ {item['emoji']} {item['name']} added to your bag! Use /catch to apply it."
+    else:
+        msg = f"✅ {item['emoji']} {item['name']} added to your bag! Use /store use {key} to activate."
+    await query.answer(msg, show_alert=True)
     await check_achievements(tg_id, "store", ctx)
 
 
@@ -213,15 +227,22 @@ async def _buy(update, tg_id: int, user, item_key: str):
         )
         return
 
-    # Consumables — all go to inventory
+    # Consumables and lures — all go to inventory
     with db.get_conn() as conn:
         conn.execute("UPDATE users SET coins = coins - ? WHERE user_id = ?", (item["price"], tg_id))
     db.record_purchase(tg_id, item_key)
-    await update.message.reply_text(
-        f"✅ {item['emoji']} *{item['name']}* added to your bag!\n"
-        f"Use `/store use {item_key}` to activate it.",
-        parse_mode="Markdown",
-    )
+    if item_key.startswith("lure_"):
+        await update.message.reply_text(
+            f"✅ {item['emoji']} *{item['name']}* added to your bag!\n"
+            f"Run /catch to pick your lure and start hunting.",
+            parse_mode="Markdown",
+        )
+    else:
+        await update.message.reply_text(
+            f"✅ {item['emoji']} *{item['name']}* added to your bag!\n"
+            f"Use `/store use {item_key}` to activate it.",
+            parse_mode="Markdown",
+        )
 
 
 async def _use_mega_feed(update, tg_id: int, position: int):

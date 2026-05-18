@@ -61,16 +61,31 @@ def zoo_page_keyboard(owner_id: int, page: int, habitat_keys: list[str]) -> Inli
 
 
 def store_keyboard(owned_keys: set, counts: dict[str, int] | None = None) -> InlineKeyboardMarkup:
-    from game.store_data import CONSUMABLES, COSMETICS
+    from game.store_data import CONSUMABLES, LURES, COSMETICS
 
     counts = counts or {}
-    consumable_row = [
+    rows = []
+
+    consumable_buttons = [
         InlineKeyboardButton(
             f"{item['emoji']} {item['price']} 🪙" + (f" ×{counts[key]}" if counts.get(key) else ""),
             callback_data=f"store_buy_{key}",
         )
         for key, item in CONSUMABLES.items()
     ]
+    for i in range(0, len(consumable_buttons), 3):
+        rows.append(consumable_buttons[i : i + 3])
+
+    lure_buttons = [
+        InlineKeyboardButton(
+            f"{item['emoji']} {item['price']} 🪙" + (f" ×{counts[key]}" if counts.get(key) else ""),
+            callback_data=f"store_buy_{key}",
+        )
+        for key, item in LURES.items()
+    ]
+    for i in range(0, len(lure_buttons), 3):
+        rows.append(lure_buttons[i : i + 3])
+
     cosmetic_row = [
         InlineKeyboardButton(
             (
@@ -82,7 +97,33 @@ def store_keyboard(owned_keys: set, counts: dict[str, int] | None = None) -> Inl
         )
         for key, item in COSMETICS.items()
     ]
-    return InlineKeyboardMarkup([consumable_row, cosmetic_row])
+    rows.append(cosmetic_row)
+    return InlineKeyboardMarkup(rows)
+
+
+def lure_keyboard(lure_counts: dict[str, int]) -> InlineKeyboardMarkup:
+    from game.store_data import LURES
+
+    available = [
+        (key, item, lure_counts.get(key, 0))
+        for key, item in LURES.items()
+        if lure_counts.get(key, 0) > 0
+    ]
+    rows = []
+    for i in range(0, len(available), 3):
+        chunk = available[i : i + 3]
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    f"{item['emoji']} {HABITATS[key.removeprefix('lure_')]['name']}"
+                    + (f" ×{n}" if n > 1 else ""),
+                    callback_data=f"catch_lure_{key.removeprefix('lure_')}",
+                )
+                for key, item, n in chunk
+            ]
+        )
+    rows.append([InlineKeyboardButton("❌ Cancel", callback_data="catch_skip")])
+    return InlineKeyboardMarkup(rows)
 
 
 def trade_keyboard(trade_id: int, recipient_id: int):

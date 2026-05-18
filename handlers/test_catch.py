@@ -1,6 +1,7 @@
+import datetime
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from handlers.catch import catch_command, ENCOUNTER_FEE
+from handlers.catch import catch_command, catch_lure_callback, catch_callback, LURE_MULTIPLIER
 
 
 @pytest.fixture(autouse=True)
@@ -16,15 +17,25 @@ def _make_conn_mock():
     return cm, inner
 
 
-# ── Fix 5: flat -10 encounter fee ─────────────────────────────────────────────
+def _make_pending(species_id=1, lure_multiplier=1.5):
+    return {
+        "species_id": species_id,
+        "catch_rate": 0.9,
+        "catch_cost": 20,
+        "rarity": "common",
+        "name": "Mouse",
+        "emoji": "🐭",
+        "at": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat(),
+        "message_id": 42,
+        "lure_multiplier": lure_multiplier,
+    }
 
 
-def test_encounter_fee_is_10():
-    assert ENCOUNTER_FEE == 10
+# ── catch_command ──────────────────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_catch_rejects_when_insufficient_coins():
+async def test_catch_command_blocks_without_lures():
     update = MagicMock()
     update.effective_user.id = 1
     update.message.reply_text = AsyncMock()
@@ -32,38 +43,18 @@ async def test_catch_rejects_when_insufficient_coins():
     ctx = MagicMock()
     ctx.user_data = {}
 
-    with patch(
-        "handlers.catch.db.get_user",
-        return_value={"coins": 5, "lucky_catch_active": 0, "catch_net_active": 0},
+    with patch("handlers.catch.db.get_user", return_value={"coins": 200}), patch(
+        "handlers.catch.db.get_consumable_counts", return_value={}
     ):
         await catch_command(update, ctx)
 
     update.message.reply_text.assert_called_once()
     reply = update.message.reply_text.call_args[0][0]
-    assert str(ENCOUNTER_FEE) in reply or "Not enough" in reply
+    assert "lure" in reply.lower()
 
 
 @pytest.mark.asyncio
-async def test_catch_deducts_encounter_fee_upfront():
-    """Fix 5: ENCOUNTER_FEE deducted immediately on /catch, before the user decides to attempt."""
-    cm, inner = _make_conn_mock()
-    deducted = []
-
-    def capture_execute(query, params=None):
-        if params:
-            deducted.append((query, params))
-
-    inner.execute = MagicMock(side_effect=capture_execute)
-
-    species = {
-        "species_id": 1,
-        "name": "Mouse",
-        "emoji": "🐭",
-        "rarity": "common",
-        "catch_rate": 0.9,
-        "catch_cost": 20,
-    }
-
+async def test_catch_command_shows_lure_keyboard_when_lures_held():
     update = MagicMock()
     update.effective_user.id = 1
     update.message.reply_text = AsyncMock()
@@ -71,101 +62,146 @@ async def test_catch_deducts_encounter_fee_upfront():
     ctx = MagicMock()
     ctx.user_data = {}
 
-    with patch(
-        "handlers.catch.db.get_user",
-        side_effect=[
-            {"coins": 100, "lucky_catch_active": 0, "catch_net_active": 0},
-            {"coins": 90, "lucky_catch_active": 0, "catch_net_active": 0},
-        ],
-    ), patch("handlers.catch.db.get_conn", return_value=cm), patch(
-        "handlers.catch.roll_encounter", return_value="common"
-    ), patch(
-        "handlers.catch.pick_species", return_value=species
-    ), patch(
-        "handlers.catch.db.get_species_habitat", return_value="woodland"
-    ), patch(
-        "handlers.catch.db.get_animal_count_by_habitat", return_value=1
-    ), patch(
-        "handlers.catch.db.get_enclosure_level", return_value=1
-    ), patch(
-        "handlers.catch.catch_keyboard", return_value=MagicMock()
-    ):
+    keyboard = MagicMock()
+
+    with patch("handlers.catch.db.get_user", return_value={"coins": 200}), patch(
+        "handlers.catch.db.get_consumable_counts", return_value={"lure_woodland": 1}
+    ), patch("handlers.catch.lure_keyboard", return_value=keyboard):
         await catch_command(update, ctx)
 
-    # An UPDATE that deducts ENCOUNTER_FEE must have been executed
-    fee_deductions = [
-        (q, p) for q, p in deducted if "UPDATE users SET coins" in q and ENCOUNTER_FEE in p
-    ]
-    assert len(fee_deductions) >= 1, "ENCOUNTER_FEE was not deducted during /catch"
+    update.message.reply_text.assert_called_once()
+    call_kwargs = update.message.reply_text.call_args[1]
+    assert call_kwargs.get("reply_markup") is keyboard
+
+
+# ── catch_lure_callback ────────────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_catch_stores_pending_catch_in_context():
-    """After /catch, pending_catch should be stored in ctx.user_data."""
-    cm, _ = _make_conn_mock()
+async def test_catch_lure_callback_blocks_when_lure_not_in_inventory():
+    query = MagicMock()
+    query.from_user.id = 1
+    query.data = "catch_lure_woodland"
+    query.answer = AsyncMock()
+
+    update = MagicMock()
+    update.callback_query = query
+    update.effective_chat.id = 99
+
+    ctx = MagicMock()
+    ctx.user_data = {}
+
+    cm, inner = _make_conn_mock()
+    inner.execute.return_value.fetchone.return_value = None  # no lure in DB
+
+    with patch(
+        "handlers.catch.db.get_user", return_value={"coins": 200, "catch_net_active": 0}
+    ), patch("handlers.catch.db.get_conn", return_value=cm):
+        await catch_lure_callback(update, ctx)
+
+    query.answer.assert_called_once()
+    call_kwargs = query.answer.call_args[1]
+    assert call_kwargs.get("show_alert") is True
+
+
+@pytest.mark.asyncio
+async def test_catch_lure_callback_generates_encounter_and_stores_pending():
+    query = MagicMock()
+    query.from_user.id = 1
+    query.data = "catch_lure_woodland"
+    query.answer = AsyncMock()
+    msg = MagicMock()
+    msg.message_id = 77
+    query.edit_message_text = AsyncMock(return_value=msg)
+
+    update = MagicMock()
+    update.callback_query = query
+    update.effective_chat.id = 99
+
+    ctx = MagicMock()
+    ctx.user_data = {}
+
+    lure_purchase = MagicMock()
+    lure_purchase.__getitem__ = lambda self, key: 42 if key == "id" else None
+
+    cm, inner = _make_conn_mock()
+    inner.execute.return_value.fetchone.return_value = lure_purchase
 
     species = {
-        "species_id": 3,
+        "species_id": 5,
         "name": "Fox",
         "emoji": "🦊",
         "rarity": "rare",
         "catch_rate": 0.6,
-        "catch_cost": 60,
+        "catch_cost": 40,
     }
-
-    update = MagicMock()
-    update.effective_user.id = 1
-    update.message.reply_text = AsyncMock()
-
-    ctx = MagicMock()
-    ctx.user_data = {}
 
     with patch(
         "handlers.catch.db.get_user",
-        side_effect=[
-            {"coins": 100, "lucky_catch_active": 0, "catch_net_active": 0},
-            {"coins": 90, "lucky_catch_active": 0, "catch_net_active": 0},
-        ],
+        return_value={"coins": 200, "catch_net_active": 0},
     ), patch("handlers.catch.db.get_conn", return_value=cm), patch(
+        "handlers.catch.db.get_enclosure_level", return_value=1
+    ), patch(
+        "handlers.catch.db.get_animal_count_by_habitat", return_value=0
+    ), patch(
         "handlers.catch.roll_encounter", return_value="rare"
     ), patch(
         "handlers.catch.pick_species", return_value=species
     ), patch(
-        "handlers.catch.db.get_species_habitat", return_value="woodland"
-    ), patch(
-        "handlers.catch.db.get_animal_count_by_habitat", return_value=0
-    ), patch(
-        "handlers.catch.db.get_enclosure_level", return_value=1
-    ), patch(
         "handlers.catch.catch_keyboard", return_value=MagicMock()
     ):
-        await catch_command(update, ctx)
+        await catch_lure_callback(update, ctx)
 
     pending = ctx.user_data.get("pending_catch")
     assert pending is not None
-    assert pending["species_id"] == 3
-    assert pending["rarity"] == "rare"
+    assert pending["species_id"] == 5
+    assert pending["lure_multiplier"] == LURE_MULTIPLIER
+
+
+@pytest.mark.asyncio
+async def test_catch_lure_callback_refunds_when_no_species_found():
+    query = MagicMock()
+    query.from_user.id = 1
+    query.data = "catch_lure_woodland"
+    query.answer = AsyncMock()
+
+    update = MagicMock()
+    update.callback_query = query
+
+    ctx = MagicMock()
+    ctx.user_data = {}
+
+    lure_purchase = MagicMock()
+    lure_purchase.__getitem__ = lambda self, key: 42 if key == "id" else None
+
+    cm, inner = _make_conn_mock()
+    inner.execute.return_value.fetchone.return_value = lure_purchase
+
+    with patch(
+        "handlers.catch.db.get_user",
+        return_value={"coins": 200, "catch_net_active": 0},
+    ), patch("handlers.catch.db.get_conn", return_value=cm), patch(
+        "handlers.catch.db.get_enclosure_level", return_value=1
+    ), patch(
+        "handlers.catch.db.get_animal_count_by_habitat", return_value=0
+    ), patch(
+        "handlers.catch.roll_encounter", return_value="rare"
+    ), patch(
+        "handlers.catch.pick_species", return_value=None
+    ), patch(
+        "handlers.catch.db.record_purchase"
+    ) as mock_refund:
+        await catch_lure_callback(update, ctx)
+
+    mock_refund.assert_called_once_with(1, "lure_woodland")
+
+
+# ── catch_callback capacity gate ──────────────────────────────────────────────
 
 
 class TestCatchCapacityGate:
-    def _make_pending(self, species_id=1):
-        import datetime
-
-        return {
-            "species_id": species_id,
-            "catch_rate": 0.9,
-            "catch_cost": 20,
-            "rarity": "common",
-            "name": "Mouse",
-            "emoji": "🐭",
-            "at": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat(),
-            "message_id": 42,
-        }
-
     @pytest.mark.asyncio
     async def test_catch_blocked_when_enclosure_full(self):
-        from handlers.catch import catch_callback
-
         query = MagicMock()
         query.from_user.id = 1
         query.data = "catch_attempt_1"
@@ -176,7 +212,7 @@ class TestCatchCapacityGate:
         update.callback_query = query
 
         ctx = MagicMock()
-        ctx.user_data = {"pending_catch": self._make_pending(species_id=1)}
+        ctx.user_data = {"pending_catch": _make_pending(species_id=1)}
 
         with patch(
             "handlers.catch.db.get_user",
@@ -192,15 +228,12 @@ class TestCatchCapacityGate:
         ):
             await catch_callback(update, ctx)
 
-        # Should show enclosure full message, not a successful catch
         query.edit_message_text.assert_called_once()
         msg = query.edit_message_text.call_args[0][0]
         assert "full" in msg.lower() or "enclosure" in msg.lower()
 
     @pytest.mark.asyncio
     async def test_catch_succeeds_when_space_available(self):
-        from handlers.catch import catch_callback
-
         query = MagicMock()
         query.from_user.id = 1
         query.data = "catch_attempt_1"
@@ -211,7 +244,7 @@ class TestCatchCapacityGate:
         update.callback_query = query
 
         ctx = MagicMock()
-        ctx.user_data = {"pending_catch": self._make_pending(species_id=1)}
+        ctx.user_data = {"pending_catch": _make_pending(species_id=1)}
 
         cm, inner = _make_conn_mock()
 

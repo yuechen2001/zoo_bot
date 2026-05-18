@@ -3,7 +3,7 @@ from .autofeed import autofeed_command
 from .admin import admin_command
 from .start import start_command
 from .zoo import zoo_command, zoo_page_callback
-from .catch import catch_command, catch_callback
+from .catch import catch_command, catch_callback, catch_lure_callback
 from .feed import feed_command
 from .breed import breed_command, breed_collect_callback
 from .name import name_command
@@ -31,6 +31,7 @@ __all__ = [
     "zoo_page_callback",
     "catch_command",
     "catch_callback",
+    "catch_lure_callback",
     "feed_command",
     "breed_command",
     "breed_collect_callback",

@@ -4,12 +4,12 @@ from telegram import Update
 from telegram.ext import ContextTypes
 import db
 from game.catch_engine import roll_encounter, pick_species, roll_catch
-from keyboards import catch_keyboard
+from keyboards import catch_keyboard, lure_keyboard
 from species_data import RARITY_LABELS, HABITATS, ENCLOSURE_LEVELS
 from config import CATCH_EXPIRY_MINUTES
 from achievements import check_achievements
 
-ENCOUNTER_FEE = 10
+LURE_MULTIPLIER = 1.5
 
 
 async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -20,43 +20,17 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Use /start first!")
         return
 
-    if user["coins"] < ENCOUNTER_FEE:
-        await update.message.reply_text(f"Not enough coins! Searching costs {ENCOUNTER_FEE} 🪙.")
-        return
-
-    with db.get_conn() as conn:
-        rarity = roll_encounter()
-        if user["catch_net_active"]:
-            rarity = "legendary"
-        species = pick_species(rarity, conn)
-
-    if not species:
-        await update.message.reply_text("No animals found... try again!")
-        return
-
-    # Check capacity before charging anything
-    habitat = db.get_species_habitat(species["species_id"])
-    used = db.get_animal_count_by_habitat(tg_id, habitat)
-    enc_level = db.get_enclosure_level(tg_id, habitat)
-    capacity = ENCLOSURE_LEVELS[enc_level]["capacity"]
-    if used >= capacity:
-        h = HABITATS[habitat]
+    counts = db.get_consumable_counts(tg_id)
+    has_lures = any(counts.get(f"lure_{h}", 0) > 0 for h in HABITATS)
+    if not has_lures:
         await update.message.reply_text(
-            f"Your {h['emoji']} *{h['name']}* enclosure is full! (Lv {enc_level}, {used}/{capacity})\n\n"
-            f"/sell an animal or use /enclosures to upgrade.",
-            parse_mode="Markdown",
+            "🎣 You need a lure to catch animals!\n\n"
+            "Buy one from /store — each habitat has its own lure."
         )
         return
 
-    with db.get_conn() as conn:
-        conn.execute(
-            "UPDATE users SET coins = coins - ? WHERE user_id = ?",
-            (ENCOUNTER_FEE, tg_id),
-        )
-    user = db.get_user(tg_id)
-
-    # Invalidate any previous encounter so its "Attempt" button can't catch the new species
-    old = ctx.user_data.get("pending_catch")
+    # Invalidate any previous pending encounter
+    old = ctx.user_data.pop("pending_catch", None)
     if old and old.get("message_id"):
         try:
             await ctx.bot.edit_message_text(
@@ -67,14 +41,79 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         except Exception:
             pass
 
-    catch_rate_display = (
-        "100% 🪤" if user["catch_net_active"] else f"{int(species['catch_rate'] * 100)}%"
+    await update.message.reply_text(
+        "🎣 *Choose a lure!*\n_Each lure targets a specific habitat with 1.5× catch rate._",
+        parse_mode="Markdown",
+        reply_markup=lure_keyboard(counts),
     )
-    msg = await update.message.reply_text(
+
+
+async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    tg_id = query.from_user.id
+    habitat = query.data.removeprefix("catch_lure_")
+
+    user = db.get_user(tg_id)
+    if not user:
+        await query.answer("Use /start first!", show_alert=True)
+        return
+
+    # Verify lure is still in inventory (race condition guard)
+    with db.get_conn() as conn:
+        purchase = conn.execute(
+            "SELECT id FROM user_purchases WHERE user_id = ? AND item_key = ? "
+            "ORDER BY purchased_at ASC LIMIT 1",
+            (tg_id, f"lure_{habitat}"),
+        ).fetchone()
+
+    if not purchase:
+        await query.answer("You don't have that lure anymore!", show_alert=True)
+        return
+
+    # Check enclosure capacity before consuming lure
+    enc_level = db.get_enclosure_level(tg_id, habitat)
+    capacity = ENCLOSURE_LEVELS[enc_level]["capacity"]
+    used = db.get_animal_count_by_habitat(tg_id, habitat)
+    if used >= capacity:
+        h = HABITATS[habitat]
+        await query.answer(
+            f"Your {h['emoji']} {h['name']} enclosure is full — lure not consumed.",
+            show_alert=True,
+        )
+        return
+
+    # Consume the lure
+    with db.get_conn() as conn:
+        conn.execute("DELETE FROM user_purchases WHERE id = ?", (purchase["id"],))
+
+    # Generate encounter filtered to habitat
+    with db.get_conn() as conn:
+        rarity = roll_encounter()
+        if user["catch_net_active"]:
+            rarity = "legendary"
+        species = pick_species(rarity, conn, habitat=habitat)
+
+    if not species:
+        # Refund the lure
+        db.record_purchase(tg_id, f"lure_{habitat}")
+        h = HABITATS[habitat]
+        await query.answer(
+            f"No {h['name']} animals found — lure refunded!",
+            show_alert=True,
+        )
+        return
+
+    h = HABITATS[habitat]
+    catch_rate_display = (
+        "100% 🪤"
+        if user["catch_net_active"]
+        else f"{min(100, int(species['catch_rate'] * LURE_MULTIPLIER * 100))}%"
+    )
+
+    msg = await query.edit_message_text(
         f"🌿 A wild *{species['emoji']} {species['name']}* appeared!\n"
-        f"{RARITY_LABELS.get(rarity, rarity.title())}\n\n"
-        f"Catch rate: {catch_rate_display}\n"
-        f"Your coins: *{user['coins']}* 🪙\n\n"
+        f"{RARITY_LABELS.get(rarity, rarity.title())} · {h['emoji']} {h['name']}\n\n"
+        f"Catch rate: {catch_rate_display}\n\n"
         f"_You have {CATCH_EXPIRY_MINUTES} min to decide._",
         parse_mode="Markdown",
         reply_markup=catch_keyboard(species["species_id"], species["catch_cost"]),
@@ -89,6 +128,7 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "emoji": species["emoji"],
         "at": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat(),
         "message_id": msg.message_id,
+        "lure_multiplier": LURE_MULTIPLIER,
     }
 
 
@@ -156,7 +196,8 @@ async def catch_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             (cost, tg_id),
         )
 
-    catch_rate = pending["catch_rate"]
+    catch_rate = pending["catch_rate"] * pending.get("lure_multiplier", 1.0)
+    catch_rate = min(1.0, catch_rate)
     if user["lucky_catch_active"]:
         catch_rate = min(1.0, catch_rate * 2)
         db.set_lucky_catch(tg_id, False)
@@ -168,7 +209,6 @@ async def catch_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     ctx.user_data.pop("pending_catch", None)
 
     if success:
-
         animal_id = str(uuid.uuid4())
         with db.get_conn() as conn:
             conn.execute(

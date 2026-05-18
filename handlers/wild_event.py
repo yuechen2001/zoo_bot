@@ -10,6 +10,8 @@ from utils import format_mention
 
 logger = logging.getLogger(__name__)
 
+LURE_MULTIPLIER = 1.5
+
 
 def wild_catch_keyboard(event_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
@@ -56,8 +58,27 @@ async def wild_event_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Roll catch rate — wild animals can escape even when tapped first
-    if not random.random() < species["catch_rate"]:
+    # Require a matching habitat lure
+    with db.get_conn() as conn:
+        lure_row = conn.execute(
+            "SELECT id FROM user_purchases WHERE user_id = ? AND item_key = ? "
+            "ORDER BY purchased_at ASC LIMIT 1",
+            (tg_id, f"lure_{habitat}"),
+        ).fetchone()
+
+    if not lure_row:
+        await query.answer(
+            f"You need a {habitat} lure to catch this! Buy one from /store.",
+            show_alert=True,
+        )
+        return
+
+    with db.get_conn() as conn:
+        conn.execute("DELETE FROM user_purchases WHERE id = ?", (lure_row["id"],))
+
+    # Roll catch rate with lure multiplier — wild animals can still escape
+    catch_rate = min(1.0, species["catch_rate"] * LURE_MULTIPLIER)
+    if not random.random() < catch_rate:
         await query.answer(
             f"🌿 {species['emoji']} {species['name']} got away! Someone else might still catch it.",
             show_alert=True,

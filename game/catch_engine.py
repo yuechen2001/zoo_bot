@@ -9,9 +9,13 @@ def roll_encounter() -> str:
     return random.choices(rarities, weights=weights, k=1)[0]
 
 
-def pick_species(rarity: str, conn) -> object:
-    """Pick a random species of the given rarity from the DB."""
-    rows = conn.execute("SELECT * FROM species WHERE rarity = ?", (rarity,)).fetchall()
+def pick_species(rarity: str, conn, habitat: str | None = None) -> object:
+    if habitat:
+        rows = conn.execute(
+            "SELECT * FROM species WHERE rarity = ? AND habitat = ?", (rarity, habitat)
+        ).fetchall()
+    else:
+        rows = conn.execute("SELECT * FROM species WHERE rarity = ?", (rarity,)).fetchall()
     return random.choice(rows) if rows else None
 
 

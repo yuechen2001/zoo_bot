@@ -34,6 +34,7 @@ from handlers import (
     zoo_page_callback,
     catch_command,
     catch_callback,
+    catch_lure_callback,
     feed_command,
     breed_command,
     breed_collect_callback,
@@ -112,6 +113,8 @@ async def handle_callback(update, ctx):
     data = update.callback_query.data
     if data.startswith("mood_"):
         await mood_checkin_callback(update, ctx)
+    elif data.startswith("catch_lure_"):
+        await catch_lure_callback(update, ctx)
     elif data.startswith("catch_"):
         await catch_callback(update, ctx)
     elif data == "breed_collect":
