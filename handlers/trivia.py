@@ -34,22 +34,16 @@ async def trivia_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     # Cooldown check
-    with db.get_conn() as conn:
-        last = conn.execute(
-            "SELECT asked_at FROM trivia_log WHERE user_id = ? ORDER BY asked_at DESC LIMIT 1",
-            (tg_id,),
-        ).fetchone()
-
-    if last:
+    last_at = db.get_last_trivia_at(tg_id)
+    if last_at:
         elapsed = (
             datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-            - datetime.datetime.fromisoformat(last["asked_at"])
+            - datetime.datetime.fromisoformat(last_at)
         ).total_seconds()
         remaining_s = TRIVIA_COOLDOWN_MINUTES * 60 - elapsed
         if remaining_s > 0:
-            remaining_m = int(remaining_s // 60)
             await update.message.reply_text(
-                f"⏳ Next trivia available in *{remaining_m} min*.",
+                f"⏳ Next trivia available in *{int(remaining_s // 60)} min*.",
                 parse_mode="Markdown",
             )
             return
@@ -62,11 +56,7 @@ async def trivia_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     }
 
     now_str = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
-    with db.get_conn() as conn:
-        conn.execute(
-            "INSERT INTO trivia_log (user_id, asked_at) VALUES (?, ?)",
-            (tg_id, now_str),
-        )
+    db.record_trivia(tg_id, now_str)
 
     opts = "\n".join(q["options"])
     await update.message.reply_text(
@@ -111,11 +101,7 @@ async def trivia_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     correct = chosen == trivia["answer"]
     coins = COINS_CORRECT if correct else COINS_WRONG
 
-    with db.get_conn() as conn:
-        conn.execute(
-            "UPDATE users SET coins = coins + ? WHERE user_id = ?",
-            (coins, tg_id),
-        )
+    db.add_coins(tg_id, coins)
 
     if correct:
         await query.answer(f"✅ Correct! +{coins} coins")

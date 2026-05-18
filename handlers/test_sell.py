@@ -98,14 +98,12 @@ async def test_sell_full_hunger_earns_half_catch_cost():
     with patch("handlers.sell.db.get_user", return_value={"coins": 100}), patch(
         "handlers.sell.db.get_animal_by_position", return_value=animal
     ), patch("handlers.sell.db.has_pending_trade_for_animal", return_value=False), patch(
-        "handlers.sell.db.delete_animal"
-    ) as mock_delete, patch(
-        "handlers.sell.db.get_conn", return_value=_make_conn_mock()
-    ), patch(
+        "handlers.sell.db.sell_animal"
+    ) as mock_sell, patch(
         "handlers.sell.check_achievements"
     ):
         await sell_command(update, ctx)
-    mock_delete.assert_called_once_with("a1")
+    mock_sell.assert_called_once_with(1, "a1", 10)
     # base = catch_cost // 2 = 10; hunger 100 → price = 10
     reply = update.message.reply_text.call_args[0][0]
     assert "10" in reply
@@ -119,9 +117,7 @@ async def test_sell_low_hunger_reduces_price():
     with patch("handlers.sell.db.get_user", return_value={"coins": 100}), patch(
         "handlers.sell.db.get_animal_by_position", return_value=animal
     ), patch("handlers.sell.db.has_pending_trade_for_animal", return_value=False), patch(
-        "handlers.sell.db.delete_animal"
-    ), patch(
-        "handlers.sell.db.get_conn", return_value=_make_conn_mock()
+        "handlers.sell.db.sell_animal"
     ), patch(
         "handlers.sell.check_achievements"
     ):
@@ -139,9 +135,7 @@ async def test_sell_legendary_full_hunger():
     with patch("handlers.sell.db.get_user", return_value={"coins": 100}), patch(
         "handlers.sell.db.get_animal_by_position", return_value=animal
     ), patch("handlers.sell.db.has_pending_trade_for_animal", return_value=False), patch(
-        "handlers.sell.db.delete_animal"
-    ), patch(
-        "handlers.sell.db.get_conn", return_value=_make_conn_mock()
+        "handlers.sell.db.sell_animal"
     ), patch(
         "handlers.sell.check_achievements"
     ):

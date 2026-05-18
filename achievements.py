@@ -2,84 +2,6 @@ import db
 from species_data import MAX_ENCLOSURE_LEVEL
 
 
-def _count(query: str, user_id: int) -> int:
-    with db.get_conn() as conn:
-        return conn.execute(query, (user_id,)).fetchone()[0]
-
-
-def _has_max_enclosure(user_id: int) -> bool:
-    with db.get_conn() as conn:
-        row = conn.execute(
-            "SELECT COUNT(*) FROM user_enclosures WHERE user_id = ? AND level = ?",
-            (user_id, MAX_ENCLOSURE_LEVEL),
-        ).fetchone()
-        return row[0] > 0
-
-
-def _animal_count(user_id):
-    with db.get_conn() as conn:
-        return conn.execute(
-            "SELECT COUNT(*) FROM animals WHERE user_id = ?", (user_id,)
-        ).fetchone()[0]
-
-
-def _owns_rarity(user_id, rarity):
-    with db.get_conn() as conn:
-        return (
-            conn.execute(
-                "SELECT COUNT(*) FROM animals a JOIN species s ON s.species_id = a.species_id "
-                "WHERE a.user_id = ? AND s.rarity = ?",
-                (user_id, rarity),
-            ).fetchone()[0]
-            > 0
-        )
-
-
-def _breed_count(user_id):
-    with db.get_conn() as conn:
-        return conn.execute(
-            "SELECT COUNT(*) FROM breeding_queue WHERE user_id = ? AND collected = 1",
-            (user_id,),
-        ).fetchone()[0]
-
-
-def _bred_rarity(user_id, rarity):
-    with db.get_conn() as conn:
-        return (
-            conn.execute(
-                "SELECT COUNT(*) FROM breeding_queue bq "
-                "JOIN species s ON s.species_id = bq.offspring_species_id "
-                "WHERE bq.user_id = ? AND bq.collected = 1 AND s.rarity = ?",
-                (user_id, rarity),
-            ).fetchone()[0]
-            > 0
-        )
-
-
-def _owns_all_rarities(user_id):
-    with db.get_conn() as conn:
-        count = conn.execute(
-            "SELECT COUNT(DISTINCT s.rarity) FROM animals a "
-            "JOIN species s ON s.species_id = a.species_id WHERE a.user_id = ?",
-            (user_id,),
-        ).fetchone()[0]
-    return count >= 4
-
-
-def _distinct_species_count(user_id):
-    with db.get_conn() as conn:
-        return conn.execute(
-            "SELECT COUNT(DISTINCT species_id) FROM animals WHERE user_id = ?", (user_id,)
-        ).fetchone()[0]
-
-
-def _checkin_count(user_id):
-    with db.get_conn() as conn:
-        return conn.execute(
-            "SELECT COUNT(*) FROM mood_checkins WHERE user_id = ?", (user_id,)
-        ).fetchone()[0]
-
-
 # Each achievement: emoji, name, desc, trigger, check(user_id, user_row) -> bool
 ACHIEVEMENTS = {
     # ── Mood / streak ─────────────────────────────────────────────────────────
@@ -88,7 +10,7 @@ ACHIEVEMENTS = {
         "name": "First Step",
         "desc": "Complete your first mood check-in",
         "trigger": "checkin",
-        "check": lambda uid, u: _checkin_count(uid) >= 1,
+        "check": lambda uid, u: db.count_mood_checkins(uid) >= 1,
     },
     "streak_5": {
         "emoji": "🔥",
@@ -124,42 +46,42 @@ ACHIEVEMENTS = {
         "name": "First Catch",
         "desc": "Catch your first animal",
         "trigger": "catch",
-        "check": lambda uid, u: _animal_count(uid) >= 1,
+        "check": lambda uid, u: db.count_animals(uid) >= 1,
     },
     "zoo_5": {
         "emoji": "🦁",
         "name": "Zoo Opening",
         "desc": "Own 5 animals",
         "trigger": "catch",
-        "check": lambda uid, u: _animal_count(uid) >= 5,
+        "check": lambda uid, u: db.count_animals(uid) >= 5,
     },
     "zoo_10": {
         "emoji": "🌟",
         "name": "Zoo Master",
         "desc": "Own 10 animals",
         "trigger": "catch",
-        "check": lambda uid, u: _animal_count(uid) >= 10,
+        "check": lambda uid, u: db.count_animals(uid) >= 10,
     },
     "first_rare": {
         "emoji": "🟦",
         "name": "Rare Find",
         "desc": "Catch your first rare animal",
         "trigger": "catch",
-        "check": lambda uid, u: _owns_rarity(uid, "rare"),
+        "check": lambda uid, u: db.user_owns_rarity(uid, "rare"),
     },
     "first_epic": {
         "emoji": "🟪",
         "name": "Epic Discovery",
         "desc": "Catch your first epic animal",
         "trigger": "catch",
-        "check": lambda uid, u: _owns_rarity(uid, "epic"),
+        "check": lambda uid, u: db.user_owns_rarity(uid, "epic"),
     },
     "first_legendary": {
         "emoji": "🟨",
         "name": "Legend Hunter",
         "desc": "Catch your first legendary animal",
         "trigger": "catch",
-        "check": lambda uid, u: _owns_rarity(uid, "legendary"),
+        "check": lambda uid, u: db.user_owns_rarity(uid, "legendary"),
     },
     # ── Breeding ──────────────────────────────────────────────────────────────
     "first_breed": {
@@ -167,35 +89,35 @@ ACHIEVEMENTS = {
         "name": "Parent",
         "desc": "Collect your first offspring",
         "trigger": "breed",
-        "check": lambda uid, u: _breed_count(uid) >= 1,
+        "check": lambda uid, u: db.count_collected_breeds(uid) >= 1,
     },
     "breed_5": {
         "emoji": "🐣",
         "name": "Breeder",
         "desc": "Collect 5 offspring",
         "trigger": "breed",
-        "check": lambda uid, u: _breed_count(uid) >= 5,
+        "check": lambda uid, u: db.count_collected_breeds(uid) >= 5,
     },
     "legendary_breed": {
         "emoji": "✨",
         "name": "Legendary Lineage",
         "desc": "Breed a legendary offspring",
         "trigger": "breed",
-        "check": lambda uid, u: _bred_rarity(uid, "legendary"),
+        "check": lambda uid, u: db.user_bred_rarity(uid, "legendary"),
     },
     "epic_breed": {
         "emoji": "💜",
         "name": "Epic Lineage",
         "desc": "Breed an epic offspring",
         "trigger": "breed",
-        "check": lambda uid, u: _bred_rarity(uid, "epic"),
+        "check": lambda uid, u: db.user_bred_rarity(uid, "epic"),
     },
     "breed_10": {
         "emoji": "🐥",
         "name": "Prolific",
         "desc": "Collect 10 offspring",
         "trigger": "breed",
-        "check": lambda uid, u: _breed_count(uid) >= 10,
+        "check": lambda uid, u: db.count_collected_breeds(uid) >= 10,
     },
     # ── Zoo size & variety ────────────────────────────────────────────────────
     "zoo_20": {
@@ -203,21 +125,21 @@ ACHIEVEMENTS = {
         "name": "Full House",
         "desc": "Own 20 animals",
         "trigger": "catch",
-        "check": lambda uid, u: _animal_count(uid) >= 20,
+        "check": lambda uid, u: db.count_animals(uid) >= 20,
     },
     "all_rarities": {
         "emoji": "🌈",
         "name": "Collector",
         "desc": "Own at least one animal of every rarity",
         "trigger": "catch",
-        "check": lambda uid, u: _owns_all_rarities(uid),
+        "check": lambda uid, u: db.user_owns_all_rarities(uid),
     },
     "species_10": {
         "emoji": "📚",
         "name": "Variety Pack",
         "desc": "Own 10 different species",
         "trigger": "catch",
-        "check": lambda uid, u: _distinct_species_count(uid) >= 10,
+        "check": lambda uid, u: db.count_distinct_species(uid) >= 10,
     },
     # ── Mood milestones ───────────────────────────────────────────────────────
     "checkin_50": {
@@ -225,7 +147,7 @@ ACHIEVEMENTS = {
         "name": "Mood Master",
         "desc": "Complete 50 mood check-ins",
         "trigger": "checkin",
-        "check": lambda uid, u: _checkin_count(uid) >= 50,
+        "check": lambda uid, u: db.count_mood_checkins(uid) >= 50,
     },
     "coins_500": {
         "emoji": "💰",
@@ -271,8 +193,7 @@ ACHIEVEMENTS = {
         "name": "Quiz Whiz",
         "desc": "Answer 10 trivia questions",
         "trigger": "trivia",
-        "check": lambda uid, u: _count("SELECT COUNT(*) FROM trivia_log WHERE user_id=?", uid)
-        >= 10,
+        "check": lambda uid, u: db.count_trivia_answered(uid) >= 10,
     },
     # ── Daily ─────────────────────────────────────────────────────────────────
     "first_daily": {
@@ -319,7 +240,7 @@ ACHIEVEMENTS = {
         "name": "Master Architect",
         "desc": "Reach max level on any enclosure",
         "trigger": "enclosure",
-        "check": lambda uid, u: _has_max_enclosure(uid),
+        "check": lambda uid, u: db.user_has_max_enclosure(uid, MAX_ENCLOSURE_LEVEL),
     },
     # ── Coins ─────────────────────────────────────────────────────────────────
     "coins_1000": {

@@ -431,6 +431,18 @@ def get_low_hunger_animals():
         ).fetchall()
 
 
+def get_starved_animals():
+    """Animals at hunger = 0 that should be removed."""
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT a.animal_id, a.user_id, a.nickname, s.name, s.emoji, u.group_chat_id "
+            "FROM animals a "
+            "JOIN species s ON s.species_id = a.species_id "
+            "JOIN users u ON u.user_id = a.user_id "
+            "WHERE a.hunger = 0 AND a.is_breeding = 0",
+        ).fetchall()
+
+
 # ── Investments ───────────────────────────────────────────────────────────────
 
 
@@ -918,6 +930,194 @@ def admin_set_animal_stat(animal_id: str, stat: str, value: int) -> None:
     sql = _ANIMAL_STAT_SQL[stat]  # KeyError for unrecognised stats — caller validates
     with get_conn() as conn:
         conn.execute(sql, (value, animal_id))
+
+
+# ── Trivia ────────────────────────────────────────────────────────────────────
+
+
+def get_last_trivia_at(user_id: int) -> str | None:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT asked_at FROM trivia_log WHERE user_id = ? ORDER BY asked_at DESC LIMIT 1",
+            (user_id,),
+        ).fetchone()
+    return row["asked_at"] if row else None
+
+
+def record_trivia(user_id: int, now_str: str) -> None:
+    with get_conn() as conn:
+        conn.execute("INSERT INTO trivia_log (user_id, asked_at) VALUES (?, ?)", (user_id, now_str))
+
+
+# ── Daily ─────────────────────────────────────────────────────────────────────
+
+
+def get_last_daily_at(user_id: int) -> str | None:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT claimed_at FROM daily_log WHERE user_id = ? ORDER BY claimed_at DESC LIMIT 1",
+            (user_id,),
+        ).fetchone()
+    return row["claimed_at"] if row else None
+
+
+def claim_daily(user_id: int, coins: int, new_streak: int, now_str: str) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO daily_log (user_id, claimed_at) VALUES (?, ?)", (user_id, now_str)
+        )
+        conn.execute(
+            "UPDATE users SET coins = coins + ?, daily_streak = ? WHERE user_id = ?",
+            (coins, new_streak, user_id),
+        )
+
+
+# ── Sell ──────────────────────────────────────────────────────────────────────
+
+
+def sell_animal(user_id: int, animal_id: str, price: int) -> None:
+    with get_conn() as conn:
+        conn.execute("DELETE FROM animals WHERE animal_id = ?", (animal_id,))
+        conn.execute("UPDATE users SET coins = coins + ? WHERE user_id = ?", (price, user_id))
+
+
+# ── Name ──────────────────────────────────────────────────────────────────────
+
+
+def set_animal_nickname(animal_id: str, nickname: str) -> None:
+    with get_conn() as conn:
+        conn.execute("UPDATE animals SET nickname = ? WHERE animal_id = ?", (nickname, animal_id))
+
+
+# ── Scheduler streak / miss helpers ───────────────────────────────────────────
+
+
+def reset_user_streak(user_id: int) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET consecutive_misses = 0, streak_windows = 0 WHERE user_id = ?",
+            (user_id,),
+        )
+
+
+def set_consecutive_misses(user_id: int, misses: int) -> None:
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET consecutive_misses = ? WHERE user_id = ?", (misses, user_id))
+
+
+def bulk_set_last_prompt_at(member_ids: list, now_str: str) -> None:
+    with get_conn() as conn:
+        conn.executemany(
+            "UPDATE users SET last_prompt_at = ? WHERE user_id = ?",
+            [(now_str, uid) for uid in member_ids],
+        )
+
+
+def remove_starved_animal(animal_id: str) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "DELETE FROM breeding_queue WHERE parent_a = ? OR parent_b = ?",
+            (animal_id, animal_id),
+        )
+        conn.execute(
+            "DELETE FROM trades WHERE proposer_animal_id = ? OR recipient_animal_id = ?",
+            (animal_id, animal_id),
+        )
+        conn.execute("DELETE FROM animals WHERE animal_id = ?", (animal_id,))
+
+
+def set_hunger_alerted(animal_id: str, threshold: int) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE animals SET hunger_alerted = ? WHERE animal_id = ?", (threshold, animal_id)
+        )
+
+
+# ── Achievement query helpers ─────────────────────────────────────────────────
+
+
+def count_mood_checkins(user_id: int) -> int:
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT COUNT(*) FROM mood_checkins WHERE user_id = ?", (user_id,)
+        ).fetchone()[0]
+
+
+def count_animals(user_id: int) -> int:
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT COUNT(*) FROM animals WHERE user_id = ?", (user_id,)
+        ).fetchone()[0]
+
+
+def user_owns_rarity(user_id: int, rarity: str) -> bool:
+    with get_conn() as conn:
+        return (
+            conn.execute(
+                "SELECT COUNT(*) FROM animals a JOIN species s ON s.species_id = a.species_id "
+                "WHERE a.user_id = ? AND s.rarity = ?",
+                (user_id, rarity),
+            ).fetchone()[0]
+            > 0
+        )
+
+
+def count_collected_breeds(user_id: int) -> int:
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT COUNT(*) FROM breeding_queue WHERE user_id = ? AND collected = 1",
+            (user_id,),
+        ).fetchone()[0]
+
+
+def user_bred_rarity(user_id: int, rarity: str) -> bool:
+    with get_conn() as conn:
+        return (
+            conn.execute(
+                "SELECT COUNT(*) FROM breeding_queue bq "
+                "JOIN species s ON s.species_id = bq.offspring_species_id "
+                "WHERE bq.user_id = ? AND bq.collected = 1 AND s.rarity = ?",
+                (user_id, rarity),
+            ).fetchone()[0]
+            > 0
+        )
+
+
+def count_distinct_species(user_id: int) -> int:
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT COUNT(DISTINCT species_id) FROM animals WHERE user_id = ?", (user_id,)
+        ).fetchone()[0]
+
+
+def user_owns_all_rarities(user_id: int) -> bool:
+    with get_conn() as conn:
+        return (
+            conn.execute(
+                "SELECT COUNT(DISTINCT s.rarity) FROM animals a "
+                "JOIN species s ON s.species_id = a.species_id WHERE a.user_id = ?",
+                (user_id,),
+            ).fetchone()[0]
+            >= 4
+        )
+
+
+def user_has_max_enclosure(user_id: int, max_level: int) -> bool:
+    with get_conn() as conn:
+        return (
+            conn.execute(
+                "SELECT COUNT(*) FROM user_enclosures WHERE user_id = ? AND level = ?",
+                (user_id, max_level),
+            ).fetchone()[0]
+            > 0
+        )
+
+
+def count_trivia_answered(user_id: int) -> int:
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT COUNT(*) FROM trivia_log WHERE user_id = ?", (user_id,)
+        ).fetchone()[0]
 
 
 def get_active_group_chats() -> list[int]:

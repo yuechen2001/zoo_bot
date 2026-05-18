@@ -36,11 +36,7 @@ async def gamble_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     win = random.random() < 0.5
     delta = amount if win else -amount
 
-    with db.get_conn() as conn:
-        conn.execute(
-            "UPDATE users SET coins = coins + ? WHERE user_id = ?",
-            (delta, tg_id),
-        )
+    db.add_coins(tg_id, delta)
 
     new_coins = user["coins"] + delta
     if win:

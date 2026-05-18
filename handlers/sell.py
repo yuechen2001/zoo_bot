@@ -41,9 +41,7 @@ async def sell_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     base = animal["catch_cost"] // 2
     sell_price = max(1, round(base * animal["hunger"] / 100))
 
-    db.delete_animal(animal["animal_id"])
-    with db.get_conn() as conn:
-        conn.execute("UPDATE users SET coins = coins + ? WHERE user_id = ?", (sell_price, tg_id))
+    db.sell_animal(tg_id, animal["animal_id"], sell_price)
 
     await update.message.reply_text(
         f"💸 Sold {animal['emoji']} *{name}* for *{sell_price}* 🪙\n"

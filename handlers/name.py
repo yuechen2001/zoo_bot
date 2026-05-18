@@ -19,11 +19,7 @@ async def name_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"No animal at #{position}. You have {count} animal(s).")
         return
 
-    with db.get_conn() as conn:
-        conn.execute(
-            "UPDATE animals SET nickname = ? WHERE animal_id = ?",
-            (nickname, animal["animal_id"]),
-        )
+    db.set_animal_nickname(animal["animal_id"], nickname)
 
     await update.message.reply_text(
         f"{animal['emoji']} Animal #{position} is now called *{nickname}*!",

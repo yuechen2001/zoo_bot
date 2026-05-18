@@ -77,18 +77,10 @@ async def _send_mood_prompts(ctx):
             if last_prompt and not responded:
                 new_misses = (user["consecutive_misses"] or 0) + 1
                 if new_misses >= 2:
-                    with db.get_conn() as conn:
-                        conn.execute(
-                            "UPDATE users SET consecutive_misses = 0, streak_windows = 0 WHERE user_id = ?",
-                            (tg_id,),
-                        )
+                    db.reset_user_streak(tg_id)
                     reset_names.append(user["username"] or f"user {tg_id}")
                 else:
-                    with db.get_conn() as conn:
-                        conn.execute(
-                            "UPDATE users SET consecutive_misses = ? WHERE user_id = ?",
-                            (new_misses, tg_id),
-                        )
+                    db.set_consecutive_misses(tg_id, new_misses)
 
         if reset_names:
             if len(reset_names) == 1:
@@ -123,11 +115,7 @@ async def _send_mood_prompts(ctx):
                 "sent_at": now_str,
             }
             db.set_group_last_prompt(group_chat_id, now_str)
-            with db.get_conn() as conn:
-                conn.executemany(
-                    "UPDATE users SET last_prompt_at = ? WHERE user_id = ?",
-                    [(now_str, u["user_id"]) for u in members],
-                )
+            db.bulk_set_last_prompt_at([u["user_id"] for u in members], now_str)
         except Exception:
             logger.exception("Failed to send mood prompt to %s", group_chat_id)
 
@@ -145,15 +133,7 @@ async def _decay_stats():
 
 
 async def _check_starved_animals(ctx):
-    with db.get_conn() as conn:
-        starved = conn.execute(
-            "SELECT a.animal_id, a.user_id, a.nickname, s.name, s.emoji, u.group_chat_id "
-            "FROM animals a "
-            "JOIN species s ON s.species_id = a.species_id "
-            "JOIN users u ON u.user_id = a.user_id "
-            "WHERE a.hunger = 0 AND a.is_breeding = 0"
-        ).fetchall()
-
+    starved = db.get_starved_animals()
     for animal in starved:
         name = animal["nickname"] or animal["name"]
         chat_id = animal["group_chat_id"] or animal["user_id"]
@@ -165,16 +145,7 @@ async def _check_starved_animals(ctx):
             )
         except Exception:
             logger.exception("Failed to send starved-animal message to %s", chat_id)
-        with db.get_conn() as conn:
-            conn.execute(
-                "DELETE FROM breeding_queue WHERE parent_a = ? OR parent_b = ?",
-                (animal["animal_id"], animal["animal_id"]),
-            )
-            conn.execute(
-                "DELETE FROM trades WHERE proposer_animal_id = ? OR recipient_animal_id = ?",
-                (animal["animal_id"], animal["animal_id"]),
-            )
-            conn.execute("DELETE FROM animals WHERE animal_id = ?", (animal["animal_id"],))
+        db.remove_starved_animal(animal["animal_id"])
 
 
 async def _check_breed_completions(ctx):
@@ -221,11 +192,7 @@ async def _check_hunger_alerts(ctx):
             await ctx.bot.send_message(chat_id, msg, parse_mode="Markdown")
         except Exception:
             logger.exception("Failed to send hunger alert to %s", chat_id)
-        with db.get_conn() as conn:
-            conn.execute(
-                "UPDATE animals SET hunger_alerted = ? WHERE animal_id = ?",
-                (threshold, animal["animal_id"]),
-            )
+        db.set_hunger_alerted(animal["animal_id"], threshold)
 
 
 async def _tick_enclosure_income(ctx):
@@ -300,15 +267,7 @@ async def _autofeed(ctx):
             if spent + cost > budget:
                 break
             new_hunger = min(100, animal["hunger"] + FEED_HUNGER)
-            with db.get_conn() as conn:
-                conn.execute(
-                    "UPDATE users SET coins = coins - ? WHERE user_id = ?",
-                    (cost, uid),
-                )
-                conn.execute(
-                    "UPDATE animals SET hunger = ?, hunger_alerted = NULL WHERE animal_id = ?",
-                    (new_hunger, animal["animal_id"]),
-                )
+            db.feed_animal(uid, animal["animal_id"], new_hunger, cost)
             name = animal["nickname"] or animal["species_name"]
             fed_lines.append(
                 f"{animal['emoji']} {name}: {animal['hunger']}→{new_hunger} (-{cost} 🪙)"
@@ -357,37 +316,34 @@ async def _cleanup_expired_prompts(ctx):
 
 async def wild_event_tick(ctx):
     """Post a wild animal sighting to each active group, then reschedule itself at a random interval."""
-    from game.catch_engine import pick_species
     from handlers.wild_event import wild_catch_keyboard
 
     groups = db.get_active_group_chats()
-    with db.get_conn() as conn:
-        for group_chat_id in groups:
-            rarity = random.choices(
-                ["common", "rare", "epic", "legendary"],
-                weights=[20, 40, 30, 10],
-            )[0]
-            species = pick_species(rarity, conn)
-            if not species:
-                continue
-            try:
-                msg = await ctx.bot.send_message(
-                    group_chat_id,
-                    f"🌿 *A wild {species['emoji']} {species['name']} appeared!*\n"
-                    f"First to tap catches it!\n_{species['rarity'].title()} species_",
-                    parse_mode="Markdown",
-                    reply_markup=wild_catch_keyboard(0),
-                )
-                event_id = db.create_wild_event(
-                    group_chat_id, species["species_id"], msg.message_id
-                )
-                await ctx.bot.edit_message_reply_markup(
-                    chat_id=group_chat_id,
-                    message_id=msg.message_id,
-                    reply_markup=wild_catch_keyboard(event_id),
-                )
-            except Exception:
-                logger.exception("Failed to send wild event to %s", group_chat_id)
+    for group_chat_id in groups:
+        rarity = random.choices(
+            ["common", "rare", "epic", "legendary"],
+            weights=[20, 40, 30, 10],
+        )[0]
+        candidates = db.get_species_candidates(rarity)
+        species = random.choice(candidates) if candidates else None
+        if not species:
+            continue
+        try:
+            msg = await ctx.bot.send_message(
+                group_chat_id,
+                f"🌿 *A wild {species['emoji']} {species['name']} appeared!*\n"
+                f"First to tap catches it!\n_{species['rarity'].title()} species_",
+                parse_mode="Markdown",
+                reply_markup=wild_catch_keyboard(0),
+            )
+            event_id = db.create_wild_event(group_chat_id, species["species_id"], msg.message_id)
+            await ctx.bot.edit_message_reply_markup(
+                chat_id=group_chat_id,
+                message_id=msg.message_id,
+                reply_markup=wild_catch_keyboard(event_id),
+            )
+        except Exception:
+            logger.exception("Failed to send wild event to %s", group_chat_id)
 
     delay = random.randint(WILD_EVENT_MIN_MINUTES, WILD_EVENT_MAX_MINUTES) * 60
     next_at = (

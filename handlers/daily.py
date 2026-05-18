@@ -37,16 +37,11 @@ async def daily_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Use /start first!")
         return
 
-    with db.get_conn() as conn:
-        last = conn.execute(
-            "SELECT claimed_at FROM daily_log WHERE user_id = ? ORDER BY claimed_at DESC LIMIT 1",
-            (tg_id,),
-        ).fetchone()
-
+    last_at = db.get_last_daily_at(tg_id)
     now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
-    if last:
-        elapsed_s = (now - datetime.datetime.fromisoformat(last["claimed_at"])).total_seconds()
+    if last_at:
+        elapsed_s = (now - datetime.datetime.fromisoformat(last_at)).total_seconds()
         remaining_s = DAILY_COOLDOWN_HOURS * 3600 - elapsed_s
         if remaining_s > 0:
             remaining_h = int(remaining_s // 3600)
@@ -66,20 +61,11 @@ async def daily_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         new_streak = 1
 
     coins = _daily_coins(new_streak)
-    now_str = now.isoformat()
-
-    with db.get_conn() as conn:
-        conn.execute(
-            "INSERT INTO daily_log (user_id, claimed_at) VALUES (?, ?)",
-            (tg_id, now_str),
-        )
-        conn.execute(
-            "UPDATE users SET coins = coins + ?, daily_streak = ? WHERE user_id = ?",
-            (coins, new_streak, tg_id),
-        )
+    db.claim_daily(tg_id, coins, new_streak, now.isoformat())
 
     user = db.get_user(tg_id)
     next_tier = _next_tier(new_streak)
+
     next_line = (
         f"\n_Next tier: Day {next_tier[0]} → {next_tier[1]} 🪙_"
         if next_tier

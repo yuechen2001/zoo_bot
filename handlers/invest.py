@@ -58,8 +58,7 @@ async def _invest(update, tg_id, user, amount_str):
 
     return_amount = round(amount * (1 + INVESTMENT_RETURN_RATE))
     db.create_investment(tg_id, amount, return_amount)
-    with db.get_conn() as conn:
-        conn.execute("UPDATE users SET coins = coins - ? WHERE user_id = ?", (amount, tg_id))
+    db.add_coins(tg_id, -amount)
 
     await update.message.reply_text(
         f"📈 Invested *{amount}* 🪙!\n\n"
@@ -92,11 +91,7 @@ async def _collect(update, tg_id, user):
         return
 
     db.collect_investment(inv["id"])
-    with db.get_conn() as conn:
-        conn.execute(
-            "UPDATE users SET coins = coins + ? WHERE user_id = ?",
-            (inv["return_amount"], tg_id),
-        )
+    db.add_coins(tg_id, inv["return_amount"])
 
     profit = inv["return_amount"] - inv["amount"]
     await update.message.reply_text(
