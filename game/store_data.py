@@ -12,14 +12,35 @@ STORE_ITEMS: dict[str, dict] = {
         "emoji": "⚡",
         "price": 80,
         "category": "consumable",
-        "desc": "Cut your active breed time by 2 hours",
+        "desc": "Cut your active breed time by 2 hours — use with /store use breed_boost",
     },
     "lucky_token": {
         "name": "Lucky Token",
         "emoji": "🎯",
         "price": 50,
         "category": "consumable",
-        "desc": "Your next /catch attempt has 2× catch rate",
+        "desc": "2× catch rate on your next /catch — use with /store use lucky_token",
+    },
+    "mood_booster": {
+        "name": "Mood Booster",
+        "emoji": "✨",
+        "price": 60,
+        "category": "consumable",
+        "desc": "Double coins on your next mood check-in — use with /store use mood_booster",
+    },
+    "catch_net": {
+        "name": "Catch Net",
+        "emoji": "🪤",
+        "price": 200,
+        "category": "consumable",
+        "desc": "Guarantees a legendary encounter and successful catch — use with /store use catch_net",
+    },
+    "breed_accelerator": {
+        "name": "Breed Accelerator",
+        "emoji": "🚀",
+        "price": 100,
+        "category": "consumable",
+        "desc": "Halve your remaining breed time — use with /store use breed_accelerator",
     },
     # ── Cosmetics ─────────────────────────────────────────────────────────────
     "title_keeper": {

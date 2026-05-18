@@ -129,6 +129,9 @@ async def mood_checkin_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     # Update streak
     new_streak = user["streak_windows"] + 1
     coins = calc_coins(emoji, new_streak)
+    if user["mood_booster_active"]:
+        coins *= 2
+        db.set_mood_booster(tg_id, False)
     now_str = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
 
     with db.get_conn() as conn:

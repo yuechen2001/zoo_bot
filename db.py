@@ -650,6 +650,31 @@ def set_lucky_catch(user_id: int, active: bool):
         )
 
 
+def set_mood_booster(user_id: int, active: bool):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET mood_booster_active = ? WHERE user_id = ?",
+            (1 if active else 0, user_id),
+        )
+
+
+def set_catch_net(user_id: int, active: bool):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET catch_net_active = ? WHERE user_id = ?",
+            (1 if active else 0, user_id),
+        )
+
+
+def get_consumable_counts(user_id: int) -> dict[str, int]:
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT item_key, COUNT(*) AS n FROM user_purchases WHERE user_id = ? GROUP BY item_key",
+            (user_id,),
+        ).fetchall()
+    return {r["item_key"]: r["n"] for r in rows}
+
+
 def get_active_group_chats() -> list[int]:
     with get_conn() as conn:
         rows = conn.execute(

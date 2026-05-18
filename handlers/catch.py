@@ -26,6 +26,8 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     with db.get_conn() as conn:
         rarity = roll_encounter()
+        if user["catch_net_active"]:
+            rarity = "legendary"
         species = pick_species(rarity, conn)
 
     if not species:
@@ -65,10 +67,13 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         except Exception:
             pass
 
+    catch_rate_display = (
+        "100% 🪤" if user["catch_net_active"] else f"{int(species['catch_rate'] * 100)}%"
+    )
     msg = await update.message.reply_text(
         f"🌿 A wild *{species['emoji']} {species['name']}* appeared!\n"
         f"{RARITY_LABELS.get(rarity, rarity.title())}\n\n"
-        f"Catch rate: {int(species['catch_rate'] * 100)}%\n"
+        f"Catch rate: {catch_rate_display}\n"
         f"Your coins: *{user['coins']}* 🪙\n\n"
         f"_You have {CATCH_EXPIRY_MINUTES} min to decide._",
         parse_mode="Markdown",
@@ -155,6 +160,9 @@ async def catch_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if user["lucky_catch_active"]:
         catch_rate = min(1.0, catch_rate * 2)
         db.set_lucky_catch(tg_id, False)
+    if user["catch_net_active"]:
+        catch_rate = 1.0
+        db.set_catch_net(tg_id, False)
 
     success = roll_catch(catch_rate)
     ctx.user_data.pop("pending_catch", None)

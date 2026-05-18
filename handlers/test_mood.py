@@ -23,7 +23,13 @@ def _make_cmd_update(user_id=1):
 
 
 def _make_user_row(**kw):
-    defaults = {"user_id": 1, "opted_in": 0, "streak_windows": 5, "consecutive_misses": 1}
+    defaults = {
+        "user_id": 1,
+        "opted_in": 0,
+        "streak_windows": 5,
+        "consecutive_misses": 1,
+        "mood_booster_active": 0,
+    }
     return make_row(**{**defaults, **kw})
 
 
@@ -178,6 +184,7 @@ async def test_mood_callback_second_player_can_respond():
             ),
             "streak_windows": 0,
             "group_chat_id": -100,
+            "mood_booster_active": 0,
         }
 
     mock_conn = MagicMock()
@@ -219,6 +226,7 @@ async def test_mood_callback_collapses_when_all_checked_in():
         "last_checkin_at": None,
         "streak_windows": 0,
         "group_chat_id": -100,
+        "mood_booster_active": 0,
     }
 
     mock_conn = MagicMock()

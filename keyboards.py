@@ -60,12 +60,13 @@ def zoo_page_keyboard(owner_id: int, page: int, habitat_keys: list[str]) -> Inli
     return InlineKeyboardMarkup([buttons])
 
 
-def store_keyboard(owned_keys: set) -> InlineKeyboardMarkup:
+def store_keyboard(owned_keys: set, counts: dict[str, int] | None = None) -> InlineKeyboardMarkup:
     from game.store_data import CONSUMABLES, COSMETICS
 
+    counts = counts or {}
     consumable_row = [
         InlineKeyboardButton(
-            f"{item['emoji']} {item['price']} 🪙",
+            f"{item['emoji']} {item['price']} 🪙" + (f" ×{counts[key]}" if counts.get(key) else ""),
             callback_data=f"store_buy_{key}",
         )
         for key, item in CONSUMABLES.items()

@@ -6,18 +6,35 @@ from achievements import check_achievements
 from game.store_data import STORE_ITEMS, CONSUMABLES, COSMETICS
 from keyboards import store_keyboard
 
+# Maps consumable keys to the flag column that tracks "currently active" state
+_ACTIVE_FLAGS = {
+    "lucky_token": "lucky_catch_active",
+    "mood_booster": "mood_booster_active",
+    "catch_net": "catch_net_active",
+}
 
-def _store_text() -> str:
+
+def _store_text(tg_id: int) -> str:
+    counts = db.get_consumable_counts(tg_id)
+    user = db.get_user(tg_id)
     lines = ["🏪 *Zoo Store*\n"]
-    lines.append("*Consumables* (one-time use):")
+    lines.append("*Consumables* (sit in your bag until used):")
     for key, item in CONSUMABLES.items():
-        lines.append(f"  {item['emoji']} *{item['name']}* — {item['price']} 🪙\n  {item['desc']}")
+        line = f"  {item['emoji']} *{item['name']}* — {item['price']} 🪙\n  {item['desc']}"
+        badges = []
+        n = counts.get(key, 0)
+        if n:
+            badges.append(f"×{n} in bag")
+        flag_col = _ACTIVE_FLAGS.get(key)
+        if flag_col and user and user[flag_col]:
+            badges.append("active")
+        if badges:
+            line += f"  _({', '.join(badges)})_"
+        lines.append(line)
     lines.append("\n*Titles* (shown in your /zoo):")
     for key, item in COSMETICS.items():
         lines.append(f"  {item['emoji']} *{item['name']}* — {item['price']} 🪙\n  {item['desc']}")
-    lines.append(
-        "\n_Tap a button to buy. After buying Mega Feed use_ `/store use mega_feed <#>`_._"
-    )
+    lines.append("\n_Tap a button to buy. Use_ `/store use <item>` _to activate consumables._")
     return "\n".join(lines)
 
 
@@ -40,8 +57,9 @@ async def store_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     args = ctx.args or []
     if not args:
         owned = _owned_cosmetic_keys(tg_id)
+        counts = db.get_consumable_counts(tg_id)
         await update.message.reply_text(
-            _store_text(), parse_mode="Markdown", reply_markup=store_keyboard(owned)
+            _store_text(tg_id), parse_mode="Markdown", reply_markup=store_keyboard(owned, counts)
         )
         return
 
@@ -54,12 +72,35 @@ async def store_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await _buy(update, tg_id, user, args[1].lower())
 
     elif sub == "use":
-        if len(args) < 3 or args[1].lower() != "mega_feed" or not args[2].isdigit():
+        if len(args) < 2:
             await update.message.reply_text(
-                "Usage: `/store use mega_feed <animal number>`", parse_mode="Markdown"
+                "Usage: `/store use <item> [args]`", parse_mode="Markdown"
             )
             return
-        await _use_mega_feed(update, tg_id, int(args[2]))
+        item_key = args[1].lower()
+        if item_key == "mega_feed":
+            pos = int(args[2]) if len(args) > 2 and args[2].isdigit() else None
+            if pos is None:
+                await update.message.reply_text(
+                    "Usage: `/store use mega_feed <animal number>`", parse_mode="Markdown"
+                )
+                return
+            await _use_mega_feed(update, tg_id, pos)
+        elif item_key == "breed_boost":
+            await _use_breed_boost(update, tg_id)
+        elif item_key == "lucky_token":
+            await _use_lucky_token(update, tg_id)
+        elif item_key == "mood_booster":
+            await _use_mood_booster(update, tg_id)
+        elif item_key == "catch_net":
+            await _use_catch_net(update, tg_id)
+        elif item_key == "breed_accelerator":
+            await _use_breed_accelerator(update, tg_id)
+        else:
+            await update.message.reply_text(
+                f"Unknown item `{item_key}`. Use `/store` to see available items.",
+                parse_mode="Markdown",
+            )
 
     elif sub == "equip":
         if len(args) < 2:
@@ -71,8 +112,9 @@ async def store_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     else:
         owned = _owned_cosmetic_keys(tg_id)
+        counts = db.get_consumable_counts(tg_id)
         await update.message.reply_text(
-            _store_text(), parse_mode="Markdown", reply_markup=store_keyboard(owned)
+            _store_text(tg_id), parse_mode="Markdown", reply_markup=store_keyboard(owned, counts)
         )
 
 
@@ -116,49 +158,22 @@ async def store_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             )
         db.record_purchase(tg_id, key)
         owned = _owned_cosmetic_keys(tg_id)
+        counts = db.get_consumable_counts(tg_id)
         await query.answer(f"✅ Purchased {item['emoji']} {item['name']}! Tap Equip to wear it.")
         try:
-            await query.edit_message_reply_markup(reply_markup=store_keyboard(owned))
+            await query.edit_message_reply_markup(reply_markup=store_keyboard(owned, counts))
         except Exception:
             pass
         return
 
-    # Consumables
+    # Consumables — all go to inventory
     with db.get_conn() as conn:
         conn.execute("UPDATE users SET coins = coins - ? WHERE user_id = ?", (item["price"], tg_id))
-
-    if key == "mega_feed":
-        db.record_purchase(tg_id, key)
-        await query.answer(
-            "✅ Mega Feed purchased! Use /store use mega_feed <animal #> to apply it.",
-            show_alert=True,
-        )
-
-    elif key == "breed_boost":
-        pending = db.get_pending_breed(tg_id)
-        if not pending:
-            with db.get_conn() as conn:
-                conn.execute(
-                    "UPDATE users SET coins = coins + ? WHERE user_id = ?", (item["price"], tg_id)
-                )
-            await query.answer("No active breed to boost! Refunded.", show_alert=True)
-            return
-        new_ready_at = (
-            datetime.datetime.fromisoformat(pending["ready_at"]) - datetime.timedelta(hours=2)
-        ).isoformat()
-        with db.get_conn() as conn:
-            conn.execute(
-                "UPDATE breeding_queue SET ready_at = ? WHERE id = ?",
-                (new_ready_at, pending["id"]),
-            )
-        await query.answer("⚡ Breed Boost applied! Breed time cut by 2 hours.", show_alert=True)
-
-    elif key == "lucky_token":
-        db.set_lucky_catch(tg_id, True)
-        await query.answer(
-            "🎯 Lucky Token activated! Next /catch has 2× catch rate.", show_alert=True
-        )
-
+    db.record_purchase(tg_id, key)
+    await query.answer(
+        f"✅ {item['emoji']} {item['name']} added to your bag! Use /store use {key} to activate.",
+        show_alert=True,
+    )
     await check_achievements(tg_id, "store", ctx)
 
 
@@ -198,41 +213,15 @@ async def _buy(update, tg_id: int, user, item_key: str):
         )
         return
 
+    # Consumables — all go to inventory
     with db.get_conn() as conn:
         conn.execute("UPDATE users SET coins = coins - ? WHERE user_id = ?", (item["price"], tg_id))
-
-    if item_key == "mega_feed":
-        db.record_purchase(tg_id, item_key)
-        await update.message.reply_text(
-            f"✅ Purchased {item['emoji']} *Mega Feed*!\n"
-            f"Use `/store use mega_feed <animal #>` to apply it.",
-            parse_mode="Markdown",
-        )
-    elif item_key == "breed_boost":
-        pending = db.get_pending_breed(tg_id)
-        if not pending:
-            with db.get_conn() as conn:
-                conn.execute(
-                    "UPDATE users SET coins = coins + ? WHERE user_id = ?", (item["price"], tg_id)
-                )
-            await update.message.reply_text("No active breed to boost! Refunded.")
-            return
-        new_ready_at = (
-            datetime.datetime.fromisoformat(pending["ready_at"]) - datetime.timedelta(hours=2)
-        ).isoformat()
-        with db.get_conn() as conn:
-            conn.execute(
-                "UPDATE breeding_queue SET ready_at = ? WHERE id = ?",
-                (new_ready_at, pending["id"]),
-            )
-        await update.message.reply_text(
-            "⚡ *Breed Boost* applied! Your breed time was cut by 2 hours.", parse_mode="Markdown"
-        )
-    elif item_key == "lucky_token":
-        db.set_lucky_catch(tg_id, True)
-        await update.message.reply_text(
-            "🎯 *Lucky Token* activated! Your next /catch has 2× catch rate.", parse_mode="Markdown"
-        )
+    db.record_purchase(tg_id, item_key)
+    await update.message.reply_text(
+        f"✅ {item['emoji']} *{item['name']}* added to your bag!\n"
+        f"Use `/store use {item_key}` to activate it.",
+        parse_mode="Markdown",
+    )
 
 
 async def _use_mega_feed(update, tg_id: int, position: int):
@@ -269,6 +258,147 @@ async def _use_mega_feed(update, tg_id: int, position: int):
     await update.message.reply_text(
         f"🍖 *Mega Feed* applied! {animal['emoji']} *{name}* hunger restored to 100.",
         parse_mode="Markdown",
+    )
+
+
+async def _use_breed_boost(update, tg_id: int):
+    with db.get_conn() as conn:
+        purchase = conn.execute(
+            "SELECT id FROM user_purchases WHERE user_id = ? AND item_key = 'breed_boost' "
+            "ORDER BY purchased_at ASC LIMIT 1",
+            (tg_id,),
+        ).fetchone()
+
+    if not purchase:
+        await update.message.reply_text(
+            "You don't have a Breed Boost. Buy one with `/store buy breed_boost`.",
+            parse_mode="Markdown",
+        )
+        return
+
+    pending = db.get_pending_breed(tg_id)
+    if not pending:
+        await update.message.reply_text("No active breed to boost!")
+        return
+
+    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    new_ready = max(
+        now, datetime.datetime.fromisoformat(pending["ready_at"]) - datetime.timedelta(hours=2)
+    )
+    with db.get_conn() as conn:
+        conn.execute(
+            "UPDATE breeding_queue SET ready_at = ? WHERE id = ?",
+            (new_ready.isoformat(), pending["id"]),
+        )
+        conn.execute("DELETE FROM user_purchases WHERE id = ?", (purchase["id"],))
+    await update.message.reply_text(
+        "⚡ *Breed Boost* applied! Breed time cut by 2 hours.", parse_mode="Markdown"
+    )
+
+
+async def _use_lucky_token(update, tg_id: int):
+    with db.get_conn() as conn:
+        purchase = conn.execute(
+            "SELECT id FROM user_purchases WHERE user_id = ? AND item_key = 'lucky_token' "
+            "ORDER BY purchased_at ASC LIMIT 1",
+            (tg_id,),
+        ).fetchone()
+
+    if not purchase:
+        await update.message.reply_text(
+            "You don't have a Lucky Token. Buy one with `/store buy lucky_token`.",
+            parse_mode="Markdown",
+        )
+        return
+
+    with db.get_conn() as conn:
+        conn.execute("DELETE FROM user_purchases WHERE id = ?", (purchase["id"],))
+    db.set_lucky_catch(tg_id, True)
+    await update.message.reply_text(
+        "🎯 *Lucky Token* activated! Your next /catch has 2× catch rate.", parse_mode="Markdown"
+    )
+
+
+async def _use_mood_booster(update, tg_id: int):
+    with db.get_conn() as conn:
+        purchase = conn.execute(
+            "SELECT id FROM user_purchases WHERE user_id = ? AND item_key = 'mood_booster' "
+            "ORDER BY purchased_at ASC LIMIT 1",
+            (tg_id,),
+        ).fetchone()
+
+    if not purchase:
+        await update.message.reply_text(
+            "You don't have a Mood Booster. Buy one with `/store buy mood_booster`.",
+            parse_mode="Markdown",
+        )
+        return
+
+    with db.get_conn() as conn:
+        conn.execute("DELETE FROM user_purchases WHERE id = ?", (purchase["id"],))
+    db.set_mood_booster(tg_id, True)
+    await update.message.reply_text(
+        "✨ *Mood Booster* activated! Your next mood check-in earns double coins.",
+        parse_mode="Markdown",
+    )
+
+
+async def _use_catch_net(update, tg_id: int):
+    with db.get_conn() as conn:
+        purchase = conn.execute(
+            "SELECT id FROM user_purchases WHERE user_id = ? AND item_key = 'catch_net' "
+            "ORDER BY purchased_at ASC LIMIT 1",
+            (tg_id,),
+        ).fetchone()
+
+    if not purchase:
+        await update.message.reply_text(
+            "You don't have a Catch Net. Buy one with `/store buy catch_net`.",
+            parse_mode="Markdown",
+        )
+        return
+
+    with db.get_conn() as conn:
+        conn.execute("DELETE FROM user_purchases WHERE id = ?", (purchase["id"],))
+    db.set_catch_net(tg_id, True)
+    await update.message.reply_text(
+        "🪤 *Catch Net* activated! Your next /catch will encounter a legendary and is guaranteed to succeed.",
+        parse_mode="Markdown",
+    )
+
+
+async def _use_breed_accelerator(update, tg_id: int):
+    with db.get_conn() as conn:
+        purchase = conn.execute(
+            "SELECT id FROM user_purchases WHERE user_id = ? AND item_key = 'breed_accelerator' "
+            "ORDER BY purchased_at ASC LIMIT 1",
+            (tg_id,),
+        ).fetchone()
+
+    if not purchase:
+        await update.message.reply_text(
+            "You don't have a Breed Accelerator. Buy one with `/store buy breed_accelerator`.",
+            parse_mode="Markdown",
+        )
+        return
+
+    pending = db.get_pending_breed(tg_id)
+    if not pending:
+        await update.message.reply_text("No active breed to accelerate!")
+        return
+
+    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    ready_at = datetime.datetime.fromisoformat(pending["ready_at"])
+    remaining = ready_at - now
+    new_ready = max(now, now + remaining / 2)
+    with db.get_conn() as conn:
+        conn.execute(
+            "UPDATE breeding_queue SET ready_at = ? WHERE id = ?",
+            (new_ready.isoformat(), pending["id"]),
+        )
+        conn.execute("DELETE FROM user_purchases WHERE id = ?", (purchase["id"],))
+    await update.message.reply_text(
+        "🚀 *Breed Accelerator* applied! Remaining breed time halved.", parse_mode="Markdown"
     )
 
 

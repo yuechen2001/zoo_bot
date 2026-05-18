@@ -32,7 +32,10 @@ async def test_catch_rejects_when_insufficient_coins():
     ctx = MagicMock()
     ctx.user_data = {}
 
-    with patch("handlers.catch.db.get_user", return_value={"coins": 5, "lucky_catch_active": 0}):
+    with patch(
+        "handlers.catch.db.get_user",
+        return_value={"coins": 5, "lucky_catch_active": 0, "catch_net_active": 0},
+    ):
         await catch_command(update, ctx)
 
     update.message.reply_text.assert_called_once()
@@ -71,8 +74,8 @@ async def test_catch_deducts_encounter_fee_upfront():
     with patch(
         "handlers.catch.db.get_user",
         side_effect=[
-            {"coins": 100, "lucky_catch_active": 0},
-            {"coins": 90, "lucky_catch_active": 0},
+            {"coins": 100, "lucky_catch_active": 0, "catch_net_active": 0},
+            {"coins": 90, "lucky_catch_active": 0, "catch_net_active": 0},
         ],
     ), patch("handlers.catch.db.get_conn", return_value=cm), patch(
         "handlers.catch.roll_encounter", return_value="common"
@@ -120,8 +123,8 @@ async def test_catch_stores_pending_catch_in_context():
     with patch(
         "handlers.catch.db.get_user",
         side_effect=[
-            {"coins": 100, "lucky_catch_active": 0},
-            {"coins": 90, "lucky_catch_active": 0},
+            {"coins": 100, "lucky_catch_active": 0, "catch_net_active": 0},
+            {"coins": 90, "lucky_catch_active": 0, "catch_net_active": 0},
         ],
     ), patch("handlers.catch.db.get_conn", return_value=cm), patch(
         "handlers.catch.roll_encounter", return_value="rare"
@@ -176,7 +179,8 @@ class TestCatchCapacityGate:
         ctx.user_data = {"pending_catch": self._make_pending(species_id=1)}
 
         with patch(
-            "handlers.catch.db.get_user", return_value={"coins": 500, "lucky_catch_active": 0}
+            "handlers.catch.db.get_user",
+            return_value={"coins": 500, "lucky_catch_active": 0, "catch_net_active": 0},
         ), patch("handlers.catch.db.get_conn"), patch(
             "handlers.catch.roll_catch", return_value=True
         ), patch(
@@ -212,7 +216,8 @@ class TestCatchCapacityGate:
         cm, inner = _make_conn_mock()
 
         with patch(
-            "handlers.catch.db.get_user", return_value={"coins": 500, "lucky_catch_active": 0}
+            "handlers.catch.db.get_user",
+            return_value={"coins": 500, "lucky_catch_active": 0, "catch_net_active": 0},
         ), patch("handlers.catch.db.get_conn", return_value=cm), patch(
             "handlers.catch.roll_catch", return_value=True
         ), patch(

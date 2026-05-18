@@ -24,6 +24,8 @@ def _make_user(**kw):
         "group_chat_id": -100,
         "coins": 500,
         "lucky_catch_active": 0,
+        "mood_booster_active": 0,
+        "catch_net_active": 0,
         "active_title": None,
     }
     return make_row(**{**defaults, **kw})
@@ -34,7 +36,7 @@ async def test_store_shows_items():
     update, ctx = _make_update(args=[])
     with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
         "handlers.store._owned_cosmetic_keys", return_value=set()
-    ):
+    ), patch("handlers.store.db.get_consumable_counts", return_value={}):
         await store_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]
     assert "Mega Feed" in reply
@@ -61,18 +63,22 @@ async def test_store_buy_unknown_item():
 
 
 @pytest.mark.asyncio
-async def test_store_buy_lucky_token_sets_flag():
+async def test_store_buy_lucky_token_goes_to_inventory():
     update, ctx = _make_update(args=["buy", "lucky_token"])
     with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
         "handlers.store.db.get_conn"
-    ) as mock_conn, patch("handlers.store.db.set_lucky_catch") as mock_set:
+    ) as mock_conn, patch("handlers.store.db.record_purchase") as mock_record, patch(
+        "handlers.store.db.set_lucky_catch"
+    ) as mock_set_flag:
         inner = MagicMock()
         mock_conn.return_value.__enter__ = MagicMock(return_value=inner)
         mock_conn.return_value.__exit__ = MagicMock(return_value=False)
         await store_command(update, ctx)
-    mock_set.assert_called_once_with(1, True)
+    mock_record.assert_called_once_with(1, "lucky_token")
+    mock_set_flag.assert_not_called()
     reply = update.message.reply_text.call_args[0][0]
     assert "Lucky Token" in reply
+    assert "bag" in reply.lower() or "store use" in reply.lower()
 
 
 @pytest.mark.asyncio
