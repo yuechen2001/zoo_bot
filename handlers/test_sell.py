@@ -5,7 +5,7 @@ from handlers.sell import sell_command
 
 @pytest.fixture(autouse=True)
 def no_achievements(monkeypatch):
-    monkeypatch.setattr("handlers.sell.check_achievements", AsyncMock())
+    monkeypatch.setattr("game.achievements.check_achievements", AsyncMock())
 
 
 def _make_update(user_id=1):
@@ -100,7 +100,7 @@ async def test_sell_full_hunger_earns_half_catch_cost():
     ), patch("handlers.sell.db.has_pending_trade_for_animal", return_value=False), patch(
         "handlers.sell.db.sell_animal"
     ) as mock_sell, patch(
-        "handlers.sell.check_achievements"
+        "game.achievements.check_achievements"
     ):
         await sell_command(update, ctx)
     mock_sell.assert_called_once_with(1, "a1", 10)
@@ -119,7 +119,7 @@ async def test_sell_low_hunger_reduces_price():
     ), patch("handlers.sell.db.has_pending_trade_for_animal", return_value=False), patch(
         "handlers.sell.db.sell_animal"
     ), patch(
-        "handlers.sell.check_achievements"
+        "game.achievements.check_achievements"
     ):
         await sell_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]
@@ -137,7 +137,7 @@ async def test_sell_legendary_full_hunger():
     ), patch("handlers.sell.db.has_pending_trade_for_animal", return_value=False), patch(
         "handlers.sell.db.sell_animal"
     ), patch(
-        "handlers.sell.check_achievements"
+        "game.achievements.check_achievements"
     ):
         await sell_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]

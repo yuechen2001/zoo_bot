@@ -1,11 +1,12 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
-from game.achievements import check_achievements
+from game.achievements import triggers
 from game.species_data import ENCLOSURE_LEVELS
 from utils import format_mention
 
 
+@triggers("gift")
 async def gift_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     tg_id = update.effective_user.id
     sender = db.get_user(tg_id)
@@ -69,4 +70,3 @@ async def gift_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         f"🎁 *{sender_mention}* gifted {animal['emoji']} *{name}* to *@{username}*!",
         parse_mode="Markdown",
     )
-    await check_achievements(tg_id, "gift", ctx)

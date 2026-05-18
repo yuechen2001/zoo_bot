@@ -9,6 +9,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from conftest import make_row
 
 
+@pytest.fixture(autouse=True)
+def no_achievements(monkeypatch):
+    monkeypatch.setattr("game.achievements.check_achievements", AsyncMock())
+
+
 def _make_update(args=None):
     update = MagicMock()
     update.effective_user.id = 1
@@ -237,7 +242,7 @@ async def test_callback_buy_item_goes_to_bag():
     with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
         "handlers.store.db.deduct_coins"
     ) as mock_deduct, patch("handlers.store.db.record_purchase") as mock_record, patch(
-        "handlers.store.check_achievements", new_callable=AsyncMock
+        "game.achievements.check_achievements", new_callable=AsyncMock
     ):
         await store_callback(update, ctx)
     mock_deduct.assert_called_once_with(1, 30)
@@ -252,7 +257,7 @@ async def test_callback_buy_item_points_to_inventory():
     with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
         "handlers.store.db.deduct_coins"
     ), patch("handlers.store.db.record_purchase"), patch(
-        "handlers.store.check_achievements", new_callable=AsyncMock
+        "game.achievements.check_achievements", new_callable=AsyncMock
     ):
         await store_callback(update, ctx)
     assert "/inventory" in query.answer.call_args[0][0]

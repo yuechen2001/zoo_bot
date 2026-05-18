@@ -6,7 +6,7 @@ from handlers.daily import daily_command, DAILY_COOLDOWN_HOURS, DAILY_TIERS, _da
 
 @pytest.fixture(autouse=True)
 def no_achievements(monkeypatch):
-    monkeypatch.setattr("handlers.daily.check_achievements", AsyncMock())
+    monkeypatch.setattr("game.achievements.check_achievements", AsyncMock())
 
 
 def _make_conn_mock(last_claimed=None):

@@ -1,9 +1,10 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
-from game.achievements import check_achievements
+from game.achievements import triggers
 
 
+@triggers("sell")
 async def sell_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     tg_id = update.effective_user.id
     user = db.get_user(tg_id)
@@ -48,4 +49,3 @@ async def sell_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         f"_(hunger {animal['hunger']}/100 × base {base} 🪙)_",
         parse_mode="Markdown",
     )
-    await check_achievements(tg_id, "sell", ctx)

@@ -46,7 +46,7 @@ def _make_animal(**kw):
 @pytest.fixture(autouse=True)
 def no_achievements(monkeypatch):
     monkeypatch.setattr("handlers.gift.db.transfer_animal", MagicMock())
-    monkeypatch.setattr("handlers.gift.check_achievements", AsyncMock())
+    monkeypatch.setattr("game.achievements.check_achievements", AsyncMock())
 
 
 @pytest.mark.asyncio

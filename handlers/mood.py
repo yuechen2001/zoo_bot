@@ -5,7 +5,7 @@ from telegram.ext import ContextTypes
 import db
 from game.mood_engine import calc_coins, EMOJI_LABELS
 from config import CHECKIN_WINDOW_MINUTES, ADMIN_IDS
-from game.achievements import check_achievements
+from game.achievements import triggers
 
 
 async def moodstart_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -74,6 +74,7 @@ async def resume_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("▶️ Resumed! Mood prompts are back on.")
 
 
+@triggers("checkin")
 async def mood_checkin_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     # data format: mood_{emoji}
@@ -150,8 +151,6 @@ async def mood_checkin_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             )
         except Exception:
             pass
-
-    await check_achievements(tg_id, "checkin", ctx)
 
 
 _HELP_SECTIONS = {

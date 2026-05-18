@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
-from game.achievements import check_achievements
+from game.achievements import triggers
 from game.store_data import STORE_ITEMS, ITEMS, LURES, COSMETICS
 from keyboards import store_tab_keyboard, store_welcome_keyboard
 
@@ -136,6 +136,7 @@ async def store_tab_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
 
+@triggers("store")
 async def store_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     tg_id = query.from_user.id
@@ -186,7 +187,6 @@ async def store_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     else:
         msg = f"✅ {item['emoji']} {item['name']} added to your bag! Use /inventory to activate it."
     await query.answer(msg, show_alert=True)
-    await check_achievements(tg_id, "store", ctx)
 
 
 async def _buy(update, tg_id: int, user, item_key: str):

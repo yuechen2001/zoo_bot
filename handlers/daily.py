@@ -2,7 +2,7 @@ import datetime
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
-from game.achievements import check_achievements
+from game.achievements import triggers
 from game.constants import DAILY_COOLDOWN_HOURS, DAILY_STREAK_EXPIRY_HOURS, DAILY_TIERS
 
 
@@ -21,6 +21,7 @@ def _next_tier(streak: int) -> tuple[int, int] | None:
     return None
 
 
+@triggers("daily")
 async def daily_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     tg_id = update.effective_user.id
     user = db.get_user(tg_id)
@@ -69,4 +70,3 @@ async def daily_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         f"{next_line}",
         parse_mode="Markdown",
     )
-    await check_achievements(tg_id, "daily", ctx)

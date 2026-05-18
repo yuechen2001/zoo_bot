@@ -16,6 +16,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from conftest import make_row
 
 
+@pytest.fixture(autouse=True)
+def no_achievements(monkeypatch):
+    monkeypatch.setattr("game.achievements.check_achievements", AsyncMock())
+
+
 def _make_cmd_update(user_id=1):
     update = MagicMock()
     update.effective_user.id = user_id
@@ -201,7 +206,7 @@ async def test_mood_callback_second_player_can_respond():
     ), patch("handlers.mood.db.record_prompt_response", return_value=True), patch(
         "handlers.mood.db.all_group_members_checked_in", return_value=False
     ), patch(
-        "handlers.mood.check_achievements"
+        "game.achievements.check_achievements"
     ):
         await mood_checkin_callback(update, MagicMock())
 
@@ -242,7 +247,7 @@ async def test_mood_callback_collapses_when_all_checked_in():
     ), patch("handlers.mood.db.record_prompt_response", return_value=True), patch(
         "handlers.mood.db.all_group_members_checked_in", return_value=True
     ), patch(
-        "handlers.mood.check_achievements"
+        "game.achievements.check_achievements"
     ):
         await mood_checkin_callback(update, MagicMock())
 

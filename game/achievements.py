@@ -1,3 +1,4 @@
+import functools
 import db
 from game.species_data import MAX_ENCLOSURE_LEVEL
 
@@ -258,6 +259,20 @@ ACHIEVEMENTS = {
         "check": lambda uid, u: (u["coins"] or 0) >= 5000,
     },
 }
+
+
+def triggers(event: str):
+    def decorator(fn):
+        @functools.wraps(fn)
+        async def wrapper(update, ctx):
+            result = await fn(update, ctx)
+            tg_id = (update.effective_user or update.callback_query.from_user).id
+            await check_achievements(tg_id, event, ctx)
+            return result
+
+        return wrapper
+
+    return decorator
 
 
 async def check_achievements(user_id: int, trigger: str, ctx):
