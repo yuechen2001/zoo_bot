@@ -279,6 +279,10 @@ async def _use_breed_boost(update, tg_id: int):
 
 
 async def _use_lucky_token(update, tg_id: int):
+    user = db.get_user(tg_id)
+    if user and user["lucky_catch_active"]:
+        await update.message.reply_text("🎯 Lucky Token is already active!")
+        return
     purchase = db.get_oldest_purchase(tg_id, "lucky_token")
     if not purchase:
         await update.message.reply_text(
@@ -295,6 +299,10 @@ async def _use_lucky_token(update, tg_id: int):
 
 
 async def _use_mood_booster(update, tg_id: int):
+    user = db.get_user(tg_id)
+    if user and user["mood_booster_active"]:
+        await update.message.reply_text("✨ Mood Booster is already active!")
+        return
     purchase = db.get_oldest_purchase(tg_id, "mood_booster")
     if not purchase:
         await update.message.reply_text(
@@ -312,6 +320,10 @@ async def _use_mood_booster(update, tg_id: int):
 
 
 async def _use_catch_net(update, tg_id: int):
+    user = db.get_user(tg_id)
+    if user and user["catch_net_active"]:
+        await update.message.reply_text("🪤 Catch Net is already active!")
+        return
     purchase = db.get_oldest_purchase(tg_id, "catch_net")
     if not purchase:
         await update.message.reply_text(

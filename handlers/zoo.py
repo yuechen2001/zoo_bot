@@ -100,6 +100,13 @@ def _render_habitat_section(
     return lines
 
 
+_POWERUP_LABELS = [
+    ("lucky_catch_active", "🎯 Lucky"),
+    ("mood_booster_active", "✨ Mood Boost"),
+    ("catch_net_active", "🪤 Catch Net"),
+]
+
+
 def render_zoo_page(
     username: str,
     animals: list,
@@ -111,6 +118,7 @@ def render_zoo_page(
     investment=None,
     active_breed=None,
     active_title: str | None = None,
+    active_powerups: dict | None = None,
 ) -> tuple[str, list[str]]:
     """
     Returns (rendered_text, inhabited_habitat_keys).
@@ -170,6 +178,11 @@ def render_zoo_page(
             f"🥚 Breeding: {active_breed['emoji_a']} × {active_breed['emoji_b']} | {breed_time}"
         )
 
+    if active_powerups:
+        active = [label for flag, label in _POWERUP_LABELS if active_powerups.get(flag)]
+        if active:
+            lines.append("⚡ Active: " + " · ".join(active))
+
     return "\n".join(lines), inhabited
 
 
@@ -201,6 +214,7 @@ async def zoo_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         investment=investment,
         active_breed=active_breed,
         active_title=user["active_title"],
+        active_powerups=user,
     )
     kb = zoo_page_keyboard(tg_id, 0, inhabited) if inhabited else None
     await update.message.reply_text(text, parse_mode="Markdown", reply_markup=kb)
@@ -236,6 +250,7 @@ async def zoo_page_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         investment=investment,
         active_breed=active_breed,
         active_title=user["active_title"],
+        active_powerups=user,
     )
     kb = zoo_page_keyboard(owner_id, page, inhabited) if inhabited else None
     await query.edit_message_text(text, parse_mode="Markdown", reply_markup=kb)
