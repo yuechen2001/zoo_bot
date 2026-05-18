@@ -193,8 +193,7 @@ async def _check_breed_completions(ctx):
                 group_chat_id,
                 f"{prefix} ({mention})\n"
                 f"{breed['emoji_a']} {breed['name_a']} × {breed['emoji_b']} {breed['name_b']} "
-                f"→ {breed['emoji_offspring']} {breed['name_offspring']}\n\n"
-                f"Use `/breed collect` to claim your new animal!",
+                f"→ {breed['emoji_offspring']} {breed['name_offspring']}",
                 parse_mode="Markdown",
                 reply_markup=breed_collect_keyboard(),
             )
