@@ -304,14 +304,34 @@ def get_user_by_username(username: str):
         return conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
 
 
-def create_trade(proposer_id, recipient_id, proposer_animal_id, recipient_animal_id) -> int:
+def create_trade(
+    proposer_id, recipient_id, proposer_animal_id, recipient_animal_id, created_at=None
+) -> int:
+    ts = created_at or datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
     with get_conn() as conn:
         cur = conn.execute(
-            "INSERT INTO trades (proposer_id, recipient_id, proposer_animal_id, recipient_animal_id) "
-            "VALUES (?, ?, ?, ?)",
-            (proposer_id, recipient_id, proposer_animal_id, recipient_animal_id),
+            "INSERT INTO trades (proposer_id, recipient_id, proposer_animal_id, "
+            "recipient_animal_id, created_at, status) VALUES (?, ?, ?, ?, ?, 'pending')",
+            (proposer_id, recipient_id, proposer_animal_id, recipient_animal_id, ts),
         )
         return cur.lastrowid
+
+
+def insert_breed_queue_entry(
+    user_id: int,
+    parent_a: str,
+    parent_b: str,
+    offspring_species_id: int,
+    ready_at: str,
+    last_notified_at: str | None = None,
+) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO breeding_queue "
+            "(user_id, parent_a, parent_b, offspring_species_id, ready_at, collected, last_notified_at) "
+            "VALUES (?, ?, ?, ?, ?, 0, ?)",
+            (user_id, parent_a, parent_b, offspring_species_id, ready_at, last_notified_at),
+        )
 
 
 def get_trade(trade_id: int):
@@ -933,6 +953,80 @@ def decay_animal_hunger(user_id: int, massaged: bool) -> None:
 _ANIMAL_STAT_SQL: dict[str, str] = {
     "hunger": "UPDATE animals SET hunger = ? WHERE animal_id = ?",
 }
+
+
+def adjust_coins(user_id: int, delta: int) -> None:
+    """Add (or remove) coins, floored at 0."""
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET coins = MAX(0, coins + ?) WHERE user_id = ?", (delta, user_id)
+        )
+
+
+def get_species_by_name(name: str):
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT * FROM species WHERE LOWER(name) = LOWER(?)", (name,)
+        ).fetchone()
+
+
+def get_all_species_names() -> list:
+    with get_conn() as conn:
+        return [
+            r["name"] for r in conn.execute("SELECT name FROM species ORDER BY name").fetchall()
+        ]
+
+
+def set_group_paused_until(group_chat_id: int, paused_until: str | None) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET paused_until = ? WHERE group_chat_id = ?",
+            (paused_until, group_chat_id),
+        )
+
+
+def reset_user_data(user_id: int) -> None:
+    with get_conn() as conn:
+        animal_ids = [
+            r["animal_id"]
+            for r in conn.execute(
+                "SELECT animal_id FROM animals WHERE user_id = ?", (user_id,)
+            ).fetchall()
+        ]
+        if animal_ids:
+            placeholders = ",".join("?" * len(animal_ids))
+            conn.execute(
+                f"DELETE FROM breeding_queue WHERE parent_a IN ({placeholders}) OR parent_b IN ({placeholders})",
+                animal_ids + animal_ids,
+            )
+        conn.execute("DELETE FROM animals WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM mood_checkins WHERE user_id = ?", (user_id,))
+        conn.execute(
+            "UPDATE users SET coins = 100, streak_windows = 0, consecutive_misses = 0, "
+            "last_prompt_at = NULL, last_checkin_at = NULL, paused_until = NULL WHERE user_id = ?",
+            (user_id,),
+        )
+
+
+def get_bot_stats() -> dict:
+    with get_conn() as conn:
+        users = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        animals = conn.execute("SELECT COUNT(*) FROM animals").fetchone()[0]
+        breeding = conn.execute(
+            "SELECT COUNT(*) FROM breeding_queue WHERE collected = 0"
+        ).fetchone()[0]
+        checkins = conn.execute("SELECT COUNT(*) FROM mood_checkins").fetchone()[0]
+        by_rarity = conn.execute(
+            "SELECT s.rarity, COUNT(*) as n FROM animals a "
+            "JOIN species s ON s.species_id = a.species_id GROUP BY s.rarity"
+        ).fetchall()
+    return {
+        "users": users,
+        "animals": animals,
+        "breeding": breeding,
+        "checkins": checkins,
+        "by_rarity": by_rarity,
+    }
 
 
 def admin_set_animal_stat(animal_id: str, stat: str, value: int) -> None:

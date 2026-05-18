@@ -192,20 +192,14 @@ async def test_expired_trade_notifies_proposer(temp_db):
             datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             - datetime.timedelta(minutes=30)
         ).isoformat()
-        with db.get_conn() as conn:
-            conn.execute(
-                "INSERT INTO trades (proposer_id, recipient_id, proposer_animal_id, recipient_animal_id, created_at, status) "
-                "VALUES (1, 2, 'a1', 'b1', ?, 'pending')",
-                (old_time,),
-            )
+        trade_id = db.create_trade(1, 2, "a1", "b1", created_at=old_time)
 
     ctx = MagicMock()
     ctx.bot.send_message = AsyncMock()
 
     with patch("db.DATABASE_PATH", temp_db):
         await _cleanup_expired_trades(ctx)
-        with db.get_conn() as conn:
-            trade = conn.execute("SELECT status FROM trades LIMIT 1").fetchone()
+        trade = db.get_trade(trade_id)
     assert trade["status"] == "expired"
     ctx.bot.send_message.assert_called_once()
 
@@ -224,13 +218,9 @@ def _insert_ready_breed(db_path, last_notified_at=None):
             datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             - datetime.timedelta(hours=2)
         ).isoformat()
-        with db.get_conn() as conn:
-            conn.execute(
-                "INSERT INTO breeding_queue "
-                "(user_id, parent_a, parent_b, offspring_species_id, ready_at, collected, last_notified_at) "
-                "VALUES (1, 'pa', 'pb', ?, ?, 0, ?)",
-                (species_id, past, last_notified_at),
-            )
+        db.insert_breed_queue_entry(
+            1, "pa", "pb", species_id, past, last_notified_at=last_notified_at
+        )
 
 
 @pytest.mark.asyncio
@@ -257,9 +247,8 @@ async def test_breed_ready_marks_notified_after_send(temp_db):
 
     with patch("db.DATABASE_PATH", temp_db):
         await _check_breed_completions(ctx)
-        with db.get_conn() as conn:
-            row = conn.execute("SELECT last_notified_at FROM breeding_queue LIMIT 1").fetchone()
-    assert row["last_notified_at"] is not None
+        breed = db.get_pending_breed(1)
+    assert breed["last_notified_at"] is not None
 
 
 @pytest.mark.asyncio

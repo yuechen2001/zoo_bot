@@ -113,10 +113,7 @@ async def _cmd_coins(update, tg_id, args):
         await update.message.reply_text("Usage: /admin coins <amount>")
         return
     amount = int(args[0])
-    with db.get_conn() as conn:
-        conn.execute(
-            "UPDATE users SET coins = MAX(0, coins + ?) WHERE user_id = ?", (amount, tg_id)
-        )
+    db.adjust_coins(tg_id, amount)
     user = db.get_user(tg_id)
     sign = "+" if amount >= 0 else ""
     await update.message.reply_text(
@@ -134,11 +131,7 @@ async def _cmd_givecoin(update, args):
     if not target:
         await update.message.reply_text(f"User `{username}` not found.", parse_mode="Markdown")
         return
-    with db.get_conn() as conn:
-        conn.execute(
-            "UPDATE users SET coins = MAX(0, coins + ?) WHERE user_id = ?",
-            (amount, target["user_id"]),
-        )
+    db.adjust_coins(target["user_id"], amount)
     updated = db.get_user(target["user_id"])
     sign = "+" if amount >= 0 else ""
     await update.message.reply_text(
@@ -157,11 +150,7 @@ async def _cmd_reducecoin(update, args):
     if not target:
         await update.message.reply_text(f"User `{username}` not found.", parse_mode="Markdown")
         return
-    with db.get_conn() as conn:
-        conn.execute(
-            "UPDATE users SET coins = MAX(0, coins - ?) WHERE user_id = ?",
-            (amount, target["user_id"]),
-        )
+    db.adjust_coins(target["user_id"], -amount)
     updated = db.get_user(target["user_id"])
     await update.message.reply_text(
         f"💸 Removed *{amount}* 🪙 from *{username}*. Their balance: *{updated['coins']}* 🪙",
@@ -196,15 +185,9 @@ async def _cmd_giveuser(update, args):
     if not target:
         await update.message.reply_text(f"User `{username}` not found.", parse_mode="Markdown")
         return
-    with db.get_conn() as conn:
-        species = conn.execute(
-            "SELECT * FROM species WHERE LOWER(name) = LOWER(?)", (name,)
-        ).fetchone()
+    species = db.get_species_by_name(name)
     if not species:
-        with db.get_conn() as conn:
-            all_names = [
-                r["name"] for r in conn.execute("SELECT name FROM species ORDER BY name").fetchall()
-            ]
+        all_names = db.get_all_species_names()
         await update.message.reply_text(
             f"Species `{name}` not found.\nAvailable: {', '.join(all_names)}",
             parse_mode="Markdown",
@@ -254,16 +237,10 @@ async def _cmd_pause(update, tg_id, args):
     ).isoformat()
     user = db.get_user(tg_id)
     group_chat_id = user["group_chat_id"]
-    with db.get_conn() as conn:
-        if group_chat_id:
-            conn.execute(
-                "UPDATE users SET paused_until = ? WHERE group_chat_id = ?",
-                (paused_until, group_chat_id),
-            )
-        else:
-            conn.execute(
-                "UPDATE users SET paused_until = ? WHERE user_id = ?", (paused_until, tg_id)
-            )
+    if group_chat_id:
+        db.set_group_paused_until(group_chat_id, paused_until)
+    else:
+        db.set_paused_until(tg_id, paused_until)
     label = f"{amount}{'h' if unit == 'h' else 'm'}"
     await update.message.reply_text(
         f"⏸ Paused for *{label}*. No prompts or streak changes for anyone in the group. Use /admin resume to end early.",
@@ -274,37 +251,15 @@ async def _cmd_pause(update, tg_id, args):
 async def _cmd_resume(update, tg_id):
     user = db.get_user(tg_id)
     group_chat_id = user["group_chat_id"]
-    with db.get_conn() as conn:
-        if group_chat_id:
-            conn.execute(
-                "UPDATE users SET paused_until = NULL WHERE group_chat_id = ?", (group_chat_id,)
-            )
-        else:
-            conn.execute("UPDATE users SET paused_until = NULL WHERE user_id = ?", (tg_id,))
+    if group_chat_id:
+        db.set_group_paused_until(group_chat_id, None)
+    else:
+        db.set_paused_until(tg_id, None)
     await update.message.reply_text("▶️ Resumed! Mood prompts are back on for everyone.")
 
 
 async def _cmd_reset(update, tg_id):
-    with db.get_conn() as conn:
-        animal_ids = [
-            r["animal_id"]
-            for r in conn.execute(
-                "SELECT animal_id FROM animals WHERE user_id = ?", (tg_id,)
-            ).fetchall()
-        ]
-        if animal_ids:
-            placeholders = ",".join("?" * len(animal_ids))
-            conn.execute(
-                f"DELETE FROM breeding_queue WHERE parent_a IN ({placeholders}) OR parent_b IN ({placeholders})",
-                animal_ids + animal_ids,
-            )
-        conn.execute("DELETE FROM animals WHERE user_id = ?", (tg_id,))
-        conn.execute("DELETE FROM mood_checkins WHERE user_id = ?", (tg_id,))
-        conn.execute(
-            "UPDATE users SET coins = 100, streak_windows = 0, consecutive_misses = 0, "
-            "last_prompt_at = NULL, last_checkin_at = NULL, paused_until = NULL WHERE user_id = ?",
-            (tg_id,),
-        )
+    db.reset_user_data(tg_id)
     await update.message.reply_text(
         "🔄 Your data has been reset. Use /start to get a new starter animal."
     )
@@ -320,51 +275,21 @@ async def _cmd_resetuser(update, args):
         await update.message.reply_text(f"User `{username}` not found.", parse_mode="Markdown")
         return
     uid = target["user_id"]
-    with db.get_conn() as conn:
-        animal_ids = [
-            r["animal_id"]
-            for r in conn.execute(
-                "SELECT animal_id FROM animals WHERE user_id = ?", (uid,)
-            ).fetchall()
-        ]
-        if animal_ids:
-            placeholders = ",".join("?" * len(animal_ids))
-            conn.execute(
-                f"DELETE FROM breeding_queue WHERE parent_a IN ({placeholders}) OR parent_b IN ({placeholders})",
-                animal_ids + animal_ids,
-            )
-        conn.execute("DELETE FROM animals WHERE user_id = ?", (uid,))
-        conn.execute("DELETE FROM mood_checkins WHERE user_id = ?", (uid,))
-        conn.execute(
-            "UPDATE users SET coins = 100, streak_windows = 0, consecutive_misses = 0, "
-            "last_prompt_at = NULL, last_checkin_at = NULL, paused_until = NULL WHERE user_id = ?",
-            (uid,),
-        )
+    db.reset_user_data(uid)
     await update.message.reply_text(
         f"🔄 *{username}*'s data has been reset.", parse_mode="Markdown"
     )
 
 
 async def _cmd_stats(update):
-    with db.get_conn() as conn:
-        users = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-        animals = conn.execute("SELECT COUNT(*) FROM animals").fetchone()[0]
-        breeding = conn.execute(
-            "SELECT COUNT(*) FROM breeding_queue WHERE collected = 0"
-        ).fetchone()[0]
-        checkins = conn.execute("SELECT COUNT(*) FROM mood_checkins").fetchone()[0]
-        by_rarity = conn.execute(
-            "SELECT s.rarity, COUNT(*) as n FROM animals a "
-            "JOIN species s ON s.species_id = a.species_id GROUP BY s.rarity"
-        ).fetchall()
-
-    rarity_lines = "\n".join(f"  {r['rarity']}: {r['n']}" for r in by_rarity)
+    stats = db.get_bot_stats()
+    rarity_lines = "\n".join(f"  {r['rarity']}: {r['n']}" for r in stats["by_rarity"])
     await update.message.reply_text(
         f"📊 *DB Stats*\n\n"
-        f"Users: {users}\n"
-        f"Animals: {animals}\n"
-        f"Active breeding: {breeding}\n"
-        f"Total check-ins: {checkins}\n\n"
+        f"Users: {stats['users']}\n"
+        f"Animals: {stats['animals']}\n"
+        f"Active breeding: {stats['breeding']}\n"
+        f"Total check-ins: {stats['checkins']}\n\n"
         f"*By rarity:*\n{rarity_lines}",
         parse_mode="Markdown",
     )
