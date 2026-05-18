@@ -59,49 +59,48 @@ async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await query.answer("Use /start first!", show_alert=True)
         return
 
+    is_basic = habitat == "basic"
+    lure_multiplier = 1.0 if is_basic else LURE_MULTIPLIER
+
     # Verify lure is still in inventory (race condition guard)
     purchase = db.get_oldest_purchase(tg_id, f"lure_{habitat}")
     if not purchase:
         await query.answer("You don't have that lure anymore!", show_alert=True)
         return
 
-    # Check enclosure capacity before consuming lure
-    enc_level = db.get_enclosure_level(tg_id, habitat)
-    capacity = ENCLOSURE_LEVELS[enc_level]["capacity"]
-    used = db.get_animal_count_by_habitat(tg_id, habitat)
-    if used >= capacity:
-        h = HABITATS[habitat]
-        await query.answer(
-            f"Your {h['emoji']} {h['name']} enclosure is full — lure not consumed.",
-            show_alert=True,
-        )
-        return
+    # For habitat lures, pre-check enclosure capacity before consuming
+    if not is_basic:
+        enc_level = db.get_enclosure_level(tg_id, habitat)
+        capacity = ENCLOSURE_LEVELS[enc_level]["capacity"]
+        used = db.get_animal_count_by_habitat(tg_id, habitat)
+        if used >= capacity:
+            h = HABITATS[habitat]
+            await query.answer(
+                f"Your {h['emoji']} {h['name']} enclosure is full — lure not consumed.",
+                show_alert=True,
+            )
+            return
 
     # Consume the lure
     db.consume_purchase(purchase["id"])
 
-    # Generate encounter filtered to habitat
+    # Generate encounter — basic lure picks from any habitat, others filter
     rarity = roll_encounter()
     if user["catch_net_active"]:
         rarity = "legendary"
-    candidates = db.get_species_candidates(rarity, habitat)
+    candidates = db.get_species_candidates(rarity, None if is_basic else habitat)
     species = random.choice(candidates) if candidates else None
 
     if not species:
-        # Refund the lure
         db.record_purchase(tg_id, f"lure_{habitat}")
-        h = HABITATS[habitat]
-        await query.answer(
-            f"No {h['name']} animals found — lure refunded!",
-            show_alert=True,
-        )
+        await query.answer("No animals found — lure refunded!", show_alert=True)
         return
 
-    h = HABITATS[habitat]
+    h = HABITATS[species["habitat"]] if is_basic else HABITATS[habitat]
     catch_rate_display = (
         "100% 🪤"
         if user["catch_net_active"]
-        else f"{min(100, int(species['catch_rate'] * LURE_MULTIPLIER * 100))}%"
+        else f"{min(100, int(species['catch_rate'] * lure_multiplier * 100))}%"
     )
 
     msg = await query.edit_message_text(
@@ -122,7 +121,7 @@ async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "emoji": species["emoji"],
         "at": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat(),
         "message_id": msg.message_id,
-        "lure_multiplier": LURE_MULTIPLIER,
+        "lure_multiplier": lure_multiplier,
     }
 
 

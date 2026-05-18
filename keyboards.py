@@ -115,7 +115,12 @@ def lure_keyboard(lure_counts: dict[str, int]) -> InlineKeyboardMarkup:
         rows.append(
             [
                 InlineKeyboardButton(
-                    f"{item['emoji']} {HABITATS[key.removeprefix('lure_')]['name']}"
+                    f"{item['emoji']} "
+                    + (
+                        HABITATS[key.removeprefix("lure_")]["name"]
+                        if key.removeprefix("lure_") in HABITATS
+                        else item["name"]
+                    )
                     + (f" ×{n}" if n > 1 else ""),
                     callback_data=f"catch_lure_{key.removeprefix('lure_')}",
                 )

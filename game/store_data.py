@@ -31,7 +31,7 @@ STORE_ITEMS: dict[str, dict] = {
     "catch_net": {
         "name": "Catch Net",
         "emoji": "🪤",
-        "price": 200,
+        "price": 800,
         "category": "consumable",
         "desc": "Guarantees a legendary encounter and successful catch — use with /store use catch_net",
     },
@@ -43,6 +43,13 @@ STORE_ITEMS: dict[str, dict] = {
         "desc": "Halve your remaining breed time — use with /store use breed_accelerator",
     },
     # ── Lures ─────────────────────────────────────────────────────────────────
+    "lure_basic": {
+        "name": "Basic Lure",
+        "emoji": "🎣",
+        "price": 25,
+        "category": "consumable",
+        "desc": "Attract a random animal from any habitat at base catch rate — selected via /catch",
+    },
     "lure_woodland": {
         "name": "Woodland Lure",
         "emoji": "🌲",
