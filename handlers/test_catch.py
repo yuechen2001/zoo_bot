@@ -47,7 +47,7 @@ async def test_catch_command_blocks_without_lures():
     ctx.user_data = {}
 
     with patch("handlers.catch.db.get_user", return_value={"coins": 200}), patch(
-        "handlers.catch.db.get_consumable_counts", return_value={}
+        "handlers.catch.db.get_item_counts", return_value={}
     ):
         await catch_command(update, ctx)
 
@@ -68,7 +68,7 @@ async def test_catch_command_shows_lure_keyboard_when_lures_held():
     keyboard = MagicMock()
 
     with patch("handlers.catch.db.get_user", return_value={"coins": 200}), patch(
-        "handlers.catch.db.get_consumable_counts", return_value={"lure_woodland": 1}
+        "handlers.catch.db.get_item_counts", return_value={"lure_woodland": 1}
     ), patch("handlers.catch.lure_keyboard", return_value=keyboard):
         await catch_command(update, ctx)
 

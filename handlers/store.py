@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 import db
 from game.achievements import check_achievements
-from game.store_data import STORE_ITEMS, CONSUMABLES, LURES, COSMETICS
+from game.store_data import STORE_ITEMS, ITEMS, LURES, COSMETICS
 from keyboards import store_tab_keyboard, store_welcome_keyboard
 
 _ACTIVE_FLAGS = {
@@ -13,15 +13,15 @@ _ACTIVE_FLAGS = {
 
 
 def _store_section_text(section: str, tg_id: int) -> str:
-    counts = db.get_consumable_counts(tg_id)
+    counts = db.get_item_counts(tg_id)
     user = db.get_user(tg_id)
 
-    if section == "consumables":
+    if section == "items":
         lines = [
-            "🏪 <b>Zoo Store — Consumables</b>\n",
+            "🏪 <b>Zoo Store — Items</b>\n",
             "<i>Sit in your bag until used via /inventory.</i>\n",
         ]
-        for key, item in CONSUMABLES.items():
+        for key, item in ITEMS.items():
             line = f"  {item['emoji']} <b>{item['name']}</b> — {item['price']} 🪙\n  {item['desc']}"
             badges = []
             n = counts.get(key, 0)
@@ -59,11 +59,11 @@ def _store_section_text(section: str, tg_id: int) -> str:
 
 def _store_text(tg_id: int) -> str:
     """Legacy full-store text — kept for tests."""
-    counts = db.get_consumable_counts(tg_id)
+    counts = db.get_item_counts(tg_id)
     user = db.get_user(tg_id)
     lines = ["🏪 <b>Zoo Store</b>\n"]
-    lines.append("<b>Consumables</b> (sit in your bag until used):")
-    for key, item in CONSUMABLES.items():
+    lines.append("<b>Items</b> (sit in your bag until used):")
+    for key, item in ITEMS.items():
         line = f"  {item['emoji']} <b>{item['name']}</b> — {item['price']} 🪙\n  {item['desc']}"
         badges = []
         n = counts.get(key, 0)
@@ -124,7 +124,7 @@ async def store_tab_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     section = query.data.removeprefix("store_tab_")
     owned = db.get_owned_title_keys(tg_id)
-    counts = db.get_consumable_counts(tg_id)
+    counts = db.get_item_counts(tg_id)
     try:
         await query.edit_message_text(
             _store_section_text(section, tg_id),
@@ -165,7 +165,7 @@ async def store_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         db.deduct_coins(tg_id, item["price"])
         db.record_purchase(tg_id, key)
         owned = db.get_owned_title_keys(tg_id)
-        counts = db.get_consumable_counts(tg_id)
+        counts = db.get_item_counts(tg_id)
         await query.answer(
             f"✅ Purchased {item['emoji']} {item['name']}! Use /inventory to equip it."
         )

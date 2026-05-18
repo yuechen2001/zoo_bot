@@ -182,10 +182,10 @@ _HELP_SECTIONS = {
     ),
     "store": (
         "🏪 *Zoo Bot — Store & Inventory*\n\n"
-        "/store — browse consumables, lures, and cosmetic titles\n"
+        "/store — browse items, lures, and cosmetic titles\n"
         "/store buy <item> — purchase an item directly\n"
         "/inventory — view your bag and owned titles\n"
-        "/inventory use <item> — activate a consumable\n"
+        "/inventory use <item> — activate an item\n"
         "/inventory equip <title> — set your zoo title\n\n"
         "💡 Each habitat has its own lure — habitat lures give 1.5× catch rate."
     ),

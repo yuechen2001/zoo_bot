@@ -60,7 +60,7 @@ def _make_callback(data):
 async def test_inventory_empty_bag():
     update, ctx = _make_update()
     with patch("handlers.inventory.db.get_user", return_value=_make_user()), patch(
-        "handlers.inventory.db.get_consumable_counts", return_value={}
+        "handlers.inventory.db.get_item_counts", return_value={}
     ), patch("handlers.inventory.db.get_owned_title_keys", return_value=[]):
         await inventory_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]
@@ -77,11 +77,11 @@ async def test_inventory_no_user():
 
 
 @pytest.mark.asyncio
-async def test_inventory_shows_consumables_in_bag():
+async def test_inventory_shows_items_in_bag():
     update, ctx = _make_update()
     counts = {"lucky_token": 2, "mega_feed": 1}
     with patch("handlers.inventory.db.get_user", return_value=_make_user()), patch(
-        "handlers.inventory.db.get_consumable_counts", return_value=counts
+        "handlers.inventory.db.get_item_counts", return_value=counts
     ), patch("handlers.inventory.db.get_owned_title_keys", return_value=[]):
         await inventory_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]
@@ -95,7 +95,7 @@ async def test_inventory_mega_feed_hint_references_inventory():
     update, ctx = _make_update()
     counts = {"mega_feed": 1}
     with patch("handlers.inventory.db.get_user", return_value=_make_user()), patch(
-        "handlers.inventory.db.get_consumable_counts", return_value=counts
+        "handlers.inventory.db.get_item_counts", return_value=counts
     ), patch("handlers.inventory.db.get_owned_title_keys", return_value=[]):
         await inventory_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]
@@ -320,7 +320,7 @@ async def test_callback_inv_use_applies_item():
     ), patch("handlers.inventory.db.consume_purchase"), patch(
         "handlers.inventory.db.set_lucky_catch"
     ) as mock_set, patch(
-        "handlers.inventory.db.get_consumable_counts", return_value={}
+        "handlers.inventory.db.get_item_counts", return_value={}
     ), patch(
         "handlers.inventory.db.get_owned_title_keys", return_value=[]
     ):
@@ -337,7 +337,7 @@ async def test_callback_inv_equip_sets_title():
     with patch("handlers.inventory.db.get_user", return_value=user), patch(
         "handlers.inventory.db.has_purchased", return_value=True
     ), patch("handlers.inventory.db.set_active_title") as mock_set, patch(
-        "handlers.inventory.db.get_consumable_counts", return_value={}
+        "handlers.inventory.db.get_item_counts", return_value={}
     ), patch(
         "handlers.inventory.db.get_owned_title_keys", return_value=["title_keeper"]
     ):

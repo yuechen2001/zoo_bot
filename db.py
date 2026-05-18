@@ -721,7 +721,7 @@ def set_rare_magnet(user_id: int, active: bool):
         )
 
 
-def get_consumable_counts(user_id: int) -> dict[str, int]:
+def get_item_counts(user_id: int) -> dict[str, int]:
     with get_conn() as conn:
         rows = conn.execute(
             "SELECT item_key, COUNT(*) AS n FROM user_purchases WHERE user_id = ? GROUP BY item_key",

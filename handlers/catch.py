@@ -20,7 +20,7 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Use /start first!")
         return
 
-    counts = db.get_consumable_counts(tg_id)
+    counts = db.get_item_counts(tg_id)
     from game.store_data import LURES
 
     has_lures = any(counts.get(k, 0) > 0 for k in LURES)
@@ -109,7 +109,7 @@ async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     msg = await query.edit_message_text(
         f"🌿 A wild *{species['emoji']} {species['name']}* appeared!\n"
-        f"{RARITY_LABELS.get(rarity, rarity.title())} · {h['emoji']} {h['name']}\n\n"
+        f"{RARITY_LABELS.get(rarity, rarity.title())} | {h['emoji']} {h['name']}\n\n"
         f"Catch rate: {catch_rate_display}\n\n"
         f"_You have {CATCH_EXPIRY_MINUTES} min to decide._",
         parse_mode="Markdown",

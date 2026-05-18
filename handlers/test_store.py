@@ -52,7 +52,7 @@ def _assert_html(text: str):
 
 
 def test_store_text_html_no_badges():
-    with patch("handlers.store.db.get_consumable_counts", return_value={}), patch(
+    with patch("handlers.store.db.get_item_counts", return_value={}), patch(
         "handlers.store.db.get_user",
         return_value=_make_user(),
     ):
@@ -61,7 +61,7 @@ def test_store_text_html_no_badges():
 
 def test_store_text_html_with_badges():
     counts = {key: 2 for key in ["lucky_token", "mood_booster", "catch_net", "mega_feed"]}
-    with patch("handlers.store.db.get_consumable_counts", return_value=counts), patch(
+    with patch("handlers.store.db.get_item_counts", return_value=counts), patch(
         "handlers.store.db.get_user",
         return_value=_make_user(lucky_catch_active=1, mood_booster_active=1, catch_net_active=1),
     ):
@@ -71,7 +71,7 @@ def test_store_text_html_with_badges():
 
 
 def test_store_text_references_inventory():
-    with patch("handlers.store.db.get_consumable_counts", return_value={}), patch(
+    with patch("handlers.store.db.get_item_counts", return_value={}), patch(
         "handlers.store.db.get_user", return_value=_make_user()
     ):
         text = _store_text(1)
@@ -138,7 +138,7 @@ async def test_store_buy_insufficient_coins():
 
 
 @pytest.mark.asyncio
-async def test_store_buy_consumable_records_purchase():
+async def test_store_buy_item_records_purchase():
     update, ctx = _make_update(args=["buy", "lucky_token"])
     with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
         "handlers.store.db.deduct_coins"
@@ -152,7 +152,7 @@ async def test_store_buy_consumable_records_purchase():
 
 
 @pytest.mark.asyncio
-async def test_store_buy_consumable_points_to_inventory():
+async def test_store_buy_item_points_to_inventory():
     update, ctx = _make_update(args=["buy", "lucky_token"])
     with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
         "handlers.store.db.deduct_coins"
@@ -232,7 +232,7 @@ async def test_callback_insufficient_coins():
 
 
 @pytest.mark.asyncio
-async def test_callback_buy_consumable_goes_to_bag():
+async def test_callback_buy_item_goes_to_bag():
     update, query, ctx = _make_callback("store_buy_mega_feed")
     with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
         "handlers.store.db.deduct_coins"
@@ -247,7 +247,7 @@ async def test_callback_buy_consumable_goes_to_bag():
 
 
 @pytest.mark.asyncio
-async def test_callback_buy_consumable_points_to_inventory():
+async def test_callback_buy_item_points_to_inventory():
     update, query, ctx = _make_callback("store_buy_mega_feed")
     with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
         "handlers.store.db.deduct_coins"
@@ -268,7 +268,7 @@ async def test_callback_buy_cosmetic_not_owned():
     ) as mock_record, patch(
         "handlers.store.db.get_owned_title_keys", return_value={"title_keeper"}
     ), patch(
-        "handlers.store.db.get_consumable_counts", return_value={}
+        "handlers.store.db.get_item_counts", return_value={}
     ):
         await store_callback(update, ctx)
     mock_deduct.assert_called_once()

@@ -36,9 +36,9 @@ def store_welcome_keyboard() -> InlineKeyboardMarkup:
 
 
 def store_tab_keyboard(section: str, owned_keys: set, counts: dict) -> InlineKeyboardMarkup:
-    from game.store_data import CONSUMABLES, LURES, COSMETICS
+    from game.store_data import ITEMS, LURES, COSMETICS
 
-    tab_defs = [("consumables", "🧪 Items"), ("lures", "🎣 Lures"), ("titles", "🎩 Titles")]
+    tab_defs = [("items", "🧪 Items"), ("lures", "🎣 Lures"), ("titles", "🎩 Titles")]
     tab_row = []
     for key, label in tab_defs:
         if key == section:
@@ -48,13 +48,13 @@ def store_tab_keyboard(section: str, owned_keys: set, counts: dict) -> InlineKey
 
     rows = [tab_row]
 
-    if section == "consumables":
+    if section == "items":
         btns = [
             InlineKeyboardButton(
                 f"{item['emoji']} {item['price']} 🪙",
                 callback_data=f"store_buy_{key}",
             )
-            for key, item in CONSUMABLES.items()
+            for key, item in ITEMS.items()
         ]
     elif section == "lures":
         btns = [
@@ -170,19 +170,19 @@ def zoo_page_keyboard(owner_id: int, page: int, habitat_keys: list[str]) -> Inli
 
 
 def store_keyboard(owned_keys: set) -> InlineKeyboardMarkup:
-    from game.store_data import CONSUMABLES, LURES, COSMETICS
+    from game.store_data import ITEMS, LURES, COSMETICS
 
     rows = []
 
-    consumable_buttons = [
+    item_buttons = [
         InlineKeyboardButton(
             f"{item['emoji']} {item['price']} 🪙",
             callback_data=f"store_buy_{key}",
         )
-        for key, item in CONSUMABLES.items()
+        for key, item in ITEMS.items()
     ]
-    for i in range(0, len(consumable_buttons), 3):
-        rows.append(consumable_buttons[i : i + 3])
+    for i in range(0, len(item_buttons), 3):
+        rows.append(item_buttons[i : i + 3])
 
     lure_buttons = [
         InlineKeyboardButton(

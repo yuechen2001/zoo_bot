@@ -213,14 +213,14 @@ def test_claim_wild_event_first_wins(db_env):
     assert db.claim_wild_event(event_id, 2) is False
 
 
-# ── get_consumable_counts: GROUP BY aggregation ───────────────────────────────
+# ── get_item_counts: GROUP BY aggregation ───────────────────────────────
 
 
-def test_get_consumable_counts(db_env):
+def test_get_item_counts(db_env):
     db.record_purchase(1, "mega_feed")
     db.record_purchase(1, "mega_feed")
     db.record_purchase(1, "lucky_token")
-    counts = db.get_consumable_counts(1)
+    counts = db.get_item_counts(1)
     assert counts["mega_feed"] == 2
     assert counts["lucky_token"] == 1
     assert counts.get("breed_boost", 0) == 0

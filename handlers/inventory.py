@@ -3,7 +3,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 import db
 from game.constants import BREED_BOOST_HOURS
-from game.store_data import CONSUMABLES, LURES, COSMETICS
+from game.store_data import ITEMS, LURES, COSMETICS
 
 _NO_ARG_USABLE = {"lucky_token", "mood_booster", "catch_net", "breed_boost", "rare_magnet"}
 
@@ -16,23 +16,21 @@ _ACTIVE_FLAGS = {
 
 
 def _render(tg_id: int, user) -> tuple[str, InlineKeyboardMarkup | None]:
-    counts = db.get_consumable_counts(tg_id)
+    counts = db.get_item_counts(tg_id)
     owned_titles = db.get_owned_title_keys(tg_id)
 
-    consumables_in_bag = [
-        (k, CONSUMABLES[k], counts[k]) for k in CONSUMABLES if counts.get(k, 0) > 0
-    ]
+    items_in_bag = [(k, ITEMS[k], counts[k]) for k in ITEMS if counts.get(k, 0) > 0]
     lures_in_bag = [(k, LURES[k], counts[k]) for k in LURES if counts.get(k, 0) > 0]
 
-    if not consumables_in_bag and not lures_in_bag and not owned_titles:
+    if not items_in_bag and not lures_in_bag and not owned_titles:
         return "🎒 *Inventory*\n\n_Your bag is empty. Visit /store to buy items._", None
 
     lines = ["🎒 *Inventory*\n"]
     buttons = []
 
-    if consumables_in_bag:
+    if items_in_bag:
         lines.append("*Consumables:*")
-        for key, item, n in consumables_in_bag:
+        for key, item, n in items_in_bag:
             count_str = f" ×{n}" if n > 1 else ""
             flag = _ACTIVE_FLAGS.get(key)
             active = " _(active)_" if flag and user[flag] else ""
