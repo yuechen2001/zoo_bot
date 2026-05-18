@@ -2,7 +2,7 @@ import datetime
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
-from game.balance import MASSAGE_COST, MASSAGE_DURATION_HOURS, MASSAGE_COOLDOWN_HOURS
+from game.constants import MASSAGE_COST, MASSAGE_DURATION_HOURS, MASSAGE_COOLDOWN_HOURS
 
 
 async def footmassage_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

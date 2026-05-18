@@ -2,7 +2,7 @@ import random
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
-from game.balance import SPIN_COST, WIN_3, WIN_2, SYMBOLS
+from game.constants import SPIN_COST, WIN_3, WIN_2, SYMBOLS
 
 
 async def slots_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 import db
 from game.achievements import check_achievements
-from game.balance import FEED_COST_BY_RARITY, FEED_HUNGER
+from game.constants import FEED_COST_BY_RARITY, FEED_HUNGER
 
 
 async def feed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

@@ -7,7 +7,7 @@ import db
 from game.achievements import check_achievements
 from game.species_data import ENCLOSURE_LEVELS
 from utils import format_mention
-from game.balance import LURE_MULTIPLIER
+from game.constants import LURE_MULTIPLIER
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +84,7 @@ async def wild_event_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     mention = format_mention(query.from_user.username, tg_id)
     await query.answer(f"🎉 You caught {species['emoji']} {species['name']}!", show_alert=True)
     await check_achievements(tg_id, "wild_catch", ctx)
+    await check_achievements(tg_id, "catch", ctx)
     try:
         await query.edit_message_text(
             f"🌿 *Wild event over!*\n"

@@ -245,7 +245,7 @@ async def _cleanup_expired_trades(ctx):
 
 
 async def _autofeed(ctx):
-    from game.balance import FEED_COST_BY_RARITY, FEED_HUNGER
+    from game.constants import FEED_COST_BY_RARITY, FEED_HUNGER
 
     for user in db.get_autofeed_users():
         uid = user["user_id"]

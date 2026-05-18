@@ -3,7 +3,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 import db
 from game.achievements import check_achievements
-from game.balance import DAILY_COOLDOWN_HOURS, DAILY_STREAK_EXPIRY_HOURS, DAILY_TIERS
+from game.constants import DAILY_COOLDOWN_HOURS, DAILY_STREAK_EXPIRY_HOURS, DAILY_TIERS
 
 
 def _daily_coins(streak: int) -> int:
