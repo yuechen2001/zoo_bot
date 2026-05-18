@@ -1,6 +1,6 @@
 import pytest
 import unittest.mock as mock
-from species_data import ENCLOSURE_LEVELS
+from game.species_data import ENCLOSURE_LEVELS
 
 
 @pytest.fixture

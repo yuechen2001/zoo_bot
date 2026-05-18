@@ -3,14 +3,14 @@ import datetime
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
-from achievements import check_achievements
+from game.achievements import check_achievements
 from game.breed_engine import (
     resolve_offspring,
     calc_breed_ready_at,
     calc_breed_cost,
     breed_duration_str,
 )
-from species_data import ENCLOSURE_LEVELS, HABITATS
+from game.species_data import ENCLOSURE_LEVELS, HABITATS
 
 
 async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

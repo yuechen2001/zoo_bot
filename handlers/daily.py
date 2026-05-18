@@ -2,7 +2,7 @@ import datetime
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
-from achievements import check_achievements
+from game.achievements import check_achievements
 from game.balance import DAILY_COOLDOWN_HOURS, DAILY_STREAK_EXPIRY_HOURS, DAILY_TIERS
 
 

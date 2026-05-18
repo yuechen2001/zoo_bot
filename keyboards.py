@@ -1,5 +1,5 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from species_data import HABITATS
+from game.species_data import HABITATS
 
 MOOD_EMOJIS = ["😢", "😐", "🙂", "😄", "🤩"]
 

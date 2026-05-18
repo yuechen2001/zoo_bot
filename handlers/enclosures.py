@@ -1,8 +1,8 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
-from achievements import check_achievements
-from species_data import HABITATS, ENCLOSURE_LEVELS, MAX_ENCLOSURE_LEVEL
+from game.achievements import check_achievements
+from game.species_data import HABITATS, ENCLOSURE_LEVELS, MAX_ENCLOSURE_LEVEL
 from keyboards import enclosure_upgrade_keyboard
 
 

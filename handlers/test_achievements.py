@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from handlers.achievements import achievements_command
-from achievements import check_achievements
+from game.achievements import check_achievements
 import sys
 import os
 
@@ -46,7 +46,7 @@ async def test_achievements_none_earned():
 @pytest.mark.asyncio
 async def test_achievements_some_earned():
     update = _make_update()
-    from achievements import ACHIEVEMENTS
+    from game.achievements import ACHIEVEMENTS
 
     first_key = next(iter(ACHIEVEMENTS))
     with patch("handlers.achievements.db.get_user", return_value=_make_user()), patch(
@@ -75,10 +75,10 @@ async def test_check_achievements_uses_row_key_access():
     ctx.bot.send_message = AsyncMock()
     user = _make_user(username="tester", group_chat_id=-100)
 
-    with patch("achievements.db.get_user", return_value=user), patch(
-        "achievements.db.get_achievement_keys", return_value=set()
-    ), patch("achievements.db.award_achievement"), patch(
-        "achievements.ACHIEVEMENTS",
+    with patch("game.achievements.db.get_user", return_value=user), patch(
+        "game.achievements.db.get_achievement_keys", return_value=set()
+    ), patch("game.achievements.db.award_achievement"), patch(
+        "game.achievements.ACHIEVEMENTS",
         {
             "test_ach": {
                 "trigger": "checkin",

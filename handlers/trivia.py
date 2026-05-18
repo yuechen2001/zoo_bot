@@ -3,7 +3,7 @@ import datetime
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 import db
-from achievements import check_achievements
+from game.achievements import check_achievements
 from game.balance import TRIVIA_COOLDOWN_MINUTES, TRIVIA_WINDOW_MINUTES, COINS_CORRECT, COINS_WRONG
 
 

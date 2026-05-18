@@ -7,7 +7,7 @@ from game.breed_engine import (
     resolve_offspring,
     _RARITY_WEIGHTS,
 )
-from species_data import RARITY_ORDER
+from game.species_data import RARITY_ORDER
 
 
 def _candidates(conn):

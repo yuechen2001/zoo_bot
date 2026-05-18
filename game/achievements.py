@@ -1,5 +1,5 @@
 import db
-from species_data import MAX_ENCLOSURE_LEVEL
+from game.species_data import MAX_ENCLOSURE_LEVEL
 
 
 # Each achievement: emoji, name, desc, trigger, check(user_id, user_row) -> bool

@@ -1,6 +1,6 @@
 import sqlite3
 import pytest
-from species_data import SPECIES
+from game.species_data import SPECIES
 
 
 class FakeRow(dict):

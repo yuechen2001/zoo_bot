@@ -1,8 +1,8 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
-from achievements import check_achievements
-from species_data import ENCLOSURE_LEVELS
+from game.achievements import check_achievements
+from game.species_data import ENCLOSURE_LEVELS
 from utils import format_mention
 
 

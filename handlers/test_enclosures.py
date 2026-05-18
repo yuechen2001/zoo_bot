@@ -3,7 +3,7 @@ import os
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from species_data import HABITATS, ENCLOSURE_LEVELS, MAX_ENCLOSURE_LEVEL
+from game.species_data import HABITATS, ENCLOSURE_LEVELS, MAX_ENCLOSURE_LEVEL
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from conftest import make_row

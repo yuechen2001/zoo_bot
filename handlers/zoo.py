@@ -4,7 +4,7 @@ from telegram.ext import ContextTypes
 import datetime
 import db
 from game.mood_engine import streak_label
-from species_data import HABITATS, ENCLOSURE_LEVELS, RARITY_SQUARE
+from game.species_data import HABITATS, ENCLOSURE_LEVELS, RARITY_SQUARE
 from keyboards import zoo_page_keyboard
 from config import INVESTMENT_HOURS
 

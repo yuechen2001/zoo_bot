@@ -2,7 +2,7 @@ import datetime
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
-from achievements import check_achievements
+from game.achievements import check_achievements
 from game.store_data import STORE_ITEMS, CONSUMABLES, LURES, COSMETICS
 from keyboards import store_keyboard
 

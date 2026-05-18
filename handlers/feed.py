@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
-from achievements import check_achievements
+from game.achievements import check_achievements
 from game.balance import FEED_COST_BY_RARITY, FEED_HUNGER
 
 

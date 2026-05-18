@@ -1,6 +1,6 @@
 import random
 import datetime
-from species_data import RARITY_ORDER, get_breed_params
+from game.species_data import RARITY_ORDER, get_breed_params
 
 
 # (common, rare, epic, legendary) weights per sorted parent rarity pair.

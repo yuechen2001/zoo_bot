@@ -1,4 +1,4 @@
-from species_data import SPECIES, RARITY_ORDER, ENCOUNTER_WEIGHTS, get_breed_params
+from game.species_data import SPECIES, RARITY_ORDER, ENCOUNTER_WEIGHTS, get_breed_params
 
 
 class TestGetBreedParams:
@@ -28,7 +28,7 @@ class TestGetBreedParams:
 
     def test_all_valid_rarity_pairs_are_in_table(self):
         from itertools import combinations_with_replacement
-        from species_data import RARITY_ORDER
+        from game.species_data import RARITY_ORDER
 
         for a, b in combinations_with_replacement(RARITY_ORDER, 2):
             result = get_breed_params(a, b)

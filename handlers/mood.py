@@ -5,7 +5,7 @@ from telegram.ext import ContextTypes
 import db
 from game.mood_engine import calc_coins, EMOJI_LABELS
 from config import CHECKIN_WINDOW_MINUTES, ADMIN_IDS
-from achievements import check_achievements
+from game.achievements import check_achievements
 
 
 async def moodstart_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

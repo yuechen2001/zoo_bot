@@ -4,8 +4,8 @@ from telegram.ext import ContextTypes
 import db
 from keyboards import trade_keyboard
 from config import TRADE_EXPIRY_MINUTES
-from species_data import RARITY_LABELS, HABITATS, ENCLOSURE_LEVELS
-from achievements import check_achievements
+from game.species_data import RARITY_LABELS, HABITATS, ENCLOSURE_LEVELS
+from game.achievements import check_achievements
 
 
 async def trade_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

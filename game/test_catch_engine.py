@@ -1,6 +1,6 @@
 from unittest.mock import patch
 from game.catch_engine import roll_catch, roll_encounter, pick_species
-from species_data import ENCOUNTER_WEIGHTS
+from game.species_data import ENCOUNTER_WEIGHTS
 
 
 class TestRollCatch:

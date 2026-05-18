@@ -6,9 +6,9 @@ from telegram.ext import ContextTypes
 import db
 from game.catch_engine import roll_encounter, roll_catch
 from keyboards import catch_keyboard, lure_keyboard
-from species_data import RARITY_LABELS, HABITATS, ENCLOSURE_LEVELS
+from game.species_data import RARITY_LABELS, HABITATS, ENCLOSURE_LEVELS
 from config import CATCH_EXPIRY_MINUTES
-from achievements import check_achievements
+from game.achievements import check_achievements
 from game.balance import LURE_MULTIPLIER
 
 

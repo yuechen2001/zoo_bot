@@ -1,7 +1,7 @@
 import datetime
 import sqlite3
 from config import DATABASE_PATH
-from species_data import SPECIES
+from game.species_data import SPECIES
 
 
 def get_conn():
@@ -500,7 +500,7 @@ def add_coins(user_id: int, amount: int):
 
 
 def give_starter_enclosures(user_id: int):
-    from species_data import HABITATS
+    from game.species_data import HABITATS
 
     with get_conn() as conn:
         for habitat in HABITATS:
@@ -560,7 +560,7 @@ def upgrade_enclosure(user_id: int, habitat: str) -> str:
 
     Returns 'ok', 'max_level', or 'insufficient_coins'.
     """
-    from species_data import ENCLOSURE_LEVELS, MAX_ENCLOSURE_LEVEL
+    from game.species_data import ENCLOSURE_LEVELS, MAX_ENCLOSURE_LEVEL
 
     with get_conn() as conn:
         row = conn.execute(

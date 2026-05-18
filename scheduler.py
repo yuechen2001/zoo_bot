@@ -12,7 +12,7 @@ from config import (
     WILD_EVENT_EXPIRY_MINUTES,
 )
 from keyboards import mood_keyboard
-from species_data import ENCLOSURE_LEVELS
+from game.species_data import ENCLOSURE_LEVELS
 from utils import format_mention
 
 logger = logging.getLogger(__name__)

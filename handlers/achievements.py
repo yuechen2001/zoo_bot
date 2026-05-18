@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
-from achievements import ACHIEVEMENTS
+from game.achievements import ACHIEVEMENTS
 
 
 async def achievements_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

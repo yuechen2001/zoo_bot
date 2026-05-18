@@ -1,5 +1,5 @@
 import random
-from species_data import ENCOUNTER_WEIGHTS
+from game.species_data import ENCOUNTER_WEIGHTS
 
 
 def roll_encounter() -> str:
