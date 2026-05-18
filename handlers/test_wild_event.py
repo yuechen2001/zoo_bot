@@ -134,6 +134,8 @@ async def test_wild_event_success():
         "handlers.wild_event.db.add_animal"
     ), patch(
         "handlers.wild_event.check_achievements"
+    ), patch(
+        "handlers.wild_event.random.random", return_value=0.0
     ):
         inner = MagicMock()
         inner.execute.return_value.fetchone.return_value = species
