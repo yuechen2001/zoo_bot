@@ -23,6 +23,18 @@ def catch_keyboard(species_id: int, cost: int):
     )
 
 
+def store_welcome_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("🧪 Consumables", callback_data="store_tab_consumables"),
+                InlineKeyboardButton("🎣 Lures", callback_data="store_tab_lures"),
+                InlineKeyboardButton("🎩 Titles", callback_data="store_tab_titles"),
+            ]
+        ]
+    )
+
+
 def store_tab_keyboard(section: str, owned_keys: set, counts: dict) -> InlineKeyboardMarkup:
     from game.store_data import CONSUMABLES, LURES, COSMETICS
 
@@ -30,7 +42,7 @@ def store_tab_keyboard(section: str, owned_keys: set, counts: dict) -> InlineKey
     tab_row = []
     for key, label in tab_defs:
         if key == section:
-            tab_row.append(InlineKeyboardButton(f"· {label}", callback_data="zoo_noop"))
+            tab_row.append(InlineKeyboardButton(f"▸ {label} ◂", callback_data="zoo_noop"))
         else:
             tab_row.append(InlineKeyboardButton(label, callback_data=f"store_tab_{key}"))
 

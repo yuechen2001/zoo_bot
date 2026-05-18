@@ -3,7 +3,7 @@ from telegram.ext import ContextTypes
 import db
 from game.achievements import check_achievements
 from game.store_data import STORE_ITEMS, CONSUMABLES, LURES, COSMETICS
-from keyboards import store_tab_keyboard
+from keyboards import store_tab_keyboard, store_welcome_keyboard
 
 _ACTIVE_FLAGS = {
     "lucky_token": "lucky_catch_active",
@@ -100,12 +100,10 @@ async def store_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     args = ctx.args or []
     if not args or args[0].lower() != "buy":
-        owned = db.get_owned_title_keys(tg_id)
-        counts = db.get_consumable_counts(tg_id)
         await update.message.reply_text(
-            _store_section_text("consumables", tg_id),
+            "🏪 <b>Welcome to the Zoo Store!</b>\n\n" "What are you looking for?",
             parse_mode="HTML",
-            reply_markup=store_tab_keyboard("consumables", owned, counts),
+            reply_markup=store_welcome_keyboard(),
         )
         return
 
