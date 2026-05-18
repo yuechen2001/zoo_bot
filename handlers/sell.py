@@ -5,6 +5,11 @@ from game.achievements import check_achievements
 from keyboards import animal_picker_keyboard
 
 
+def _sell_price(animal) -> tuple[int, int]:
+    base = animal["catch_cost"] // 2
+    return base, max(1, round(base * animal["hunger"] / 100))
+
+
 async def sell_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     tg_id = update.effective_user.id
     user = db.get_user(tg_id)
@@ -48,8 +53,7 @@ async def _sell_direct(update, tg_id, position, ctx):
         )
         return
 
-    base = animal["catch_cost"] // 2
-    sell_price = max(1, round(base * animal["hunger"] / 100))
+    base, sell_price = _sell_price(animal)
     db.sell_animal(tg_id, animal["animal_id"], sell_price)
     await check_achievements(tg_id, "sell", ctx)
 
@@ -80,9 +84,7 @@ async def sell_pick_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await query.answer(f"{name} has a pending trade — can't sell!", show_alert=True)
         return
 
-    base = animal["catch_cost"] // 2
-    sell_price = max(1, round(base * animal["hunger"] / 100))
-
+    base, sell_price = _sell_price(animal)
     kb = InlineKeyboardMarkup(
         [
             [
@@ -123,8 +125,7 @@ async def sell_yes_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await query.answer(f"{name} has a pending trade — can't sell!", show_alert=True)
         return
 
-    base = animal["catch_cost"] // 2
-    sell_price = max(1, round(base * animal["hunger"] / 100))
+    base, sell_price = _sell_price(animal)
     db.sell_animal(tg_id, animal["animal_id"], sell_price)
     await check_achievements(tg_id, "sell", ctx)
 

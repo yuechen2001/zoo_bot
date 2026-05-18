@@ -7,16 +7,22 @@ from game.constants import MIN_INVEST
 from keyboards import invest_keyboard
 
 
+def _now():
+    return datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+
+
+def _ready_at(inv):
+    return datetime.datetime.fromisoformat(inv["invested_at"]) + datetime.timedelta(
+        hours=INVESTMENT_HOURS
+    )
+
+
 def _is_ready(inv) -> bool:
-    invested_at = datetime.datetime.fromisoformat(inv["invested_at"])
-    ready_at = invested_at + datetime.timedelta(hours=INVESTMENT_HOURS)
-    return datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) >= ready_at
+    return _now() >= _ready_at(inv)
 
 
 def _countdown_str(inv) -> str:
-    invested_at = datetime.datetime.fromisoformat(inv["invested_at"])
-    ready_at = invested_at + datetime.timedelta(hours=INVESTMENT_HOURS)
-    remaining = ready_at - datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    remaining = _ready_at(inv) - _now()
     hours, rem = divmod(int(remaining.total_seconds()), 3600)
     minutes = rem // 60
     return f"{hours}h {minutes}m" if hours else f"{minutes}m"
@@ -158,16 +164,7 @@ async def invest_deposit_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE
     return_amount = round(amount * (1 + INVESTMENT_RETURN_RATE))
     db.create_investment(tg_id, amount, return_amount)
     db.add_coins(tg_id, -amount)
-
-    user = db.get_user(tg_id)
-    inv = db.get_active_investment(tg_id)
-    kb = invest_keyboard(user["coins"], True, False)
-    await query.answer()
-    await query.edit_message_text(
-        _status_text(user, inv),
-        reply_markup=kb,
-        parse_mode="Markdown",
-    )
+    await _finish_invest(query, tg_id)
 
 
 async def invest_max_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -191,14 +188,16 @@ async def invest_max_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     return_amount = round(amount * (1 + INVESTMENT_RETURN_RATE))
     db.create_investment(tg_id, amount, return_amount)
     db.add_coins(tg_id, -amount)
+    await _finish_invest(query, tg_id)
 
+
+async def _finish_invest(query, tg_id):
     user = db.get_user(tg_id)
     inv = db.get_active_investment(tg_id)
-    kb = invest_keyboard(user["coins"], True, False)
     await query.answer()
     await query.edit_message_text(
         _status_text(user, inv),
-        reply_markup=kb,
+        reply_markup=invest_keyboard(user["coins"], True, False),
         parse_mode="Markdown",
     )
 
