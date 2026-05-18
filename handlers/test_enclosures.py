@@ -30,8 +30,7 @@ def db(tmp_path):
 @pytest.fixture
 def user(db):
     db.ensure_user(1, "tester", 100)
-    with db.get_conn() as conn:
-        conn.execute("UPDATE users SET coins = 10000 WHERE user_id = 1")
+    db.add_coins(1, 9900)  # top up to 10000 (default is 100)
     return db.get_user(1)
 
 
@@ -55,10 +54,7 @@ class TestGetEnclosureLevel:
 
     def test_returns_stored_level(self, db, user):
         db.give_starter_enclosures(1)
-        with db.get_conn() as conn:
-            conn.execute(
-                "UPDATE user_enclosures SET level = 3 WHERE user_id = 1 AND habitat = 'woodland'"
-            )
+        db.set_enclosure_level(1, "woodland", 3)
         assert db.get_enclosure_level(1, "woodland") == 3
 
 
@@ -76,26 +72,20 @@ class TestUpgradeEnclosure:
 
     def test_max_level_rejected(self, db, user):
         db.give_starter_enclosures(1)
-        with db.get_conn() as conn:
-            conn.execute(
-                f"UPDATE user_enclosures SET level = {MAX_ENCLOSURE_LEVEL} "
-                "WHERE user_id = 1 AND habitat = 'woodland'"
-            )
+        db.set_enclosure_level(1, "woodland", MAX_ENCLOSURE_LEVEL)
         result = db.upgrade_enclosure(1, "woodland")
         assert result == "max_level"
 
     def test_insufficient_coins_rejected(self, db, user):
         db.give_starter_enclosures(1)
-        with db.get_conn() as conn:
-            conn.execute("UPDATE users SET coins = 0 WHERE user_id = 1")
+        db.add_coins(1, -db.get_user(1)["coins"])  # drain to 0
         result = db.upgrade_enclosure(1, "woodland")
         assert result == "insufficient_coins"
         assert db.get_enclosure_level(1, "woodland") == 1
 
     def test_coins_not_deducted_on_failure(self, db, user):
         db.give_starter_enclosures(1)
-        with db.get_conn() as conn:
-            conn.execute("UPDATE users SET coins = 0 WHERE user_id = 1")
+        db.add_coins(1, -db.get_user(1)["coins"])  # drain to 0
         db.upgrade_enclosure(1, "woodland")
         assert db.get_user(1)["coins"] == 0
 
@@ -106,27 +96,11 @@ class TestGetAnimalCountByHabitat:
         assert count == 0
 
     def test_counts_only_matching_habitat(self, db, user):
-        with db.get_conn() as conn:
-            woodland_species = conn.execute(
-                "SELECT species_id FROM species WHERE habitat = 'woodland' LIMIT 1"
-            ).fetchone()
-            aquatic_species = conn.execute(
-                "SELECT species_id FROM species WHERE habitat = 'aquatic' LIMIT 1"
-            ).fetchone()
-
-        with db.get_conn() as conn:
-            conn.execute(
-                "INSERT INTO animals (animal_id, user_id, species_id) VALUES ('a1', 1, ?)",
-                (woodland_species["species_id"],),
-            )
-            conn.execute(
-                "INSERT INTO animals (animal_id, user_id, species_id) VALUES ('a2', 1, ?)",
-                (woodland_species["species_id"],),
-            )
-            conn.execute(
-                "INSERT INTO animals (animal_id, user_id, species_id) VALUES ('a3', 1, ?)",
-                (aquatic_species["species_id"],),
-            )
+        woodland_species = next(s for s in db.get_all_species() if s["habitat"] == "woodland")
+        aquatic_species = next(s for s in db.get_all_species() if s["habitat"] == "aquatic")
+        db.add_animal("a1", 1, woodland_species["species_id"])
+        db.add_animal("a2", 1, woodland_species["species_id"])
+        db.add_animal("a3", 1, aquatic_species["species_id"])
 
         assert db.get_animal_count_by_habitat(1, "woodland") == 2
         assert db.get_animal_count_by_habitat(1, "aquatic") == 1

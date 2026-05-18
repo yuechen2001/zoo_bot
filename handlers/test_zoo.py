@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from handlers.zoo import render_zoo, render_zoo_page, _render_habitat, ROW_LEN
 
 
@@ -30,22 +30,16 @@ def _make_animal(
     }
 
 
-def _mock_breed_conn(breeding_pairs=None):
-    """Return a mock db.get_conn() that returns given breeding pairs."""
-    rows = []
-    for pa, pb in breeding_pairs or []:
-        row = MagicMock()
-        row.__getitem__ = MagicMock(
-            side_effect=lambda k, _pa=pa, _pb=pb: _pa if k == "parent_a" else _pb
-        )
-        rows.append(row)
+def _zoo_patches(breeding_ids=None):
+    """Return context managers that stub the two DB calls made by render_zoo_page."""
+    from contextlib import ExitStack
 
-    inner = MagicMock()
-    inner.execute.return_value.fetchall.return_value = rows
-    cm = MagicMock()
-    cm.__enter__ = MagicMock(return_value=inner)
-    cm.__exit__ = MagicMock(return_value=False)
-    return cm
+    stack = ExitStack()
+    stack.enter_context(
+        patch("handlers.zoo.db.get_breeding_animal_ids", return_value=breeding_ids or set())
+    )
+    stack.enter_context(patch("handlers.zoo.db.get_enclosures", return_value={}))
+    return stack
 
 
 # ── render_zoo ────────────────────────────────────────────────────────────────
@@ -59,7 +53,7 @@ def test_render_zoo_empty():
 
 def test_render_zoo_shows_position_and_hunger():
     animals = [_make_animal(hunger=75, nickname="Squeaky")]
-    with patch("handlers.zoo.db.get_conn", return_value=_mock_breed_conn()):
+    with _zoo_patches():
         text = render_zoo("Alice", animals, 200, 5)
 
     assert "#1 Squeaky — 🍖 75" in text
@@ -67,7 +61,7 @@ def test_render_zoo_shows_position_and_hunger():
 
 def test_render_zoo_uses_species_name_when_no_nickname():
     animals = [_make_animal(hunger=60, nickname=None, species_name="Mouse")]
-    with patch("handlers.zoo.db.get_conn", return_value=_mock_breed_conn()):
+    with _zoo_patches():
         text = render_zoo("Bob", animals, 50, 0)
 
     assert "#1 Mouse — 🍖 60" in text
@@ -75,7 +69,7 @@ def test_render_zoo_uses_species_name_when_no_nickname():
 
 def test_render_zoo_no_happiness_shown():
     animals = [_make_animal(hunger=80, nickname="Buddy")]
-    with patch("handlers.zoo.db.get_conn", return_value=_mock_breed_conn()):
+    with _zoo_patches():
         text = render_zoo("Alice", animals, 100, 0)
 
     assert "happiness" not in text.lower()
@@ -85,9 +79,7 @@ def test_render_zoo_no_happiness_shown():
 
 def test_render_zoo_breeding_lock_shown():
     animal = _make_animal(animal_id="a1", nickname="Fido", is_breeding=0)
-    with patch(
-        "handlers.zoo.db.get_conn", return_value=_mock_breed_conn(breeding_pairs=[("a1", "a2")])
-    ):
+    with _zoo_patches(breeding_ids={"a1", "a2"}):
         text = render_zoo("Alice", [animal], 100, 0)
 
     assert "🔒" in text
@@ -95,7 +87,7 @@ def test_render_zoo_breeding_lock_shown():
 
 def test_render_zoo_non_breeding_has_no_lock():
     animal = _make_animal(animal_id="a1", nickname="Fido", is_breeding=0)
-    with patch("handlers.zoo.db.get_conn", return_value=_mock_breed_conn()):
+    with _zoo_patches():
         text = render_zoo("Alice", [animal], 100, 0)
 
     assert "🔒" not in text
@@ -107,12 +99,10 @@ def test_render_zoo_groups_same_species():
         _make_animal(animal_id="a2", species_id=1, species_name="Mouse", emoji="🐭", nickname="M2"),
         _make_animal(animal_id="a3", species_id=2, species_name="Frog", emoji="🐸", nickname="F1"),
     ]
-    with patch("handlers.zoo.db.get_conn", return_value=_mock_breed_conn()):
+    with _zoo_patches():
         text = render_zoo("Alice", animals, 100, 0)
 
-    # ×2 count shown for Mouse group
     assert "×2" in text
-    # Both positions exist
     assert "#1 M1" in text
     assert "#2 M2" in text
     assert "#3 F1" in text
@@ -126,7 +116,7 @@ def test_render_zoo_position_numbers_sequential():
             animal_id="a3", species_id=3, species_name="Cat", emoji="🐱", nickname="Three"
         ),
     ]
-    with patch("handlers.zoo.db.get_conn", return_value=_mock_breed_conn()):
+    with _zoo_patches():
         text = render_zoo("Alice", animals, 100, 0)
 
     assert "#1 One" in text
@@ -136,7 +126,7 @@ def test_render_zoo_position_numbers_sequential():
 
 def test_render_zoo_shows_coins():
     animals = [_make_animal(nickname="X")]
-    with patch("handlers.zoo.db.get_conn", return_value=_mock_breed_conn()):
+    with _zoo_patches():
         text = render_zoo("Alice", animals, 999, 0)
 
     assert "999" in text
@@ -188,9 +178,8 @@ def test_render_zoo_page_returns_inhabited_keys():
             animal_id="a2", species_id=2, species_name="Duck", emoji="🦆", habitat="aquatic"
         ),
     ]
-    with patch("handlers.zoo.db.get_conn", return_value=_mock_breed_conn()):
-        with patch("handlers.zoo.db.get_enclosures", return_value={}):
-            _, inhabited = render_zoo_page("Alice", animals, 100, 0, page=0)
+    with _zoo_patches():
+        _, inhabited = render_zoo_page("Alice", animals, 100, 0, page=0)
 
     assert inhabited == ["woodland", "aquatic"]
 
@@ -204,10 +193,9 @@ def test_render_zoo_page_shows_only_requested_habitat():
     )
     animals = [woodland_animal, aquatic_animal]
 
-    with patch("handlers.zoo.db.get_conn", return_value=_mock_breed_conn()):
-        with patch("handlers.zoo.db.get_enclosures", return_value={}):
-            text0, _ = render_zoo_page("Alice", animals, 100, 0, page=0)
-            text1, _ = render_zoo_page("Alice", animals, 100, 0, page=1)
+    with _zoo_patches():
+        text0, _ = render_zoo_page("Alice", animals, 100, 0, page=0)
+        text1, _ = render_zoo_page("Alice", animals, 100, 0, page=1)
 
     assert "Mouse" in text0
     assert "Duck" not in text0
@@ -228,18 +216,16 @@ def test_render_zoo_page_position_numbers_global():
     )
     animals = [woodland_animal, aquatic_animal]
 
-    with patch("handlers.zoo.db.get_conn", return_value=_mock_breed_conn()):
-        with patch("handlers.zoo.db.get_enclosures", return_value={}):
-            text1, _ = render_zoo_page("Alice", animals, 100, 0, page=1)
+    with _zoo_patches():
+        text1, _ = render_zoo_page("Alice", animals, 100, 0, page=1)
 
     assert "#2 Second" in text1
 
 
 def test_render_zoo_page_out_of_range_clamped():
     animals = [_make_animal(animal_id="a1", habitat="woodland")]
-    with patch("handlers.zoo.db.get_conn", return_value=_mock_breed_conn()):
-        with patch("handlers.zoo.db.get_enclosures", return_value={}):
-            text, inhabited = render_zoo_page("Alice", animals, 100, 0, page=99)
+    with _zoo_patches():
+        text, inhabited = render_zoo_page("Alice", animals, 100, 0, page=99)
 
     assert len(inhabited) == 1
     assert "Mouse" in text

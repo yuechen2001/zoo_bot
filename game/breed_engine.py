@@ -19,13 +19,15 @@ _RARITY_WEIGHTS: dict[tuple[str, str], tuple] = {
 }
 
 
-def resolve_offspring(rarity_a: str, rarity_b: str, conn) -> int:
-    """Return a species_id for the offspring using weighted rarity distribution."""
+def resolve_offspring(rarity_a: str, rarity_b: str, get_candidates) -> int:
+    """Return a species_id for the offspring using weighted rarity distribution.
+
+    get_candidates(rarity) must return a list of species rows for that rarity.
+    """
     a, b = sorted([rarity_a, rarity_b], key=lambda r: RARITY_ORDER.index(r))
-    pair = (a, b)
-    weights = _RARITY_WEIGHTS[pair]
+    weights = _RARITY_WEIGHTS[(a, b)]
     offspring_rarity = random.choices(RARITY_ORDER, weights=weights, k=1)[0]
-    rows = conn.execute("SELECT * FROM species WHERE rarity = ?", (offspring_rarity,)).fetchall()
+    rows = get_candidates(offspring_rarity)
     return random.choice(rows)["species_id"] if rows else 1
 
 

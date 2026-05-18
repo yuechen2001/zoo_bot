@@ -17,18 +17,9 @@ def db(tmp_path):
 def user_with_animals(db):
     db.ensure_user(1, "tester", 100)
     db.give_starter_enclosures(1)
-    with db.get_conn() as conn:
-        woodland_species = conn.execute(
-            "SELECT species_id FROM species WHERE habitat = 'woodland' LIMIT 1"
-        ).fetchone()
-        conn.execute(
-            "INSERT INTO animals (animal_id, user_id, species_id) VALUES ('a1', 1, ?)",
-            (woodland_species["species_id"],),
-        )
-        conn.execute(
-            "INSERT INTO animals (animal_id, user_id, species_id) VALUES ('a2', 1, ?)",
-            (woodland_species["species_id"],),
-        )
+    woodland_species = next(s for s in db.get_all_species() if s["habitat"] == "woodland")
+    db.add_animal("a1", 1, woodland_species["species_id"])
+    db.add_animal("a2", 1, woodland_species["species_id"])
     return db
 
 
@@ -49,11 +40,7 @@ class TestEnclosureIncome:
 
     def test_income_scales_with_animals(self, user_with_animals):
         db = user_with_animals
-        # Upgrade woodland to level 2
-        with db.get_conn() as conn:
-            conn.execute(
-                "UPDATE user_enclosures SET level = 2 WHERE user_id = 1 AND habitat = 'woodland'"
-            )
+        db.set_enclosure_level(1, "woodland", 2)
         rate = ENCLOSURE_LEVELS[2]["coins_per_animal_hr"]
         animal_count = db.get_animal_count_by_habitat(1, "woodland")
         expected = rate * animal_count

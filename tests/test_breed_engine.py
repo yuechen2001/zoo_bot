@@ -2,9 +2,13 @@ from game.breed_engine import resolve_offspring, _RARITY_WEIGHTS
 from species_data import RARITY_ORDER
 
 
+def _candidates(conn):
+    return lambda r: conn.execute("SELECT * FROM species WHERE rarity = ?", (r,)).fetchall()
+
+
 class TestResolveOffspring:
     def test_returns_valid_species_id(self, conn):
-        species_id = resolve_offspring("common", "common", conn)
+        species_id = resolve_offspring("common", "common", _candidates(conn))
         row = conn.execute("SELECT * FROM species WHERE species_id = ?", (species_id,)).fetchone()
         assert row is not None
 
@@ -54,7 +58,7 @@ class TestResolveOffspring:
         import random
 
         random.seed(42)
-        id_ab = resolve_offspring("rare", "epic", conn)
+        id_ab = resolve_offspring("rare", "epic", _candidates(conn))
         random.seed(42)
-        id_ba = resolve_offspring("epic", "rare", conn)
+        id_ba = resolve_offspring("epic", "rare", _candidates(conn))
         assert id_ab == id_ba

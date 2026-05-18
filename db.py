@@ -195,11 +195,12 @@ def get_animal_by_position(user_id, position):
     return None
 
 
-def add_animal(animal_id, user_id, species_id, nickname=None):
+def add_animal(animal_id, user_id, species_id, nickname=None, hunger=100, is_breeding=0):
     with get_conn() as conn:
         conn.execute(
-            "INSERT INTO animals (animal_id, user_id, species_id, nickname) VALUES (?, ?, ?, ?)",
-            (animal_id, user_id, species_id, nickname),
+            "INSERT INTO animals (animal_id, user_id, species_id, nickname, hunger, is_breeding) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (animal_id, user_id, species_id, nickname, hunger, is_breeding),
         )
 
 
@@ -505,6 +506,14 @@ def get_enclosure_level(user_id: int, habitat: str) -> int:
             (user_id, habitat),
         ).fetchone()
     return row["level"] if row else 1
+
+
+def set_enclosure_level(user_id: int, habitat: str, level: int) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE user_enclosures SET level = ? WHERE user_id = ? AND habitat = ?",
+            (level, user_id, habitat),
+        )
 
 
 def get_animal_count_by_habitat(user_id: int, habitat: str) -> int:

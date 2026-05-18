@@ -21,19 +21,9 @@ def temp_db(tmp_path):
 
 def _insert_user_and_animal(db_path, user_id=1, nickname="Buddy", hunger=80):
     with patch("db.DATABASE_PATH", db_path):
-        with db.get_conn() as conn:
-            conn.execute(
-                "INSERT OR IGNORE INTO users (user_id, username, group_chat_id) VALUES (?, 'tester', -100)",
-                (user_id,),
-            )
-            species_id = conn.execute("SELECT species_id FROM species LIMIT 1").fetchone()[
-                "species_id"
-            ]
-            conn.execute(
-                "INSERT INTO animals (animal_id, user_id, species_id, nickname, hunger) "
-                "VALUES ('a1', ?, ?, ?, ?)",
-                (user_id, species_id, nickname, hunger),
-            )
+        db.ensure_user(user_id, "tester", -100)
+        species_id = db.get_all_species()[0]["species_id"]
+        db.add_animal("a1", user_id, species_id, nickname=nickname, hunger=hunger)
 
 
 def test_render_zoo_with_real_db_rows(temp_db):
@@ -52,9 +42,7 @@ def test_render_zoo_with_real_db_rows(temp_db):
 
 def test_render_zoo_empty_with_real_db(temp_db):
     with patch("db.DATABASE_PATH", temp_db):
-        conn_ctx = db.get_conn()
-        with conn_ctx as conn:
-            conn.execute("INSERT OR IGNORE INTO users (user_id, username) VALUES (1, 'tester')")
+        db.ensure_user(1, "tester", None)
         animals = db.get_animals(1)
         user = db.get_user(1)
 

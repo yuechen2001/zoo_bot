@@ -8,6 +8,10 @@ from game.breed_engine import (
 )
 
 
+def _candidates(conn):
+    return lambda r: conn.execute("SELECT * FROM species WHERE rarity = ?", (r,)).fetchall()
+
+
 class TestCalcBreedCost:
     def test_common_common(self):
         assert calc_breed_cost("common", "common") == 50
@@ -153,7 +157,7 @@ class TestResolveOffspring:
     def test_choices_forced_to_rare_gives_rare(self, conn):
         # Force random.choices to always return "rare"
         with patch("game.breed_engine.random.choices", return_value=["rare"]):
-            species_id = resolve_offspring("common", "rare", conn)
+            species_id = resolve_offspring("common", "rare", _candidates(conn))
         row = conn.execute(
             "SELECT rarity FROM species WHERE species_id=?", (species_id,)
         ).fetchone()
@@ -161,7 +165,7 @@ class TestResolveOffspring:
 
     def test_choices_forced_to_common_gives_common(self, conn):
         with patch("game.breed_engine.random.choices", return_value=["common"]):
-            species_id = resolve_offspring("common", "rare", conn)
+            species_id = resolve_offspring("common", "rare", _candidates(conn))
         row = conn.execute(
             "SELECT rarity FROM species WHERE species_id=?", (species_id,)
         ).fetchone()
@@ -169,7 +173,7 @@ class TestResolveOffspring:
 
     def test_choices_forced_to_legendary_gives_legendary(self, conn):
         with patch("game.breed_engine.random.choices", return_value=["legendary"]):
-            species_id = resolve_offspring("common", "common", conn)
+            species_id = resolve_offspring("common", "common", _candidates(conn))
         row = conn.execute(
             "SELECT rarity FROM species WHERE species_id=?", (species_id,)
         ).fetchone()
@@ -183,7 +187,7 @@ class TestResolveOffspring:
         assert all(w > 0 for w in weights)
 
     def test_returns_valid_species_id(self, conn):
-        species_id = resolve_offspring("common", "common", conn)
+        species_id = resolve_offspring("common", "common", _candidates(conn))
         row = conn.execute(
             "SELECT species_id FROM species WHERE species_id=?", (species_id,)
         ).fetchone()

@@ -86,8 +86,7 @@ async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     name_a = animal_a["nickname"] or animal_a["species_name"]
     name_b = animal_b["nickname"] or animal_b["species_name"]
 
-    with db.get_conn() as conn:
-        offspring_species_id = resolve_offspring(rarity_a, rarity_b, conn)
+    offspring_species_id = resolve_offspring(rarity_a, rarity_b, db.get_species_candidates)
     ready_at = calc_breed_ready_at(
         rarity_a, rarity_b, animal_a["hunger"], animal_b["hunger"], habitat_bonus
     )
