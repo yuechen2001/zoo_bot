@@ -5,7 +5,9 @@ from game.breed_engine import (
     breed_duration_str,
     calc_breed_ready_at,
     resolve_offspring,
+    _RARITY_WEIGHTS,
 )
+from species_data import RARITY_ORDER
 
 
 def _candidates(conn):
@@ -192,3 +194,46 @@ class TestResolveOffspring:
             "SELECT species_id FROM species WHERE species_id=?", (species_id,)
         ).fetchone()
         assert row is not None
+
+    def test_all_rarity_pairs_covered(self):
+        for i, a in enumerate(RARITY_ORDER):
+            for b in RARITY_ORDER[i:]:
+                assert (a, b) in _RARITY_WEIGHTS, f"Missing weight entry for ({a}, {b})"
+
+    def test_weights_sum_to_100(self):
+        for pair, weights in _RARITY_WEIGHTS.items():
+            total = sum(weights)
+            assert abs(total - 100) < 1, f"{pair} weights sum to {total}, expected ~100"
+
+    def test_legendary_possible_from_any_pair(self):
+        for pair, weights in _RARITY_WEIGHTS.items():
+            assert weights[3] > 0, f"{pair} has 0% legendary chance"
+
+    def test_common_possible_from_any_pair(self):
+        for pair, weights in _RARITY_WEIGHTS.items():
+            assert weights[0] > 0, f"{pair} has 0% common chance"
+
+    def test_low_tier_pairs_heavily_favour_lower_rarities(self):
+        thresholds = {
+            ("common", "common"): 2,
+            ("common", "rare"): 7,
+            ("rare", "rare"): 11,
+        }
+        for pair, max_pct in thresholds.items():
+            high_rarity_pct = _RARITY_WEIGHTS[pair][2] + _RARITY_WEIGHTS[pair][3]
+            assert high_rarity_pct <= max_pct, f"{pair} has {high_rarity_pct}% epic+legendary"
+
+    def test_higher_rarity_parents_shift_distribution_upward(self):
+        assert (
+            _RARITY_WEIGHTS[("legendary", "legendary")][3]
+            > _RARITY_WEIGHTS[("common", "common")][3]
+        )
+
+    def test_resolve_offspring_symmetric(self, conn):
+        import random
+
+        random.seed(42)
+        id_ab = resolve_offspring("rare", "epic", _candidates(conn))
+        random.seed(42)
+        id_ba = resolve_offspring("epic", "rare", _candidates(conn))
+        assert id_ab == id_ba
