@@ -33,7 +33,9 @@ def _make_conn_mock():
 async def test_invest_shows_help_with_no_args():
     update = _make_update()
     ctx = _make_ctx(args=[])
-    with patch("handlers.invest.db.get_user", return_value=_make_user()):
+    with patch("handlers.invest.db.get_user", return_value=_make_user()), patch(
+        "handlers.invest.db.get_active_investment", return_value=None
+    ):
         await invest_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]
     assert "invest" in reply.lower()
