@@ -17,10 +17,10 @@ _ACTIVE_FLAGS = {
 def _store_text(tg_id: int) -> str:
     counts = db.get_consumable_counts(tg_id)
     user = db.get_user(tg_id)
-    lines = ["🏪 *Zoo Store*\n"]
-    lines.append("*Consumables* (sit in your bag until used):")
+    lines = ["🏪 <b>Zoo Store</b>\n"]
+    lines.append("<b>Consumables</b> (sit in your bag until used):")
     for key, item in CONSUMABLES.items():
-        line = f"  {item['emoji']} *{item['name']}* — {item['price']} 🪙\n  {item['desc']}"
+        line = f"  {item['emoji']} <b>{item['name']}</b> — {item['price']} 🪙\n  {item['desc']}"
         badges = []
         n = counts.get(key, 0)
         if n:
@@ -29,20 +29,22 @@ def _store_text(tg_id: int) -> str:
         if flag_col and user and user[flag_col]:
             badges.append("active")
         if badges:
-            line += f"  _({', '.join(badges)})_"
+            line += f"  <i>({', '.join(badges)})</i>"
         lines.append(line)
-    lines.append("\n*Lures* 🎣 (catching now requires a lure — select via /catch):")
+    lines.append("\n<b>Lures</b> 🎣 (catching now requires a lure — select via /catch):")
     for key, item in LURES.items():
-        line = f"  {item['emoji']} *{item['name']}* — {item['price']} 🪙\n  {item['desc']}"
+        line = f"  {item['emoji']} <b>{item['name']}</b> — {item['price']} 🪙\n  {item['desc']}"
         n = counts.get(key, 0)
         if n:
-            line += f"  _(×{n} in bag)_"
+            line += f"  <i>(×{n} in bag)</i>"
         lines.append(line)
-    lines.append("\n*Titles* (shown in your /zoo):")
+    lines.append("\n<b>Titles</b> (shown in your /zoo):")
     for key, item in COSMETICS.items():
-        lines.append(f"  {item['emoji']} *{item['name']}* — {item['price']} 🪙\n  {item['desc']}")
+        lines.append(
+            f"  {item['emoji']} <b>{item['name']}</b> — {item['price']} 🪙\n  {item['desc']}"
+        )
     lines.append(
-        "\nTap a button to buy. Use `/store use <item>` for consumables, or /catch for lures."
+        "\nTap a button to buy. Use <code>/store use &lt;item&gt;</code> for consumables, or /catch for lures."
     )
     return "\n".join(lines)
 
@@ -59,7 +61,7 @@ async def store_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         owned = db.get_owned_title_keys(tg_id)
         counts = db.get_consumable_counts(tg_id)
         await update.message.reply_text(
-            _store_text(tg_id), parse_mode="Markdown", reply_markup=store_keyboard(owned, counts)
+            _store_text(tg_id), parse_mode="HTML", reply_markup=store_keyboard(owned, counts)
         )
         return
 
@@ -118,7 +120,7 @@ async def store_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         owned = db.get_owned_title_keys(tg_id)
         counts = db.get_consumable_counts(tg_id)
         await update.message.reply_text(
-            _store_text(tg_id), parse_mode="Markdown", reply_markup=store_keyboard(owned, counts)
+            _store_text(tg_id), parse_mode="HTML", reply_markup=store_keyboard(owned, counts)
         )
 
 
