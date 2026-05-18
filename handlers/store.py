@@ -3,6 +3,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 import db
 from game.achievements import check_achievements
+from game.constants import BREED_BOOST_HOURS
 from game.store_data import STORE_ITEMS, CONSUMABLES, LURES, COSMETICS
 from keyboards import store_keyboard
 
@@ -270,7 +271,9 @@ async def _use_breed_boost(update, tg_id: int):
 
     now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
     new_ready = max(
-        now, datetime.datetime.fromisoformat(pending["ready_at"]) - datetime.timedelta(hours=2)
+        now,
+        datetime.datetime.fromisoformat(pending["ready_at"])
+        - datetime.timedelta(hours=BREED_BOOST_HOURS),
     )
     db.adjust_breed_time_and_consume(pending["id"], new_ready.isoformat(), purchase["id"])
     await update.message.reply_text(

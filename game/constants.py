@@ -38,6 +38,12 @@ DAILY_TIERS = [
 # Invest
 MIN_INVEST = 10
 
+# Breed boost / accelerator
+BREED_BOOST_HOURS = 2  # hours subtracted by Breed Boost item
+
+# Wild events — rarity weights for random encounter roll [common, rare, epic, legendary]
+WILD_EVENT_RARITY_WEIGHTS = [20, 40, 30, 10]
+
 # Power-up display labels for /zoo — (user_flag_column, display_label)
 POWERUP_LABELS = [
     ("lucky_catch_active", "🎯 Lucky"),

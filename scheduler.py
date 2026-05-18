@@ -13,6 +13,7 @@ from config import (
 )
 from keyboards import mood_keyboard
 from game.species_data import ENCLOSURE_LEVELS, HABITATS, RARITY_LABELS
+from game.constants import WILD_EVENT_RARITY_WEIGHTS
 from utils import format_mention
 
 logger = logging.getLogger(__name__)
@@ -24,29 +25,53 @@ def _now_iso() -> str:
 
 async def prompt_tick(ctx):
     """Runs every PROMPT_INTERVAL_MINUTES. Sends mood prompts."""
+    t0 = datetime.datetime.now(datetime.timezone.utc)
+    logger.info("prompt_tick: start")
     db.set_setting("last_prompt_tick_at", _now_iso())
     await _send_mood_prompts(ctx)
+    logger.info(
+        "prompt_tick: done in %.2fs",
+        (datetime.datetime.now(datetime.timezone.utc) - t0).total_seconds(),
+    )
 
 
 async def hunger_tick(ctx):
     """Runs every HUNGER_INTERVAL_MINUTES. Decays animal hunger."""
+    t0 = datetime.datetime.now(datetime.timezone.utc)
+    logger.info("hunger_tick: start")
     db.set_setting("last_hunger_tick_at", _now_iso())
     await _decay_stats()
+    logger.info(
+        "hunger_tick: done in %.2fs",
+        (datetime.datetime.now(datetime.timezone.utc) - t0).total_seconds(),
+    )
 
 
 async def job_tick(ctx):
     """Runs every JOB_INTERVAL_MINUTES. Checks starvation, breeding, alerts, autofeed."""
+    t0 = datetime.datetime.now(datetime.timezone.utc)
+    logger.info("job_tick: start")
     db.set_setting("last_job_tick_at", _now_iso())
     await _check_starved_animals(ctx)
     await _check_breed_completions(ctx)
     await _check_hunger_alerts(ctx)
     await _autofeed(ctx)
+    logger.info(
+        "job_tick: done in %.2fs",
+        (datetime.datetime.now(datetime.timezone.utc) - t0).total_seconds(),
+    )
 
 
 async def cleanup(ctx):
     """Runs every minute. Expires stale trades and closes expired prompt windows."""
+    t0 = datetime.datetime.now(datetime.timezone.utc)
+    logger.info("cleanup: start")
     await _cleanup_expired_trades(ctx)
     await _cleanup_expired_prompts(ctx)
+    logger.info(
+        "cleanup: done in %.2fs",
+        (datetime.datetime.now(datetime.timezone.utc) - t0).total_seconds(),
+    )
 
 
 async def enclosure_income(ctx):
@@ -322,7 +347,7 @@ async def wild_event_tick(ctx):
     for group_chat_id in groups:
         rarity = random.choices(
             ["common", "rare", "epic", "legendary"],
-            weights=[20, 40, 30, 10],
+            weights=WILD_EVENT_RARITY_WEIGHTS,
         )[0]
         candidates = db.get_species_candidates(rarity)
         species = random.choice(candidates) if candidates else None

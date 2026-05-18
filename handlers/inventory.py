@@ -2,12 +2,11 @@ import datetime
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 import db
+from game.constants import BREED_BOOST_HOURS
 from game.store_data import CONSUMABLES, LURES, COSMETICS
 
-# Consumables that activate with no extra arguments
 _NO_ARG_USABLE = {"lucky_token", "mood_booster", "catch_net", "breed_boost", "breed_accelerator"}
 
-# Active-state flag columns for display
 _ACTIVE_FLAGS = {
     "lucky_token": "lucky_catch_active",
     "mood_booster": "mood_booster_active",
@@ -38,7 +37,7 @@ def _render(tg_id: int, user) -> tuple[str, InlineKeyboardMarkup | None]:
             active = " _(active)_" if flag and user[flag] else ""
             lines.append(f"  {item['emoji']} *{item['name']}*{count_str}{active}")
             if key == "mega_feed":
-                lines.append("    _→_ `/store use mega_feed <animal #>`")
+                lines.append("    _→_ `/inventory use mega_feed <animal #>`")
             elif key in _NO_ARG_USABLE:
                 label = f"{item['emoji']} Use {item['name']}" + (f" ×{n}" if n > 1 else "")
                 buttons.append([InlineKeyboardButton(label, callback_data=f"inv_use_{key}")])
@@ -63,7 +62,7 @@ def _render(tg_id: int, user) -> tuple[str, InlineKeyboardMarkup | None]:
                     [
                         InlineKeyboardButton(
                             f"Equip {item['emoji']} {item['name']}",
-                            callback_data=f"store_equip_{key}",
+                            callback_data=f"inv_equip_{key}",
                         )
                     ]
                 )
@@ -79,22 +78,72 @@ async def inventory_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Use /start first!")
         return
 
-    text, kb = _render(tg_id, user)
-    await update.message.reply_text(text, parse_mode="Markdown", reply_markup=kb)
+    args = ctx.args or []
+    if not args:
+        text, kb = _render(tg_id, user)
+        await update.message.reply_text(text, parse_mode="Markdown", reply_markup=kb)
+        return
+
+    sub = args[0].lower()
+
+    if sub == "use":
+        if len(args) < 2:
+            await update.message.reply_text(
+                "Usage: `/inventory use <item> [args]`", parse_mode="Markdown"
+            )
+            return
+        item_key = args[1].lower()
+        if item_key == "mega_feed":
+            pos = int(args[2]) if len(args) > 2 and args[2].isdigit() else None
+            if pos is None:
+                await update.message.reply_text(
+                    "Usage: `/inventory use mega_feed <animal number>`", parse_mode="Markdown"
+                )
+                return
+            await _use_mega_feed(update, tg_id, pos)
+        elif item_key in _NO_ARG_USABLE:
+            msg = _apply(tg_id, item_key)
+            await update.message.reply_text(msg, parse_mode="Markdown")
+        elif item_key.startswith("lure_"):
+            await update.message.reply_text(
+                "Lures are used via /catch — just run /catch to pick your lure!"
+            )
+        else:
+            await update.message.reply_text(
+                f"Unknown item `{item_key}`. Use `/inventory` to see your bag.",
+                parse_mode="Markdown",
+            )
+
+    elif sub == "equip":
+        if len(args) < 2:
+            await update.message.reply_text(
+                "Usage: `/inventory equip <title_key>`", parse_mode="Markdown"
+            )
+            return
+        await _equip_title(update, tg_id, args[1].lower())
+
+    else:
+        text, kb = _render(tg_id, user)
+        await update.message.reply_text(text, parse_mode="Markdown", reply_markup=kb)
 
 
 async def inventory_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     tg_id = query.from_user.id
-    key = query.data.removeprefix("inv_use_")
 
     user = db.get_user(tg_id)
     if not user:
         await query.answer("Use /start first!", show_alert=True)
         return
 
-    msg = _apply(tg_id, key)
-    await query.answer(msg, show_alert=True)
+    if query.data.startswith("inv_equip_"):
+        key = query.data.removeprefix("inv_equip_")
+        msg = _equip_title_apply(tg_id, key)
+        await query.answer(msg, show_alert=True)
+    else:
+        key = query.data.removeprefix("inv_use_")
+        msg = _apply(tg_id, key)
+        await query.answer(msg, show_alert=True)
 
     user = db.get_user(tg_id)
     text, kb = _render(tg_id, user)
@@ -131,7 +180,8 @@ def _apply(tg_id: int, key: str) -> str:
         now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         new_ready = max(
             now,
-            datetime.datetime.fromisoformat(pending["ready_at"]) - datetime.timedelta(hours=2),
+            datetime.datetime.fromisoformat(pending["ready_at"])
+            - datetime.timedelta(hours=BREED_BOOST_HOURS),
         )
         db.adjust_breed_time_and_consume(pending["id"], new_ready.isoformat(), purchase["id"])
         return "⚡ Breed Boost applied! Breed time cut by 2 hours."
@@ -147,3 +197,60 @@ def _apply(tg_id: int, key: str) -> str:
         return "🚀 Breed Accelerator applied! Remaining breed time halved."
 
     return "Unknown item."
+
+
+async def _use_mega_feed(update, tg_id: int, position: int):
+    purchase = db.get_oldest_purchase(tg_id, "mega_feed")
+    if not purchase:
+        await update.message.reply_text(
+            "You don't have a Mega Feed. Buy one with `/store buy mega_feed`.",
+            parse_mode="Markdown",
+        )
+        return
+
+    animal = db.get_animal_by_position(tg_id, position)
+    if not animal:
+        count = len(db.get_animals(tg_id))
+        await update.message.reply_text(
+            f"No animal at position #{position}. You have {count} animal(s)."
+        )
+        return
+
+    db.feed_animal_and_consume(animal["animal_id"], purchase["id"])
+    name = animal["nickname"] or animal["species_name"]
+    await update.message.reply_text(
+        f"🍖 *Mega Feed* applied! {animal['emoji']} *{name}* hunger restored to 100.",
+        parse_mode="Markdown",
+    )
+
+
+def _equip_title_apply(tg_id: int, title_key: str) -> str:
+    if title_key not in COSMETICS:
+        return "Unknown title."
+    if not db.has_purchased(tg_id, title_key):
+        return "You don't own that title!"
+    db.set_active_title(tg_id, title_key)
+    item = COSMETICS[title_key]
+    return f"{item['emoji']} Title set to *{item['name']}*! It'll appear in your /zoo."
+
+
+async def _equip_title(update, tg_id: int, title_key: str):
+    if title_key not in COSMETICS:
+        await update.message.reply_text(
+            "Unknown title. Use `/inventory` to see your titles.", parse_mode="Markdown"
+        )
+        return
+    if not db.has_purchased(tg_id, title_key):
+        item = COSMETICS[title_key]
+        await update.message.reply_text(
+            f"You don't own *{item['name']}* yet. Buy it for {item['price']} 🪙 with "
+            f"`/store buy {title_key}`.",
+            parse_mode="Markdown",
+        )
+        return
+    db.set_active_title(tg_id, title_key)
+    item = COSMETICS[title_key]
+    await update.message.reply_text(
+        f"{item['emoji']} Title set to *{item['name']}*! It'll appear in your /zoo.",
+        parse_mode="Markdown",
+    )
