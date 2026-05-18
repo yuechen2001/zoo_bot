@@ -22,7 +22,9 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     counts = db.get_consumable_counts(tg_id)
-    has_lures = any(counts.get(f"lure_{h}", 0) > 0 for h in HABITATS)
+    from game.store_data import LURES
+
+    has_lures = any(counts.get(k, 0) > 0 for k in LURES)
     if not has_lures:
         await update.message.reply_text(
             "🎣 You need a lure to catch animals!\n\n"

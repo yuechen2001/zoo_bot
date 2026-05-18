@@ -46,7 +46,7 @@ STORE_ITEMS: dict[str, dict] = {
     "lure_basic": {
         "name": "Basic Lure",
         "emoji": "🎣",
-        "price": 25,
+        "price": 10,
         "category": "consumable",
         "desc": "Attract a random animal from any habitat at base catch rate — selected via /catch",
     },
