@@ -14,15 +14,19 @@ async def footmassage_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
+    def _fmt(seconds: float) -> str:
+        total_m = int(seconds / 60)
+        h, m = divmod(total_m, 60)
+        return f"{h}h {m}m" if h else f"{m}m"
+
     # Check if massage is already active
     active_until = user["massage_active_until"]
     if active_until:
         until_dt = datetime.datetime.fromisoformat(active_until)
         if now < until_dt:
             remaining = until_dt - now
-            minutes = int(remaining.total_seconds() / 60)
             await update.message.reply_text(
-                f"🦶 Your animals are still relaxed! {minutes}m left on their massage."
+                f"🦶 Your animals are still relaxed! {_fmt(remaining.total_seconds())} left on their massage."
             )
             return
 
@@ -31,12 +35,10 @@ async def footmassage_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         last_end = datetime.datetime.fromisoformat(active_until)
         elapsed_hours = (now - last_end).total_seconds() / 3600
         if elapsed_hours < MASSAGE_COOLDOWN_HOURS:
-            wait_minutes = int(
-                (MASSAGE_COOLDOWN_HOURS * 3600 - (now - last_end).total_seconds()) / 60
-            )
+            wait_secs = MASSAGE_COOLDOWN_HOURS * 3600 - (now - last_end).total_seconds()
             await update.message.reply_text(
                 f"⏳ Your animals need a break — massages are available every {MASSAGE_COOLDOWN_HOURS}h. "
-                f"Try again in {wait_minutes}m."
+                f"Try again in {_fmt(wait_secs)}."
             )
             return
 
