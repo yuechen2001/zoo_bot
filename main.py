@@ -100,6 +100,7 @@ async def post_init(application):
             BotCommand("autofeed", "Auto-feed animals below a hunger threshold each tick"),
             BotCommand("gift", "Give an animal to another player"),
             BotCommand("store", "Browse the item store"),
+            BotCommand("footmassage", "Halve hunger decay for 1h (25 🪙, 4h cooldown)"),
             BotCommand("help", "Show all commands"),
         ]
     )
