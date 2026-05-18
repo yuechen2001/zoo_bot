@@ -11,6 +11,7 @@ from game.breed_engine import (
     breed_duration_str,
 )
 from game.species_data import ENCLOSURE_LEVELS, HABITATS
+from keyboards import animal_picker_keyboard
 
 
 async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -28,13 +29,25 @@ async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     # /breed <a> <b>
     if not ctx.args or len(ctx.args) < 2 or not ctx.args[0].isdigit() or not ctx.args[1].isdigit():
-        await update.message.reply_text(
-            "Usage:\n"
-            "`/breed 1 3` — breed animal #1 with animal #3\n"
-            "`/breed collect` — claim your offspring\n\n"
-            "Check breeding status anytime with /zoo.",
-            parse_mode="Markdown",
-        )
+        pending = db.get_pending_breed(tg_id)
+        if pending:
+            await update.message.reply_text(
+                "You already have a breeding in progress! Use `/breed collect` when it's ready.",
+                parse_mode="Markdown",
+            )
+            return
+        animals = db.get_animals(tg_id)
+        breeding_ids = {a["animal_id"] for a in animals if a["is_breeding"]}
+        available = [a for a in animals if a["animal_id"] not in breeding_ids]
+        if len(available) < 2:
+            await update.message.reply_text(
+                "You need at least 2 available animals to breed.\n\n"
+                "Use `/breed collect` to claim any in-progress offspring.",
+                parse_mode="Markdown",
+            )
+            return
+        kb = animal_picker_keyboard(animals, "breed_p1", "breed_cancel", disabled_ids=breeding_ids)
+        await update.message.reply_text("Choose the first parent:", reply_markup=kb)
         return
 
     pos_a, pos_b = int(ctx.args[0]), int(ctx.args[1])
@@ -172,3 +185,118 @@ async def breed_collect_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE)
     query = update.callback_query
     await query.answer()
     await _collect_breed(query, query.from_user.id, ctx)
+
+
+async def breed_p1_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    tg_id = query.from_user.id
+    pos1 = int(query.data.removeprefix("breed_p1_"))
+
+    pending = db.get_pending_breed(tg_id)
+    if pending:
+        await query.answer("Already breeding! Use /breed collect.", show_alert=True)
+        return
+
+    animal_a = db.get_animal_by_position(tg_id, pos1)
+    if not animal_a:
+        await query.answer("That animal no longer exists.", show_alert=True)
+        return
+    if animal_a["is_breeding"]:
+        await query.answer("That animal is already breeding.", show_alert=True)
+        return
+
+    name_a = animal_a["nickname"] or animal_a["species_name"]
+    animals = db.get_animals(tg_id)
+    breeding_ids = {a["animal_id"] for a in animals if a["is_breeding"]}
+    disabled_ids = breeding_ids | {animal_a["animal_id"]}
+
+    kb = animal_picker_keyboard(
+        animals, f"breed_p2_{pos1}", "breed_cancel", disabled_ids=disabled_ids
+    )
+    await query.answer()
+    await query.edit_message_text(
+        f"🐾 *{animal_a['emoji']} {name_a}* chosen as parent 1\n\nChoose parent 2:",
+        reply_markup=kb,
+        parse_mode="Markdown",
+    )
+
+
+async def breed_p2_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    tg_id = query.from_user.id
+    rest = query.data.removeprefix("breed_p2_")
+    pos1_str, pos2_str = rest.split("_", 1)
+    pos_a, pos_b = int(pos1_str), int(pos2_str)
+
+    user = db.get_user(tg_id)
+    animal_a = db.get_animal_by_position(tg_id, pos_a)
+    animal_b = db.get_animal_by_position(tg_id, pos_b)
+
+    if not animal_a or not animal_b:
+        await query.answer("One of those animals no longer exists.", show_alert=True)
+        return
+
+    if animal_a["is_breeding"] or animal_b["is_breeding"]:
+        await query.answer("One of those animals is already breeding!", show_alert=True)
+        return
+
+    pending = db.get_pending_breed(tg_id)
+    if pending:
+        await query.answer("Already breeding! Use /breed collect.", show_alert=True)
+        return
+
+    rarity_a = animal_a["rarity"]
+    rarity_b = animal_b["rarity"]
+    cost = calc_breed_cost(rarity_a, rarity_b)
+
+    if user["coins"] < cost:
+        await query.answer(
+            f"Not enough coins! Breeding costs {cost} 🪙 (you have {user['coins']}).",
+            show_alert=True,
+        )
+        return
+
+    habitat_bonus = 0.0
+    habitat_a = animal_a["habitat"]
+    habitat_b = animal_b["habitat"]
+    if habitat_a and habitat_a == habitat_b:
+        enc_level = db.get_enclosure_level(tg_id, habitat_a)
+        habitat_bonus = ENCLOSURE_LEVELS[enc_level]["breed_bonus"]
+
+    duration = breed_duration_str(
+        rarity_a, rarity_b, animal_a["hunger"], animal_b["hunger"], habitat_bonus
+    )
+
+    name_a = animal_a["nickname"] or animal_a["species_name"]
+    name_b = animal_b["nickname"] or animal_b["species_name"]
+    offspring_species_id = resolve_offspring(rarity_a, rarity_b, db.get_species_candidates)
+    ready_at = calc_breed_ready_at(
+        rarity_a, rarity_b, animal_a["hunger"], animal_b["hunger"], habitat_bonus
+    )
+    db.start_breed(
+        tg_id, animal_a["animal_id"], animal_b["animal_id"], offspring_species_id, ready_at, cost
+    )
+
+    bonus_line = ""
+    if habitat_bonus > 0:
+        h_info = HABITATS[habitat_a]
+        bonus_line = (
+            f"⚡ {h_info['emoji']} Habitat bonus: -{int(habitat_bonus * 100)}% breed time\n"
+        )
+
+    await query.answer()
+    await query.edit_message_text(
+        f"💕 *{animal_a['emoji']} {name_a}* × *{animal_b['emoji']} {name_b}* are now breeding!\n\n"
+        f"Cost: -{cost} 🪙\n"
+        f"{bonus_line}"
+        f"Ready in: *{duration}*\n\n"
+        f"Use `/breed collect` when the timer is up!",
+        parse_mode="Markdown",
+    )
+    await check_achievements(tg_id, "breed", ctx)
+
+
+async def breed_cancel_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer("Cancelled")
+    await query.edit_message_text("Breed cancelled.")

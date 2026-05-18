@@ -121,11 +121,13 @@ async def test_invest_collect_success():
 
 
 @pytest.mark.asyncio
-async def test_invest_status_arg_redirects_to_zoo():
-    """/invest status no longer exists — should show usage hint pointing to /zoo."""
+async def test_invest_unknown_arg_shows_status_card():
+    """Unknown args now show the interactive status card."""
     update = _make_update()
     ctx = _make_ctx(args=["status"])
-    with patch("handlers.invest.db.get_user", return_value=_make_user()):
+    with patch("handlers.invest.db.get_user", return_value=_make_user()), patch(
+        "handlers.invest.db.get_active_investment", return_value=None
+    ):
         await invest_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]
-    assert "/zoo" in reply
+    assert "invest" in reply.lower()

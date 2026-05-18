@@ -29,19 +29,21 @@ def _make_conn_mock():
 
 
 @pytest.mark.asyncio
-async def test_name_no_args_shows_usage():
+async def test_name_no_args_shows_picker_or_empty():
     update = _make_update()
-    await name_command(update, _make_ctx([]))
+    with patch("handlers.name.db.get_animals", return_value=[]):
+        await name_command(update, _make_ctx([]))
     reply = update.message.reply_text.call_args[0][0]
-    assert "Usage" in reply or "/name" in reply
+    assert "no animal" in reply.lower()
 
 
 @pytest.mark.asyncio
-async def test_name_non_numeric_position_shows_usage():
+async def test_name_non_numeric_position_shows_picker():
     update = _make_update()
-    await name_command(update, _make_ctx(["abc", "Fluffy"]))
+    with patch("handlers.name.db.get_animals", return_value=[]):
+        await name_command(update, _make_ctx(["abc", "Fluffy"]))
     reply = update.message.reply_text.call_args[0][0]
-    assert "Usage" in reply or "/name" in reply
+    assert "no animal" in reply.lower()
 
 
 @pytest.mark.asyncio

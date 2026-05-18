@@ -5,7 +5,7 @@ from handlers.sell import sell_command
 
 @pytest.fixture(autouse=True)
 def no_achievements(monkeypatch):
-    monkeypatch.setattr("game.achievements.check_achievements", AsyncMock())
+    monkeypatch.setattr("handlers.sell.check_achievements", AsyncMock())
 
 
 def _make_update(user_id=1):
@@ -43,13 +43,15 @@ def _make_conn_mock():
 
 
 @pytest.mark.asyncio
-async def test_sell_shows_usage_with_no_args():
+async def test_sell_no_args_shows_picker_or_empty():
     update = _make_update()
     ctx = _make_ctx(args=[])
-    with patch("handlers.sell.db.get_user", return_value={"coins": 100}):
+    with patch("handlers.sell.db.get_user", return_value={"coins": 100}), patch(
+        "handlers.sell.db.get_animals", return_value=[]
+    ):
         await sell_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]
-    assert "usage" in reply.lower() or "/sell" in reply.lower()
+    assert "no animal" in reply.lower()
 
 
 @pytest.mark.asyncio
@@ -99,9 +101,7 @@ async def test_sell_full_hunger_earns_half_catch_cost():
         "handlers.sell.db.get_animal_by_position", return_value=animal
     ), patch("handlers.sell.db.has_pending_trade_for_animal", return_value=False), patch(
         "handlers.sell.db.sell_animal"
-    ) as mock_sell, patch(
-        "game.achievements.check_achievements"
-    ):
+    ) as mock_sell:
         await sell_command(update, ctx)
     mock_sell.assert_called_once_with(1, "a1", 10)
     # base = catch_cost // 2 = 10; hunger 100 → price = 10
@@ -118,8 +118,6 @@ async def test_sell_low_hunger_reduces_price():
         "handlers.sell.db.get_animal_by_position", return_value=animal
     ), patch("handlers.sell.db.has_pending_trade_for_animal", return_value=False), patch(
         "handlers.sell.db.sell_animal"
-    ), patch(
-        "game.achievements.check_achievements"
     ):
         await sell_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]
@@ -136,8 +134,6 @@ async def test_sell_legendary_full_hunger():
         "handlers.sell.db.get_animal_by_position", return_value=animal
     ), patch("handlers.sell.db.has_pending_trade_for_animal", return_value=False), patch(
         "handlers.sell.db.sell_animal"
-    ), patch(
-        "game.achievements.check_achievements"
     ):
         await sell_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]

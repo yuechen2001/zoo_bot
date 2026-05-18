@@ -1,7 +1,68 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from game.species_data import HABITATS
+from game.constants import MIN_INVEST
 
 MOOD_EMOJIS = ["😢", "😐", "🙂", "😄", "🤩"]
+
+RARITY_SQUARE = {
+    "common": "⬜",
+    "uncommon": "🟩",
+    "rare": "🟦",
+    "epic": "🟪",
+    "legendary": "🟨",
+}
+
+_INVEST_PRESETS = [50, 100, 250, 500]
+
+
+def animal_picker_keyboard(
+    animals: list,
+    callback_prefix: str,
+    cancel_callback: str,
+    disabled_ids: set = None,
+) -> InlineKeyboardMarkup:
+    disabled_ids = disabled_ids or set()
+    rows = []
+    for pos, animal in enumerate(animals, start=1):
+        aid = animal["animal_id"]
+        square = RARITY_SQUARE.get(animal.get("rarity", "common"), "⬜")
+        label_name = animal["nickname"] or animal["species_name"]
+        if aid in disabled_ids or animal.get("is_breeding"):
+            label = f"🔒 {animal['emoji']} #{pos} {label_name}"
+            rows.append([InlineKeyboardButton(label, callback_data="zoo_noop")])
+        else:
+            label = f"{square} {animal['emoji']} #{pos} {label_name}"
+            rows.append([InlineKeyboardButton(label, callback_data=f"{callback_prefix}_{pos}")])
+    rows.append([InlineKeyboardButton("❌ Cancel", callback_data=cancel_callback)])
+    return InlineKeyboardMarkup(rows)
+
+
+def invest_keyboard(user_coins: int, has_active: bool, is_ready: bool) -> InlineKeyboardMarkup:
+    if has_active:
+        if is_ready:
+            return InlineKeyboardMarkup(
+                [[InlineKeyboardButton("🪙 Collect now", callback_data="invest_collect")]]
+            )
+        return InlineKeyboardMarkup(
+            [[InlineKeyboardButton("⏳ Waiting…", callback_data="zoo_noop")]]
+        )
+    preset_row = [
+        InlineKeyboardButton(
+            f"{amt} 🪙" if user_coins >= amt else f"💸 {amt}",
+            callback_data=f"invest_deposit_{amt}" if user_coins >= amt else "zoo_noop",
+        )
+        for amt in _INVEST_PRESETS
+    ]
+    rows = [preset_row[:2], preset_row[2:]]
+    if user_coins >= MIN_INVEST:
+        rows.append(
+            [InlineKeyboardButton(f"💰 All in ({user_coins} 🪙)", callback_data="invest_max")]
+        )
+    else:
+        rows.append(
+            [InlineKeyboardButton(f"💸 Need {MIN_INVEST} 🪙 min", callback_data="zoo_noop")]
+        )
+    return InlineKeyboardMarkup(rows)
 
 
 def mood_keyboard():

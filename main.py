@@ -1,7 +1,7 @@
 import logging
 from logging.handlers import RotatingFileHandler
 from telegram import BotCommand
-from telegram.ext import Application, CallbackQueryHandler, CommandHandler
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler, MessageHandler, filters
 
 import datetime
 import random as _random
@@ -39,7 +39,13 @@ from handlers import (
     feed_command,
     breed_command,
     breed_collect_callback,
+    breed_p1_callback,
+    breed_p2_callback,
+    breed_cancel_callback,
     name_command,
+    name_pick_callback,
+    name_cancel_callback,
+    name_text_handler,
     moodstart_command,
     moodstop_command,
     mood_checkin_callback,
@@ -53,7 +59,13 @@ from handlers import (
     trade_command,
     trade_callback,
     invest_command,
+    invest_deposit_callback,
+    invest_max_callback,
+    invest_collect_callback,
     sell_command,
+    sell_pick_callback,
+    sell_yes_callback,
+    sell_cancel_callback,
     enclosures_command,
     enclosure_upgrade_callback,
     directory_command,
@@ -126,6 +138,28 @@ async def handle_callback(update, ctx):
         await catch_callback(update, ctx)
     elif data == "breed_collect":
         await breed_collect_callback(update, ctx)
+    elif data.startswith("breed_p2_"):
+        await breed_p2_callback(update, ctx)
+    elif data.startswith("breed_p1_"):
+        await breed_p1_callback(update, ctx)
+    elif data == "breed_cancel":
+        await breed_cancel_callback(update, ctx)
+    elif data.startswith("sell_pick_"):
+        await sell_pick_callback(update, ctx)
+    elif data.startswith("sell_yes_"):
+        await sell_yes_callback(update, ctx)
+    elif data == "sell_cancel":
+        await sell_cancel_callback(update, ctx)
+    elif data.startswith("name_pick_"):
+        await name_pick_callback(update, ctx)
+    elif data == "name_cancel":
+        await name_cancel_callback(update, ctx)
+    elif data.startswith("invest_deposit_"):
+        await invest_deposit_callback(update, ctx)
+    elif data == "invest_max":
+        await invest_max_callback(update, ctx)
+    elif data == "invest_collect":
+        await invest_collect_callback(update, ctx)
     elif data.startswith("trivia_"):
         await trivia_callback(update, ctx)
     elif data.startswith("trade_"):
@@ -206,6 +240,7 @@ def main():
     app.add_handler(CommandHandler("store", store_command))
     app.add_handler(CommandHandler("inventory", inventory_command))
     app.add_handler(CommandHandler("footmassage", footmassage_command))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, name_text_handler))
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_error_handler(error_handler)
 

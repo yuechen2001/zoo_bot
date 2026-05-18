@@ -41,27 +41,29 @@ def _make_animal(animal_id, rarity="common", is_breeding=0):
 
 
 @pytest.mark.asyncio
-async def test_breed_status_arg_shows_usage():
-    """/breed status no longer exists — should show usage hint pointing to /zoo."""
+async def test_breed_status_arg_shows_picker():
+    """Non-digit single arg shows picker (or 'need 2 animals' if not enough)."""
     update, ctx = _make_update(args=["status"])
-    with patch("handlers.breed.db.get_user", return_value=_make_user()):
+    with patch("handlers.breed.db.get_user", return_value=_make_user()), patch(
+        "handlers.breed.db.get_pending_breed", return_value=None
+    ), patch("handlers.breed.db.get_animals", return_value=[_make_animal("a1")]):
         await breed_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]
-    assert "/zoo" in reply
+    assert "2" in reply or "breed" in reply.lower()
 
 
 # ── /breed usage ───────────────────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_breed_no_args_shows_usage():
+async def test_breed_no_args_shows_picker():
     update, ctx = _make_update(args=[])
-    with patch("handlers.breed.db.get_user", return_value=_make_user()):
+    with patch("handlers.breed.db.get_user", return_value=_make_user()), patch(
+        "handlers.breed.db.get_pending_breed", return_value=None
+    ), patch("handlers.breed.db.get_animals", return_value=[_make_animal("a1")]):
         await breed_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]
-    assert "/breed 1 3" in reply
-    assert "/breed collect" in reply
-    assert "/zoo" in reply
+    assert "2" in reply or "breed" in reply.lower()
 
 
 @pytest.mark.asyncio
