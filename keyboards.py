@@ -27,7 +27,7 @@ def store_welcome_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
             [
-                InlineKeyboardButton("🧪 Consumables", callback_data="store_tab_consumables"),
+                InlineKeyboardButton("🧪 Items", callback_data="store_tab_consumables"),
                 InlineKeyboardButton("🎣 Lures", callback_data="store_tab_lures"),
                 InlineKeyboardButton("🎩 Titles", callback_data="store_tab_titles"),
             ]
@@ -38,7 +38,7 @@ def store_welcome_keyboard() -> InlineKeyboardMarkup:
 def store_tab_keyboard(section: str, owned_keys: set, counts: dict) -> InlineKeyboardMarkup:
     from game.store_data import CONSUMABLES, LURES, COSMETICS
 
-    tab_defs = [("consumables", "🧪 Consumables"), ("lures", "🎣 Lures"), ("titles", "🎩 Titles")]
+    tab_defs = [("consumables", "🧪 Items"), ("lures", "🎣 Lures"), ("titles", "🎩 Titles")]
     tab_row = []
     for key, label in tab_defs:
         if key == section:
@@ -95,7 +95,7 @@ def help_keyboard(current_section: str) -> InlineKeyboardMarkup:
     row2 = []
     for i, (key, label) in enumerate(sections):
         btn = (
-            InlineKeyboardButton(f"· {label}", callback_data="zoo_noop")
+            InlineKeyboardButton(f"▸ {label} ◂", callback_data="zoo_noop")
             if key == current_section
             else InlineKeyboardButton(label, callback_data=f"help_tab_{key}")
         )
@@ -108,7 +108,7 @@ def achievements_keyboard(user_id: int, current_filter: str) -> InlineKeyboardMa
     row = []
     for key, label in tabs:
         if key == current_filter:
-            row.append(InlineKeyboardButton(f"· {label}", callback_data="zoo_noop"))
+            row.append(InlineKeyboardButton(f"▸ {label} ◂", callback_data="zoo_noop"))
         else:
             row.append(InlineKeyboardButton(label, callback_data=f"ach_tab_{user_id}_{key}"))
     return InlineKeyboardMarkup([row])
