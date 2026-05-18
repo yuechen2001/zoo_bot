@@ -36,18 +36,11 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     lure_text = "🎣 *Choose a lure!*\n_Habitat lures give 1.5× catch rate. Basic Lure picks from any habitat at base rate._"
     lure_kb = lure_keyboard(counts)
 
-    # Try to reuse the previous catch message slot instead of posting a new one
+    # Delete the previous catch message so the new one always appears at the bottom
     catch_chat_id, catch_message_id = db.get_catch_message(tg_id)
     if catch_chat_id and catch_message_id:
         try:
-            await ctx.bot.edit_message_text(
-                chat_id=catch_chat_id,
-                message_id=catch_message_id,
-                text=lure_text,
-                parse_mode="Markdown",
-                reply_markup=lure_kb,
-            )
-            return
+            await ctx.bot.delete_message(chat_id=catch_chat_id, message_id=catch_message_id)
         except Exception:
             pass
 
