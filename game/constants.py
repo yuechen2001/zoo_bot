@@ -37,3 +37,10 @@ DAILY_TIERS = [
 
 # Invest
 MIN_INVEST = 10
+
+# Power-up display labels for /zoo — (user_flag_column, display_label)
+POWERUP_LABELS = [
+    ("lucky_catch_active", "🎯 Lucky"),
+    ("mood_booster_active", "✨ Mood Boost"),
+    ("catch_net_active", "🪤 Catch Net"),
+]

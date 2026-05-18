@@ -5,6 +5,7 @@ import datetime
 import db
 from game.mood_engine import streak_label
 from game.species_data import HABITATS, ENCLOSURE_LEVELS, RARITY_SQUARE
+from game.constants import POWERUP_LABELS
 from keyboards import zoo_page_keyboard
 from config import INVESTMENT_HOURS
 
@@ -100,13 +101,6 @@ def _render_habitat_section(
     return lines
 
 
-_POWERUP_LABELS = [
-    ("lucky_catch_active", "🎯 Lucky"),
-    ("mood_booster_active", "✨ Mood Boost"),
-    ("catch_net_active", "🪤 Catch Net"),
-]
-
-
 def render_zoo_page(
     username: str,
     animals: list,
@@ -179,7 +173,7 @@ def render_zoo_page(
         )
 
     if active_powerups:
-        active = [label for flag, label in _POWERUP_LABELS if active_powerups.get(flag)]
+        active = [label for flag, label in POWERUP_LABELS if active_powerups.get(flag)]
         if active:
             lines.append("⚡ Active: " + " · ".join(active))
 
