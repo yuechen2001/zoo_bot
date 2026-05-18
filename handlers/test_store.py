@@ -1,7 +1,8 @@
 import datetime
 import pytest
+from html.parser import HTMLParser
 from unittest.mock import AsyncMock, MagicMock, patch
-from handlers.store import store_command, store_callback
+from handlers.store import store_command, store_callback, _store_text
 import sys
 import os
 
@@ -42,6 +43,45 @@ def _breed_row(hours_from_now=5):
         + datetime.timedelta(hours=hours_from_now)
     ).isoformat()
     return make_row(id=1, ready_at=ready_at)
+
+
+# ── _store_text HTML smoke tests ─────────────────────────────────────────────
+
+_ALLOWED_TAGS = {"b", "i", "code"}
+
+
+class _StrictHTMLParser(HTMLParser):
+    def handle_starttag(self, tag, attrs):
+        assert tag in _ALLOWED_TAGS, f"unexpected tag <{tag}>"
+
+    def handle_endtag(self, tag):
+        assert tag in _ALLOWED_TAGS, f"unexpected closing tag </{tag}>"
+
+
+def _assert_html(text: str):
+    _StrictHTMLParser().feed(text)
+    assert "<b>" in text, "expected HTML bold tags, got Markdown or plain text"
+    assert "*" not in text, "raw Markdown bold marker found — parse_mode mismatch"
+    assert "&lt;" in text, "angle bracket in code span should be escaped as &lt;"
+
+
+def test_store_text_html_no_badges():
+    with patch("handlers.store.db.get_consumable_counts", return_value={}), patch(
+        "handlers.store.db.get_user",
+        return_value=_make_user(),
+    ):
+        _assert_html(_store_text(1))
+
+
+def test_store_text_html_with_badges():
+    counts = {key: 2 for key in ["lucky_token", "mood_booster", "catch_net", "mega_feed"]}
+    with patch("handlers.store.db.get_consumable_counts", return_value=counts), patch(
+        "handlers.store.db.get_user",
+        return_value=_make_user(lucky_catch_active=1, mood_booster_active=1, catch_net_active=1),
+    ):
+        text = _store_text(1)
+    _assert_html(text)
+    assert "<i>" in text, "expected italic badge tags"
 
 
 # ── store_command display ─────────────────────────────────────────────────────
