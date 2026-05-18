@@ -34,7 +34,7 @@ async def wild_event_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     user = db.get_user(tg_id)
     if not user:
-        await query.answer("Use /start first to join!", show_alert=True)
+        await query.answer("Use /start first!", show_alert=True)
         return
 
     species = db.get_species(event["species_id"])

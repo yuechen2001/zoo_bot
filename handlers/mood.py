@@ -83,7 +83,7 @@ async def mood_checkin_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     tg_id = query.from_user.id
     user = db.get_user(tg_id)
     if not user:
-        await query.answer("Use /start first to join!", show_alert=True)
+        await query.answer("Use /start first!", show_alert=True)
         return
 
     if not user["opted_in"]:

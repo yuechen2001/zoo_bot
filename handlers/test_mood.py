@@ -117,7 +117,7 @@ async def test_mood_callback_rejects_unregistered_user():
     with patch("handlers.mood.db.get_user", return_value=None):
         await mood_checkin_callback(update, MagicMock())
 
-    query.answer.assert_called_once_with("Use /start first to join!", show_alert=True)
+    query.answer.assert_called_once_with("Use /start first!", show_alert=True)
 
 
 @pytest.mark.asyncio
