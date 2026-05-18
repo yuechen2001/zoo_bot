@@ -5,3 +5,8 @@ venv/
 .coverage
 __pycache__/
 *.pyc
+
+# Agent harness files — local only
+CLAUDE.md
+docs/
+tests/test_architecture.py
