@@ -1,6 +1,7 @@
+import datetime
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from handlers.store import store_command
+from handlers.store import store_command, store_callback
 import sys
 import os
 
@@ -117,3 +118,377 @@ async def test_store_equip_unowned_title_blocked():
         await store_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]
     assert "don't own" in reply.lower() or "buy" in reply.lower()
+
+
+# ── helpers ───────────────────────────────────────────────────────────────────
+
+
+def _conn_mock(fetchone_result=None):
+    inner = MagicMock()
+    inner.execute.return_value.fetchone.return_value = fetchone_result
+    cm = MagicMock()
+    cm.__enter__ = MagicMock(return_value=inner)
+    cm.__exit__ = MagicMock(return_value=False)
+    return cm, inner
+
+
+def _purchase_row():
+    return make_row(id=1)
+
+
+def _breed_row(hours_from_now=5):
+    ready_at = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        + datetime.timedelta(hours=hours_from_now)
+    ).isoformat()
+    return make_row(id=1, ready_at=ready_at)
+
+
+# ── store_command edge cases ──────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_store_no_user():
+    update, ctx = _make_update()
+    with patch("handlers.store.db.get_user", return_value=None):
+        await store_command(update, ctx)
+    assert "start" in update.message.reply_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_store_buy_missing_key():
+    update, ctx = _make_update(args=["buy"])
+    with patch("handlers.store.db.get_user", return_value=_make_user()):
+        await store_command(update, ctx)
+    assert "usage" in update.message.reply_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_store_equip_missing_key():
+    update, ctx = _make_update(args=["equip"])
+    with patch("handlers.store.db.get_user", return_value=_make_user()):
+        await store_command(update, ctx)
+    assert "usage" in update.message.reply_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_store_unknown_subcommand_shows_store():
+    update, ctx = _make_update(args=["xyz"])
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store._owned_cosmetic_keys", return_value=set()
+    ), patch("handlers.store.db.get_consumable_counts", return_value={}):
+        await store_command(update, ctx)
+    assert "Mega Feed" in update.message.reply_text.call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_store_use_missing_key():
+    update, ctx = _make_update(args=["use"])
+    with patch("handlers.store.db.get_user", return_value=_make_user()):
+        await store_command(update, ctx)
+    assert "usage" in update.message.reply_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_store_use_unknown_item():
+    update, ctx = _make_update(args=["use", "dragon_egg"])
+    with patch("handlers.store.db.get_user", return_value=_make_user()):
+        await store_command(update, ctx)
+    assert "unknown" in update.message.reply_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_store_buy_cosmetic_already_owned():
+    update, ctx = _make_update(args=["buy", "title_keeper"])
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.has_purchased", return_value=True
+    ):
+        await store_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0]
+    assert "already own" in reply.lower() or "equip" in reply.lower()
+
+
+# ── /store use mega_feed ──────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_use_mega_feed_not_in_bag():
+    update, ctx = _make_update(args=["use", "mega_feed", "1"])
+    cm, _inner = _conn_mock(fetchone_result=None)
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.get_conn", return_value=cm
+    ):
+        await store_command(update, ctx)
+    assert "don't have" in update.message.reply_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_use_mega_feed_animal_not_found():
+    update, ctx = _make_update(args=["use", "mega_feed", "99"])
+    cm, _inner = _conn_mock(fetchone_result=_purchase_row())
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.get_conn", return_value=cm
+    ), patch("handlers.store.db.get_animal_by_position", return_value=None), patch(
+        "handlers.store.db.get_animals", return_value=[]
+    ):
+        await store_command(update, ctx)
+    assert "no animal" in update.message.reply_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_use_mega_feed_happy_path():
+    update, ctx = _make_update(args=["use", "mega_feed", "1"])
+    cm, inner = _conn_mock(fetchone_result=_purchase_row())
+    animal = make_row(animal_id="abc", nickname=None, species_name="Mouse", emoji="🐭")
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.get_conn", return_value=cm
+    ), patch("handlers.store.db.get_animal_by_position", return_value=animal):
+        await store_command(update, ctx)
+    assert "mega feed" in update.message.reply_text.call_args[0][0].lower()
+    assert inner.execute.call_count == 3  # SELECT purchase + UPDATE hunger + DELETE purchase
+
+
+# ── /store use breed_boost ────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_use_breed_boost_not_in_bag():
+    update, ctx = _make_update(args=["use", "breed_boost"])
+    cm, _inner = _conn_mock(fetchone_result=None)
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.get_conn", return_value=cm
+    ):
+        await store_command(update, ctx)
+    assert "don't have" in update.message.reply_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_use_breed_boost_no_active_breed():
+    update, ctx = _make_update(args=["use", "breed_boost"])
+    cm, _inner = _conn_mock(fetchone_result=_purchase_row())
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.get_conn", return_value=cm
+    ), patch("handlers.store.db.get_pending_breed", return_value=None):
+        await store_command(update, ctx)
+    assert "no active breed" in update.message.reply_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_use_breed_boost_happy_path():
+    update, ctx = _make_update(args=["use", "breed_boost"])
+    cm, inner = _conn_mock(fetchone_result=_purchase_row())
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.get_conn", return_value=cm
+    ), patch("handlers.store.db.get_pending_breed", return_value=_breed_row(hours_from_now=5)):
+        await store_command(update, ctx)
+    assert "boost" in update.message.reply_text.call_args[0][0].lower()
+
+
+# ── /store use lucky_token ────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_use_lucky_token_not_in_bag():
+    update, ctx = _make_update(args=["use", "lucky_token"])
+    cm, _inner = _conn_mock(fetchone_result=None)
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.get_conn", return_value=cm
+    ):
+        await store_command(update, ctx)
+    assert "don't have" in update.message.reply_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_use_lucky_token_happy_path():
+    update, ctx = _make_update(args=["use", "lucky_token"])
+    cm, _inner = _conn_mock(fetchone_result=_purchase_row())
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.get_conn", return_value=cm
+    ), patch("handlers.store.db.set_lucky_catch") as mock_set:
+        await store_command(update, ctx)
+    mock_set.assert_called_once_with(1, True)
+    assert "lucky" in update.message.reply_text.call_args[0][0].lower()
+
+
+# ── /store use mood_booster ───────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_use_mood_booster_not_in_bag():
+    update, ctx = _make_update(args=["use", "mood_booster"])
+    cm, _inner = _conn_mock(fetchone_result=None)
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.get_conn", return_value=cm
+    ):
+        await store_command(update, ctx)
+    assert "don't have" in update.message.reply_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_use_mood_booster_happy_path():
+    update, ctx = _make_update(args=["use", "mood_booster"])
+    cm, _inner = _conn_mock(fetchone_result=_purchase_row())
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.get_conn", return_value=cm
+    ), patch("handlers.store.db.set_mood_booster") as mock_set:
+        await store_command(update, ctx)
+    mock_set.assert_called_once_with(1, True)
+    assert "booster" in update.message.reply_text.call_args[0][0].lower()
+
+
+# ── /store use catch_net ──────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_use_catch_net_not_in_bag():
+    update, ctx = _make_update(args=["use", "catch_net"])
+    cm, _inner = _conn_mock(fetchone_result=None)
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.get_conn", return_value=cm
+    ):
+        await store_command(update, ctx)
+    assert "don't have" in update.message.reply_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_use_catch_net_happy_path():
+    update, ctx = _make_update(args=["use", "catch_net"])
+    cm, _inner = _conn_mock(fetchone_result=_purchase_row())
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.get_conn", return_value=cm
+    ), patch("handlers.store.db.set_catch_net") as mock_set:
+        await store_command(update, ctx)
+    mock_set.assert_called_once_with(1, True)
+    assert "catch net" in update.message.reply_text.call_args[0][0].lower()
+
+
+# ── /store use breed_accelerator ─────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_use_breed_accelerator_not_in_bag():
+    update, ctx = _make_update(args=["use", "breed_accelerator"])
+    cm, _inner = _conn_mock(fetchone_result=None)
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.get_conn", return_value=cm
+    ):
+        await store_command(update, ctx)
+    assert "don't have" in update.message.reply_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_use_breed_accelerator_no_active_breed():
+    update, ctx = _make_update(args=["use", "breed_accelerator"])
+    cm, _inner = _conn_mock(fetchone_result=_purchase_row())
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.get_conn", return_value=cm
+    ), patch("handlers.store.db.get_pending_breed", return_value=None):
+        await store_command(update, ctx)
+    assert "no active breed" in update.message.reply_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_use_breed_accelerator_happy_path():
+    update, ctx = _make_update(args=["use", "breed_accelerator"])
+    cm, inner = _conn_mock(fetchone_result=_purchase_row())
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.get_conn", return_value=cm
+    ), patch("handlers.store.db.get_pending_breed", return_value=_breed_row(hours_from_now=4)):
+        await store_command(update, ctx)
+    assert "accelerator" in update.message.reply_text.call_args[0][0].lower()
+
+
+# ── store_callback ────────────────────────────────────────────────────────────
+
+
+def _make_callback(data):
+    query = MagicMock()
+    query.from_user.id = 1
+    query.data = data
+    query.answer = AsyncMock()
+    query.edit_message_reply_markup = AsyncMock()
+    query.message.reply_text = AsyncMock()
+    update = MagicMock()
+    update.callback_query = query
+    return update, query, MagicMock()
+
+
+@pytest.mark.asyncio
+async def test_callback_no_user():
+    update, query, ctx = _make_callback("store_buy_mega_feed")
+    with patch("handlers.store.db.get_user", return_value=None):
+        await store_callback(update, ctx)
+    query.answer.assert_called_once()
+    assert "start" in query.answer.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_callback_unknown_item():
+    update, query, ctx = _make_callback("store_buy_dragon_egg")
+    with patch("handlers.store.db.get_user", return_value=_make_user()):
+        await store_callback(update, ctx)
+    query.answer.assert_called_once()
+    assert "unknown" in query.answer.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_callback_insufficient_coins():
+    update, query, ctx = _make_callback("store_buy_mega_feed")
+    with patch("handlers.store.db.get_user", return_value=_make_user(coins=5)):
+        await store_callback(update, ctx)
+    query.answer.assert_called_once()
+    assert "coins" in query.answer.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_callback_buy_consumable_goes_to_bag():
+    update, query, ctx = _make_callback("store_buy_mega_feed")
+    cm, _inner = _conn_mock()
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.get_conn", return_value=cm
+    ), patch("handlers.store.db.record_purchase") as mock_record, patch(
+        "handlers.store.check_achievements", new_callable=AsyncMock
+    ):
+        await store_callback(update, ctx)
+    mock_record.assert_called_once_with(1, "mega_feed")
+    query.answer.assert_called_once()
+    assert "bag" in query.answer.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_callback_buy_cosmetic_not_owned():
+    update, query, ctx = _make_callback("store_buy_title_keeper")
+    cm, _inner = _conn_mock()
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.has_purchased", return_value=False
+    ), patch("handlers.store.db.get_conn", return_value=cm), patch(
+        "handlers.store.db.record_purchase"
+    ) as mock_record, patch(
+        "handlers.store._owned_cosmetic_keys", return_value={"title_keeper"}
+    ), patch(
+        "handlers.store.db.get_consumable_counts", return_value={}
+    ):
+        await store_callback(update, ctx)
+    mock_record.assert_called_once_with(1, "title_keeper")
+    assert "purchased" in query.answer.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_callback_buy_cosmetic_already_owned():
+    update, query, ctx = _make_callback("store_buy_title_keeper")
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.has_purchased", return_value=True
+    ):
+        await store_callback(update, ctx)
+    query.answer.assert_called_once()
+    assert "already own" in query.answer.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_callback_equip_title():
+    update, query, ctx = _make_callback("store_equip_title_keeper")
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.has_purchased", return_value=True
+    ), patch("handlers.store.db.set_active_title") as mock_set:
+        await store_callback(update, ctx)
+    mock_set.assert_called_once_with(1, "title_keeper")
