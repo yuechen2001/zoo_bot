@@ -1,7 +1,7 @@
 import pytest
 from html.parser import HTMLParser
 from unittest.mock import AsyncMock, MagicMock, patch
-from handlers.store import store_command, store_callback, _store_text
+from handlers.store import store_command, store_callback, store_tab_callback, _store_text
 import sys
 import os
 
@@ -286,3 +286,47 @@ async def test_callback_buy_cosmetic_already_owned():
         await store_callback(update, ctx)
     query.answer.assert_called_once()
     assert "already own" in query.answer.call_args[0][0].lower()
+
+
+# ── store_tab_callback ────────────────────────────────────────────────────────
+
+
+def _make_tab_callback(section: str):
+    query = MagicMock()
+    query.from_user.id = 1
+    query.data = f"store_tab_{section}"
+    query.answer = AsyncMock()
+    query.edit_message_text = AsyncMock()
+    update = MagicMock()
+    update.callback_query = query
+    return update, query, MagicMock()
+
+
+@pytest.mark.asyncio
+async def test_store_tab_callback_no_user():
+    update, query, ctx = _make_tab_callback("consumables")
+    with patch("handlers.store.db.get_user", return_value=None):
+        await store_tab_callback(update, ctx)
+    query.answer.assert_called_once()
+    assert "start" in query.answer.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_store_tab_callback_items_edits_message():
+    update, query, ctx = _make_tab_callback("items")
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.get_owned_title_keys", return_value=set()
+    ), patch("handlers.store.db.get_item_counts", return_value={}):
+        await store_tab_callback(update, ctx)
+    query.edit_message_text.assert_called_once()
+    query.answer.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_store_tab_callback_titles_edits_message():
+    update, query, ctx = _make_tab_callback("titles")
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.get_owned_title_keys", return_value=set()
+    ), patch("handlers.store.db.get_item_counts", return_value={}):
+        await store_tab_callback(update, ctx)
+    query.edit_message_text.assert_called_once()

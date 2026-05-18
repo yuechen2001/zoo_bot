@@ -71,24 +71,60 @@ async def test_wild_event_no_user():
 
 
 @pytest.mark.asyncio
+async def test_wild_event_species_not_found():
+    update, query = _make_query()
+    event = _make_event()
+    with patch("handlers.wild_event.db.get_wild_event", return_value=event), patch(
+        "handlers.wild_event.db.get_user", return_value=_make_user()
+    ), patch("handlers.wild_event.db.get_species", return_value=None):
+        await wild_event_callback(update, MagicMock())
+    query.answer.assert_called_once()
+    assert "went wrong" in query.answer.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
 async def test_wild_event_enclosure_full():
     update, query = _make_query()
     event = _make_event()
     species = _make_species(habitat="woodland")
     with patch("handlers.wild_event.db.get_wild_event", return_value=event), patch(
         "handlers.wild_event.db.get_user", return_value=_make_user()
-    ), patch("handlers.wild_event.db.get_conn") as mock_conn, patch(
+    ), patch("handlers.wild_event.db.get_species", return_value=species), patch(
         "handlers.wild_event.db.get_enclosure_level", return_value=1
     ), patch(
         "handlers.wild_event.db.get_animal_count_by_habitat", return_value=3
     ):
-        inner = MagicMock()
-        inner.execute.return_value.fetchone.return_value = species
-        mock_conn.return_value.__enter__ = MagicMock(return_value=inner)
-        mock_conn.return_value.__exit__ = MagicMock(return_value=False)
         await wild_event_callback(update, MagicMock())
     query.answer.assert_called_once()
     assert "full" in query.answer.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_wild_event_catch_rate_fails():
+    """Catch rate roll fails → animal escapes, wild event NOT claimed."""
+    update, query = _make_query()
+    event = _make_event()
+    species = _make_species(habitat="woodland", catch_rate=0.5)
+    lure_row = make_row(id=1)
+    with patch("handlers.wild_event.db.get_wild_event", return_value=event), patch(
+        "handlers.wild_event.db.get_user", return_value=_make_user()
+    ), patch("handlers.wild_event.db.get_species", return_value=species), patch(
+        "handlers.wild_event.db.get_enclosure_level", return_value=1
+    ), patch(
+        "handlers.wild_event.db.get_animal_count_by_habitat", return_value=0
+    ), patch(
+        "handlers.wild_event.db.get_oldest_purchase", return_value=lure_row
+    ), patch(
+        "handlers.wild_event.db.consume_purchase"
+    ), patch(
+        "handlers.wild_event.db.claim_wild_event"
+    ) as mock_claim, patch(
+        "handlers.wild_event.random.random", return_value=1.0
+    ):
+        await wild_event_callback(update, MagicMock())
+    mock_claim.assert_not_called()
+    query.answer.assert_called_once()
+    assert "got away" in query.answer.call_args[0][0].lower()
 
 
 @pytest.mark.asyncio

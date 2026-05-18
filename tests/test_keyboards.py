@@ -7,6 +7,7 @@ from keyboards import (
     directory_page_keyboard,
     store_tab_keyboard,
     lure_keyboard,
+    trade_keyboard,
 )
 
 
@@ -152,3 +153,24 @@ class TestLureKeyboard:
         all_rows = kb.inline_keyboard
         assert len(all_rows) == 1
         assert all_rows[0][0].callback_data == "catch_cancel"
+
+
+class TestStoreTabKeyboardLures:
+    def test_lures_tab_has_store_buy_callbacks(self):
+        kb = store_tab_keyboard("lures", owned_keys=set(), counts={})
+        all_callbacks = [btn.callback_data for row in kb.inline_keyboard for btn in row]
+        assert any(cb.startswith("store_buy_lure_") for cb in all_callbacks)
+
+
+class TestTradeKeyboard:
+    def test_accept_button_callback(self):
+        kb = trade_keyboard(42, 7)
+        btns = [btn for row in kb.inline_keyboard for btn in row]
+        callbacks = [b.callback_data for b in btns]
+        assert "trade_accept_42_7" in callbacks
+
+    def test_decline_button_callback(self):
+        kb = trade_keyboard(42, 7)
+        btns = [btn for row in kb.inline_keyboard for btn in row]
+        callbacks = [b.callback_data for b in btns]
+        assert "trade_decline_42_7" in callbacks

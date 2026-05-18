@@ -1,5 +1,20 @@
-from unittest.mock import patch
-from handlers.zoo import render_zoo, render_zoo_page, _render_habitat, ROW_LEN
+import datetime
+import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
+from handlers.zoo import (
+    render_zoo,
+    render_zoo_page,
+    _render_habitat,
+    _time_remaining,
+    zoo_command,
+    zoo_page_callback,
+    ROW_LEN,
+)
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+from conftest import make_row
 
 
 def _make_animal(
@@ -270,3 +285,181 @@ def test_render_zoo_page_empty_returns_empty_list():
     text, inhabited = render_zoo_page("Alice", [], 100, 0, page=0)
     assert inhabited == []
     assert "Empty" in text
+
+
+# ── _time_remaining ───────────────────────────────────────────────────────────
+
+
+def _future(seconds: float) -> str:
+    return (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        + datetime.timedelta(seconds=seconds)
+    ).isoformat()
+
+
+def _past(seconds: float = 60) -> str:
+    return (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        - datetime.timedelta(seconds=seconds)
+    ).isoformat()
+
+
+def test_time_remaining_past_returns_ready():
+    assert _time_remaining(_past(60)) == "ready!"
+
+
+def test_time_remaining_shows_hours_and_minutes():
+    result = _time_remaining(_future(90 * 60 + 59))
+    assert result == "1h 30m"
+
+
+def test_time_remaining_shows_minutes_only():
+    result = _time_remaining(_future(20 * 60 + 59))
+    assert result == "20m"
+
+
+# ── zoo_command ───────────────────────────────────────────────────────────────
+
+
+def _make_user(**kw):
+    defaults = dict(
+        user_id=1,
+        coins=100,
+        streak_windows=0,
+        autofeed_threshold=None,
+        autofeed_max_coins=None,
+        active_title=None,
+        lucky_catch_active=0,
+        mood_booster_active=0,
+        catch_net_active=0,
+        rare_magnet_active=0,
+    )
+    return make_row(**{**defaults, **kw})
+
+
+@pytest.mark.asyncio
+async def test_zoo_command_no_user():
+    update = MagicMock()
+    update.effective_user.id = 1
+    update.message.reply_text = AsyncMock()
+    with patch("handlers.zoo.db.get_user", return_value=None):
+        await zoo_command(update, MagicMock())
+    assert "start" in update.message.reply_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_zoo_command_empty_zoo_sends_no_keyboard():
+    update = MagicMock()
+    update.effective_user.id = 1
+    update.effective_user.first_name = "Alice"
+    update.message.reply_text = AsyncMock()
+    with patch("handlers.zoo.db.get_user", return_value=_make_user()), patch(
+        "handlers.zoo.db.get_animals", return_value=[]
+    ), patch("handlers.zoo.db.get_active_investment", return_value=None), patch(
+        "handlers.zoo.db.get_active_breed", return_value=None
+    ):
+        await zoo_command(update, MagicMock())
+    call_kwargs = update.message.reply_text.call_args[1]
+    assert call_kwargs.get("reply_markup") is None
+
+
+# ── zoo_page_callback ─────────────────────────────────────────────────────────
+
+
+def _make_page_callback(owner_id: int, page: int, from_user_id: int):
+    query = MagicMock()
+    query.data = f"zoo_page_{owner_id}_{page}"
+    query.from_user.id = from_user_id
+    query.from_user.first_name = "Alice"
+    query.answer = AsyncMock()
+    query.edit_message_text = AsyncMock()
+    update = MagicMock()
+    update.callback_query = query
+    return update, query
+
+
+@pytest.mark.asyncio
+async def test_zoo_page_callback_wrong_user_blocked():
+    update, query = _make_page_callback(owner_id=1, page=1, from_user_id=99)
+    await zoo_page_callback(update, MagicMock())
+    query.answer.assert_called_once_with("Use /zoo to see your own zoo.", show_alert=False)
+    query.edit_message_text.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_zoo_page_callback_correct_user_edits_message():
+    update, query = _make_page_callback(owner_id=1, page=0, from_user_id=1)
+    animal = _make_animal(animal_id="a1", habitat="woodland")
+    with patch("handlers.zoo.db.get_user", return_value=_make_user()), patch(
+        "handlers.zoo.db.get_animals", return_value=[animal]
+    ), patch("handlers.zoo.db.get_active_investment", return_value=None), patch(
+        "handlers.zoo.db.get_active_breed", return_value=None
+    ), patch(
+        "handlers.zoo.db.get_breeding_animal_ids", return_value=set()
+    ), patch(
+        "handlers.zoo.db.get_enclosures", return_value={}
+    ):
+        await zoo_page_callback(update, MagicMock())
+    query.edit_message_text.assert_called_once()
+
+
+# ── render_zoo_page with active_title / investment / active_breed ─────────────
+
+
+def _make_investment(hours_remaining: float = 5):
+    invested_at = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        - datetime.timedelta(hours=1)
+    ).isoformat()
+    return make_row(
+        invested_at=invested_at,
+        amount=100,
+        return_amount=120,
+    )
+
+
+def _make_breed(hours_remaining: float = 3):
+    ready_at = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        + datetime.timedelta(hours=hours_remaining)
+    ).isoformat()
+    return make_row(ready_at=ready_at, emoji_a="🐭", emoji_b="🐸")
+
+
+def test_render_zoo_page_with_active_title():
+    from game.store_data import COSMETICS
+
+    first_key = next(iter(COSMETICS))
+    animals = [_make_animal(animal_id="a1", habitat="woodland")]
+    with _zoo_patches():
+        text, _ = render_zoo_page("Alice", animals, 100, 0, active_title=first_key)
+    item = COSMETICS[first_key]
+    assert item["name"] in text
+
+
+def test_render_zoo_page_with_investment():
+    animals = [_make_animal(animal_id="a1", habitat="woodland")]
+    investment = _make_investment()
+    with _zoo_patches():
+        text, _ = render_zoo_page("Alice", animals, 100, 0, investment=investment)
+    assert "Investment" in text
+    assert "100" in text
+
+
+def test_render_zoo_page_with_active_breed():
+    animals = [_make_animal(animal_id="a1", habitat="woodland")]
+    breed = _make_breed()
+    with _zoo_patches():
+        text, _ = render_zoo_page("Alice", animals, 100, 0, active_breed=breed)
+    assert "Breeding" in text
+    assert "🐭" in text
+
+
+def test_render_zoo_page_with_autofeed_shows_threshold():
+    animals = [_make_animal(animal_id="a1", habitat="woodland")]
+    with _zoo_patches():
+        text, _ = render_zoo_page(
+            "Alice", animals, 100, 0, autofeed_threshold=30, autofeed_max_coins=50
+        )
+    assert "Auto-feed" in text
+    assert "30" in text

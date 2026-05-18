@@ -54,6 +54,104 @@ def _make_query(action="accept", trade_id=1, recipient_id=2, from_user_id=2):
 
 
 @pytest.mark.asyncio
+async def test_trade_rejects_non_numeric_positions():
+    update = _make_update(user_id=1)
+    ctx = _make_ctx(args=["@bob", "one", "two"])
+    with patch("handlers.trade.db.get_user", return_value=_make_user(1, "alice")):
+        await trade_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0]
+    assert "numbers" in reply.lower() or "positions" in reply.lower()
+
+
+@pytest.mark.asyncio
+async def test_trade_rejects_my_animal_not_found():
+    update = _make_update(user_id=1)
+    ctx = _make_ctx(args=["@bob", "99", "1"])
+    with patch("handlers.trade.db.get_user", return_value=_make_user(1, "alice")), patch(
+        "handlers.trade.db.get_user_by_username", return_value=_make_user(2, "bob")
+    ), patch("handlers.trade.db.get_animal_by_position", return_value=None):
+        await trade_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0]
+    assert "don't have" in reply.lower() or "#99" in reply
+
+
+@pytest.mark.asyncio
+async def test_trade_rejects_their_animal_not_found():
+    update = _make_update(user_id=1)
+    ctx = _make_ctx(args=["@bob", "1", "99"])
+    with patch("handlers.trade.db.get_user", return_value=_make_user(1, "alice")), patch(
+        "handlers.trade.db.get_user_by_username", return_value=_make_user(2, "bob")
+    ), patch(
+        "handlers.trade.db.get_animal_by_position",
+        side_effect=[_make_animal(animal_id="a1"), None],
+    ):
+        await trade_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0]
+    assert "bob" in reply.lower() or "#99" in reply
+
+
+@pytest.mark.asyncio
+async def test_trade_rejects_breeding_recipient_animal():
+    update = _make_update(user_id=1)
+    ctx = _make_ctx(args=["@bob", "1", "1"])
+    with patch("handlers.trade.db.get_user", return_value=_make_user(1, "alice")), patch(
+        "handlers.trade.db.get_user_by_username", return_value=_make_user(2, "bob")
+    ), patch(
+        "handlers.trade.db.get_animal_by_position",
+        side_effect=[
+            _make_animal(animal_id="a1", is_breeding=0),
+            _make_animal(animal_id="b1", is_breeding=1),
+        ],
+    ):
+        await trade_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0]
+    assert "breeding" in reply.lower()
+
+
+@pytest.mark.asyncio
+async def test_trade_rejects_pending_trade_my_animal():
+    update = _make_update(user_id=1)
+    ctx = _make_ctx(args=["@bob", "1", "1"])
+    with patch("handlers.trade.db.get_user", return_value=_make_user(1, "alice")), patch(
+        "handlers.trade.db.get_user_by_username", return_value=_make_user(2, "bob")
+    ), patch(
+        "handlers.trade.db.get_animal_by_position",
+        side_effect=[_make_animal(animal_id="a1"), _make_animal(animal_id="b1")],
+    ), patch(
+        "handlers.trade.db.has_pending_trade_for_animal", side_effect=[True, False]
+    ):
+        await trade_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0]
+    assert "pending trade" in reply.lower()
+
+
+@pytest.mark.asyncio
+async def test_trade_rejects_pending_trade_their_animal():
+    update = _make_update(user_id=1)
+    ctx = _make_ctx(args=["@bob", "1", "1"])
+    with patch("handlers.trade.db.get_user", return_value=_make_user(1, "alice")), patch(
+        "handlers.trade.db.get_user_by_username", return_value=_make_user(2, "bob")
+    ), patch(
+        "handlers.trade.db.get_animal_by_position",
+        side_effect=[_make_animal(animal_id="a1"), _make_animal(animal_id="b1")],
+    ), patch(
+        "handlers.trade.db.has_pending_trade_for_animal", side_effect=[False, True]
+    ):
+        await trade_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0]
+    assert "pending trade" in reply.lower()
+
+
+@pytest.mark.asyncio
+async def test_trade_rejects_no_user():
+    update = _make_update(user_id=1)
+    ctx = _make_ctx(args=["@bob", "1", "1"])
+    with patch("handlers.trade.db.get_user", return_value=None):
+        await trade_command(update, ctx)
+    assert "start" in update.message.reply_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
 async def test_trade_rejects_missing_args():
     update = _make_update()
     ctx = _make_ctx(args=[])
@@ -191,6 +289,30 @@ async def test_trade_blocked_when_recipient_enclosure_full():
         "handlers.trade.db.get_animal",
         side_effect=[proposer_animal, recipient_animal],
     ), patch("handlers.trade.db.get_animal_count_by_habitat", return_value=3), patch(
+        "handlers.trade.db.get_enclosure_level", return_value=1
+    ):
+        await trade_callback(update, MagicMock())
+
+    query.answer.assert_called_once()
+    assert "full" in query.answer.call_args[0][0].lower()
+    reply = query.edit_message_text.call_args[0][0]
+    assert "full" in reply.lower() or "enclosure" in reply.lower()
+
+
+@pytest.mark.asyncio
+async def test_trade_blocked_when_proposers_receiving_enclosure_full():
+    """Recipient's p_habitat enclosure is full → block at second capacity check."""
+    update, query = _make_query(action="accept", trade_id=1, recipient_id=2, from_user_id=2)
+    trade = _make_trade(proposer_id=1)
+    proposer_animal = {**_make_animal("a1"), "habitat": "woodland"}
+    recipient_animal = {**_make_animal("b1"), "habitat": "savanna"}
+
+    # First check (proposer gains r_habitat=savanna): proposer has room
+    # Second check (recipient gains p_habitat=woodland): recipient's enclosure full
+    with patch("handlers.trade.db.get_trade", return_value=trade), patch(
+        "handlers.trade.db.get_animal",
+        side_effect=[proposer_animal, recipient_animal],
+    ), patch("handlers.trade.db.get_animal_count_by_habitat", side_effect=[0, 3]), patch(
         "handlers.trade.db.get_enclosure_level", return_value=1
     ):
         await trade_callback(update, MagicMock())

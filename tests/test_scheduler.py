@@ -9,8 +9,34 @@ from scheduler import (
     _cleanup_expired_trades,
     _check_breed_completions,
     wild_event_tick,
+    _send_mood_prompts,
+    _cleanup_expired_prompts,
+    cleanup_expired_wild_events,
 )
 from conftest import make_row
+
+
+def _ago(minutes: float) -> str:
+    return (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        - datetime.timedelta(minutes=minutes)
+    ).isoformat()
+
+
+def _mock_user(
+    tg_id=1, group_chat_id=-100, last_prompt=None, consecutive_misses=0, username="alice"
+):
+    return make_row(
+        user_id=tg_id,
+        group_chat_id=group_chat_id,
+        last_prompt_at=last_prompt,
+        consecutive_misses=consecutive_misses,
+        username=username,
+    )
+
+
+def _group_state(last_prompt_at):
+    return make_row(group_chat_id=-100, last_prompt_at=last_prompt_at)
 
 
 @pytest.fixture
@@ -322,3 +348,201 @@ async def test_breed_ready_reminds_after_interval(temp_db):
     ctx.bot.send_message.assert_called_once()
     msg = ctx.bot.send_message.call_args[0][1]
     assert "reminder" in msg.lower() or "ready" in msg.lower()
+
+
+# ── _send_mood_prompts ────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_send_mood_prompts_no_users():
+    ctx = MagicMock()
+    ctx.bot.send_message = AsyncMock()
+    with patch("scheduler.db.get_all_active_users", return_value=[]):
+        await _send_mood_prompts(ctx)
+    ctx.bot.send_message.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_send_mood_prompts_responded_user_no_miss():
+    user = _mock_user(last_prompt=_ago(35))
+    ctx = MagicMock()
+    ctx.bot.send_message = AsyncMock(return_value=MagicMock(message_id=1))
+    ctx.bot_data = {}
+    with patch("scheduler.db.get_all_active_users", return_value=[user]), patch(
+        "scheduler.db.has_prompt_response", return_value=True
+    ), patch("scheduler.db.get_group_state", return_value=_group_state(_ago(35))), patch(
+        "scheduler.db.set_group_last_prompt"
+    ), patch(
+        "scheduler.db.bulk_set_last_prompt_at"
+    ), patch(
+        "scheduler.db.set_consecutive_misses"
+    ) as mock_miss:
+        await _send_mood_prompts(ctx)
+    mock_miss.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_send_mood_prompts_missed_once_increments():
+    user = _mock_user(last_prompt=_ago(35), consecutive_misses=0)
+    ctx = MagicMock()
+    ctx.bot.send_message = AsyncMock(return_value=MagicMock(message_id=1))
+    ctx.bot_data = {}
+    with patch("scheduler.db.get_all_active_users", return_value=[user]), patch(
+        "scheduler.db.has_prompt_response", return_value=False
+    ), patch("scheduler.db.get_group_state", return_value=_group_state(_ago(35))), patch(
+        "scheduler.db.set_group_last_prompt"
+    ), patch(
+        "scheduler.db.bulk_set_last_prompt_at"
+    ), patch(
+        "scheduler.db.set_consecutive_misses"
+    ) as mock_miss:
+        await _send_mood_prompts(ctx)
+    mock_miss.assert_called_once_with(1, 1)
+
+
+@pytest.mark.asyncio
+async def test_send_mood_prompts_missed_twice_resets_streak():
+    user = _mock_user(last_prompt=_ago(35), consecutive_misses=1, username="alice")
+    ctx = MagicMock()
+    ctx.bot.send_message = AsyncMock(return_value=MagicMock(message_id=1))
+    ctx.bot_data = {}
+    with patch("scheduler.db.get_all_active_users", return_value=[user]), patch(
+        "scheduler.db.has_prompt_response", return_value=False
+    ), patch("scheduler.db.get_group_state", return_value=_group_state(_ago(35))), patch(
+        "scheduler.db.reset_user_streak"
+    ) as mock_reset, patch(
+        "scheduler.db.set_group_last_prompt"
+    ), patch(
+        "scheduler.db.bulk_set_last_prompt_at"
+    ):
+        await _send_mood_prompts(ctx)
+    mock_reset.assert_called_once_with(1)
+    texts = [c[0][1] for c in ctx.bot.send_message.call_args_list]
+    assert any("💔" in t or "streak" in t.lower() for t in texts)
+
+
+@pytest.mark.asyncio
+async def test_send_mood_prompts_both_missed_plural_message():
+    user1 = _mock_user(tg_id=1, last_prompt=_ago(35), consecutive_misses=1, username="alice")
+    user2 = _mock_user(tg_id=2, last_prompt=_ago(35), consecutive_misses=1, username="bob")
+    ctx = MagicMock()
+    ctx.bot.send_message = AsyncMock(return_value=MagicMock(message_id=1))
+    ctx.bot_data = {}
+    with patch("scheduler.db.get_all_active_users", return_value=[user1, user2]), patch(
+        "scheduler.db.has_prompt_response", return_value=False
+    ), patch("scheduler.db.get_group_state", return_value=_group_state(_ago(35))), patch(
+        "scheduler.db.reset_user_streak"
+    ), patch(
+        "scheduler.db.set_group_last_prompt"
+    ), patch(
+        "scheduler.db.bulk_set_last_prompt_at"
+    ):
+        await _send_mood_prompts(ctx)
+    texts = [c[0][1] for c in ctx.bot.send_message.call_args_list]
+    assert any("both" in t.lower() for t in texts)
+
+
+@pytest.mark.asyncio
+async def test_send_mood_prompts_skips_recent_group():
+    user = _mock_user(last_prompt=_ago(35))
+    ctx = MagicMock()
+    ctx.bot.send_message = AsyncMock()
+    ctx.bot_data = {}
+    with patch("scheduler.db.get_all_active_users", return_value=[user]), patch(
+        "scheduler.db.has_prompt_response", return_value=True
+    ), patch("scheduler.db.get_group_state", return_value=_group_state(_ago(0.1))), patch(
+        "scheduler.PROMPT_INTERVAL_MINUTES", 30
+    ), patch(
+        "scheduler.db.set_group_last_prompt"
+    ) as mock_set:
+        await _send_mood_prompts(ctx)
+    mock_set.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_send_mood_prompts_sends_when_due():
+    user = _mock_user(last_prompt=_ago(35))
+    ctx = MagicMock()
+    ctx.bot.send_message = AsyncMock(return_value=MagicMock(message_id=1))
+    ctx.bot_data = {}
+    with patch("scheduler.db.get_all_active_users", return_value=[user]), patch(
+        "scheduler.db.has_prompt_response", return_value=True
+    ), patch("scheduler.db.get_group_state", return_value=_group_state(_ago(35))), patch(
+        "scheduler.db.set_group_last_prompt"
+    ) as mock_set, patch(
+        "scheduler.db.bulk_set_last_prompt_at"
+    ):
+        await _send_mood_prompts(ctx)
+    mock_set.assert_called_once()
+    text = ctx.bot.send_message.call_args[0][1]
+    assert "Mood check-in" in text
+
+
+@pytest.mark.asyncio
+async def test_send_mood_prompts_sends_when_no_group_state():
+    user = _mock_user()
+    ctx = MagicMock()
+    ctx.bot.send_message = AsyncMock(return_value=MagicMock(message_id=1))
+    ctx.bot_data = {}
+    with patch("scheduler.db.get_all_active_users", return_value=[user]), patch(
+        "scheduler.db.has_prompt_response", return_value=True
+    ), patch("scheduler.db.get_group_state", return_value=None), patch(
+        "scheduler.db.set_group_last_prompt"
+    ) as mock_set, patch(
+        "scheduler.db.bulk_set_last_prompt_at"
+    ):
+        await _send_mood_prompts(ctx)
+    mock_set.assert_called_once()
+
+
+# ── cleanup_expired_wild_events ───────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_cleanup_expired_wild_events_edits_and_claims():
+    event = make_row(id=1, group_chat_id=-100, message_id=42)
+    ctx = MagicMock()
+    ctx.bot.edit_message_text = AsyncMock()
+    with patch("scheduler.db.get_expired_wild_events", return_value=[event]), patch(
+        "scheduler.db.claim_wild_event"
+    ) as mock_claim:
+        await cleanup_expired_wild_events(ctx)
+    ctx.bot.edit_message_text.assert_called_once()
+    assert "got away" in ctx.bot.edit_message_text.call_args[1]["text"].lower()
+    mock_claim.assert_called_once_with(1, -1)
+
+
+@pytest.mark.asyncio
+async def test_cleanup_expired_wild_events_no_events():
+    ctx = MagicMock()
+    ctx.bot.edit_message_text = AsyncMock()
+    with patch("scheduler.db.get_expired_wild_events", return_value=[]):
+        await cleanup_expired_wild_events(ctx)
+    ctx.bot.edit_message_text.assert_not_called()
+
+
+# ── _cleanup_expired_prompts ──────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_cleanup_expired_prompts_removes_expired():
+    expired_at = _ago(20)
+    ctx = MagicMock()
+    ctx.bot_data = {"prompt_messages": {-100: {"message_id": 42, "sent_at": expired_at}}}
+    ctx.bot.edit_message_reply_markup = AsyncMock()
+    await _cleanup_expired_prompts(ctx)
+    ctx.bot.edit_message_reply_markup.assert_called_once_with(
+        chat_id=-100, message_id=42, reply_markup=None
+    )
+    assert -100 not in ctx.bot_data["prompt_messages"]
+
+
+@pytest.mark.asyncio
+async def test_cleanup_expired_prompts_keeps_recent():
+    recent = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
+    ctx = MagicMock()
+    ctx.bot_data = {"prompt_messages": {-100: {"message_id": 42, "sent_at": recent}}}
+    ctx.bot.edit_message_reply_markup = AsyncMock()
+    await _cleanup_expired_prompts(ctx)
+    ctx.bot.edit_message_reply_markup.assert_not_called()
+    assert -100 in ctx.bot_data["prompt_messages"]
