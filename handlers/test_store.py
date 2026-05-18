@@ -1,4 +1,3 @@
-import datetime
 import pytest
 from html.parser import HTMLParser
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -33,18 +32,6 @@ def _make_user(**kw):
     return make_row(**{**defaults, **kw})
 
 
-def _purchase_row():
-    return make_row(id=1)
-
-
-def _breed_row(hours_from_now=5):
-    ready_at = (
-        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-        + datetime.timedelta(hours=hours_from_now)
-    ).isoformat()
-    return make_row(id=1, ready_at=ready_at)
-
-
 # ── _store_text HTML smoke tests ─────────────────────────────────────────────
 
 _ALLOWED_TAGS = {"b", "i", "code"}
@@ -62,7 +49,6 @@ def _assert_html(text: str):
     _StrictHTMLParser().feed(text)
     assert "<b>" in text, "expected HTML bold tags, got Markdown or plain text"
     assert "*" not in text, "raw Markdown bold marker found — parse_mode mismatch"
-    assert "&lt;" in text, "angle bracket in code span should be escaped as &lt;"
 
 
 def test_store_text_html_no_badges():
@@ -82,6 +68,14 @@ def test_store_text_html_with_badges():
         text = _store_text(1)
     _assert_html(text)
     assert "<i>" in text, "expected italic badge tags"
+
+
+def test_store_text_references_inventory():
+    with patch("handlers.store.db.get_consumable_counts", return_value={}), patch(
+        "handlers.store.db.get_user", return_value=_make_user()
+    ):
+        text = _store_text(1)
+    assert "/inventory" in text
 
 
 # ── store_command display ─────────────────────────────────────────────────────
@@ -158,7 +152,18 @@ async def test_store_buy_consumable_records_purchase():
     mock_record.assert_called_once_with(1, "lucky_token")
     reply = update.message.reply_text.call_args[0][0]
     assert "Lucky Token" in reply
-    assert "bag" in reply.lower() or "store use" in reply.lower()
+    assert "bag" in reply.lower()
+
+
+@pytest.mark.asyncio
+async def test_store_buy_consumable_points_to_inventory():
+    update, ctx = _make_update(args=["buy", "lucky_token"])
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.deduct_coins"
+    ), patch("handlers.store.db.record_purchase"):
+        await store_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0]
+    assert "/inventory" in reply
 
 
 @pytest.mark.asyncio
@@ -174,6 +179,7 @@ async def test_store_buy_cosmetic_records_purchase():
     mock_record.assert_called_once_with(1, "title_keeper")
     reply = update.message.reply_text.call_args[0][0]
     assert "Zookeeper" in reply
+    assert "/inventory" in reply
 
 
 @pytest.mark.asyncio
@@ -185,280 +191,6 @@ async def test_store_buy_cosmetic_already_owned():
         await store_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]
     assert "already own" in reply.lower() or "equip" in reply.lower()
-
-
-# ── store_command /store equip ────────────────────────────────────────────────
-
-
-@pytest.mark.asyncio
-async def test_store_equip_missing_key():
-    update, ctx = _make_update(args=["equip"])
-    with patch("handlers.store.db.get_user", return_value=_make_user()):
-        await store_command(update, ctx)
-    assert "usage" in update.message.reply_text.call_args[0][0].lower()
-
-
-@pytest.mark.asyncio
-async def test_store_equip_title_sets_active():
-    update, ctx = _make_update(args=["equip", "title_keeper"])
-    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
-        "handlers.store.db.has_purchased", return_value=True
-    ), patch("handlers.store.db.set_active_title") as mock_set:
-        await store_command(update, ctx)
-    mock_set.assert_called_once_with(1, "title_keeper")
-
-
-@pytest.mark.asyncio
-async def test_store_equip_unowned_title_blocked():
-    update, ctx = _make_update(args=["equip", "title_legend"])
-    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
-        "handlers.store.db.has_purchased", return_value=False
-    ):
-        await store_command(update, ctx)
-    reply = update.message.reply_text.call_args[0][0]
-    assert "don't own" in reply.lower() or "buy" in reply.lower()
-
-
-# ── store_command /store use edge cases ──────────────────────────────────────
-
-
-@pytest.mark.asyncio
-async def test_store_use_missing_key():
-    update, ctx = _make_update(args=["use"])
-    with patch("handlers.store.db.get_user", return_value=_make_user()):
-        await store_command(update, ctx)
-    assert "usage" in update.message.reply_text.call_args[0][0].lower()
-
-
-@pytest.mark.asyncio
-async def test_store_use_unknown_item():
-    update, ctx = _make_update(args=["use", "dragon_egg"])
-    with patch("handlers.store.db.get_user", return_value=_make_user()):
-        await store_command(update, ctx)
-    assert "unknown" in update.message.reply_text.call_args[0][0].lower()
-
-
-# ── /store use mega_feed ──────────────────────────────────────────────────────
-
-
-@pytest.mark.asyncio
-async def test_use_mega_feed_not_in_bag():
-    update, ctx = _make_update(args=["use", "mega_feed", "1"])
-    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
-        "handlers.store.db.get_oldest_purchase", return_value=None
-    ):
-        await store_command(update, ctx)
-    assert "don't have" in update.message.reply_text.call_args[0][0].lower()
-
-
-@pytest.mark.asyncio
-async def test_use_mega_feed_animal_not_found():
-    update, ctx = _make_update(args=["use", "mega_feed", "99"])
-    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
-        "handlers.store.db.get_oldest_purchase", return_value=_purchase_row()
-    ), patch("handlers.store.db.get_animal_by_position", return_value=None), patch(
-        "handlers.store.db.get_animals", return_value=[]
-    ):
-        await store_command(update, ctx)
-    assert "no animal" in update.message.reply_text.call_args[0][0].lower()
-
-
-@pytest.mark.asyncio
-async def test_use_mega_feed_happy_path():
-    update, ctx = _make_update(args=["use", "mega_feed", "1"])
-    animal = make_row(animal_id="abc", nickname=None, species_name="Mouse", emoji="🐭")
-    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
-        "handlers.store.db.get_oldest_purchase", return_value=_purchase_row()
-    ), patch("handlers.store.db.get_animal_by_position", return_value=animal), patch(
-        "handlers.store.db.feed_animal_and_consume"
-    ) as mock_feed:
-        await store_command(update, ctx)
-    mock_feed.assert_called_once_with("abc", 1)
-    assert "mega feed" in update.message.reply_text.call_args[0][0].lower()
-
-
-# ── /store use breed_boost ────────────────────────────────────────────────────
-
-
-@pytest.mark.asyncio
-async def test_use_breed_boost_not_in_bag():
-    update, ctx = _make_update(args=["use", "breed_boost"])
-    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
-        "handlers.store.db.get_oldest_purchase", return_value=None
-    ):
-        await store_command(update, ctx)
-    assert "don't have" in update.message.reply_text.call_args[0][0].lower()
-
-
-@pytest.mark.asyncio
-async def test_use_breed_boost_no_active_breed():
-    update, ctx = _make_update(args=["use", "breed_boost"])
-    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
-        "handlers.store.db.get_oldest_purchase", return_value=_purchase_row()
-    ), patch("handlers.store.db.get_pending_breed", return_value=None):
-        await store_command(update, ctx)
-    assert "no active breed" in update.message.reply_text.call_args[0][0].lower()
-
-
-@pytest.mark.asyncio
-async def test_use_breed_boost_happy_path():
-    update, ctx = _make_update(args=["use", "breed_boost"])
-    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
-        "handlers.store.db.get_oldest_purchase", return_value=_purchase_row()
-    ), patch(
-        "handlers.store.db.get_pending_breed", return_value=_breed_row(hours_from_now=5)
-    ), patch(
-        "handlers.store.db.adjust_breed_time_and_consume"
-    ) as mock_adjust:
-        await store_command(update, ctx)
-    mock_adjust.assert_called_once()
-    assert "boost" in update.message.reply_text.call_args[0][0].lower()
-
-
-# ── /store use lucky_token ────────────────────────────────────────────────────
-
-
-@pytest.mark.asyncio
-async def test_use_lucky_token_not_in_bag():
-    update, ctx = _make_update(args=["use", "lucky_token"])
-    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
-        "handlers.store.db.get_oldest_purchase", return_value=None
-    ):
-        await store_command(update, ctx)
-    assert "don't have" in update.message.reply_text.call_args[0][0].lower()
-
-
-@pytest.mark.asyncio
-async def test_use_lucky_token_happy_path():
-    update, ctx = _make_update(args=["use", "lucky_token"])
-    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
-        "handlers.store.db.get_oldest_purchase", return_value=_purchase_row()
-    ), patch("handlers.store.db.consume_purchase") as mock_consume, patch(
-        "handlers.store.db.set_lucky_catch"
-    ) as mock_set:
-        await store_command(update, ctx)
-    mock_consume.assert_called_once_with(1)
-    mock_set.assert_called_once_with(1, True)
-    assert "lucky" in update.message.reply_text.call_args[0][0].lower()
-
-
-@pytest.mark.asyncio
-async def test_use_lucky_token_already_active():
-    update, ctx = _make_update(args=["use", "lucky_token"])
-    with patch("handlers.store.db.get_user", return_value=_make_user(lucky_catch_active=1)):
-        await store_command(update, ctx)
-    reply = update.message.reply_text.call_args[0][0].lower()
-    assert "already active" in reply
-
-
-# ── /store use mood_booster ───────────────────────────────────────────────────
-
-
-@pytest.mark.asyncio
-async def test_use_mood_booster_not_in_bag():
-    update, ctx = _make_update(args=["use", "mood_booster"])
-    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
-        "handlers.store.db.get_oldest_purchase", return_value=None
-    ):
-        await store_command(update, ctx)
-    assert "don't have" in update.message.reply_text.call_args[0][0].lower()
-
-
-@pytest.mark.asyncio
-async def test_use_mood_booster_happy_path():
-    update, ctx = _make_update(args=["use", "mood_booster"])
-    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
-        "handlers.store.db.get_oldest_purchase", return_value=_purchase_row()
-    ), patch("handlers.store.db.consume_purchase") as mock_consume, patch(
-        "handlers.store.db.set_mood_booster"
-    ) as mock_set:
-        await store_command(update, ctx)
-    mock_consume.assert_called_once_with(1)
-    mock_set.assert_called_once_with(1, True)
-    assert "booster" in update.message.reply_text.call_args[0][0].lower()
-
-
-@pytest.mark.asyncio
-async def test_use_mood_booster_already_active():
-    update, ctx = _make_update(args=["use", "mood_booster"])
-    with patch("handlers.store.db.get_user", return_value=_make_user(mood_booster_active=1)):
-        await store_command(update, ctx)
-    reply = update.message.reply_text.call_args[0][0].lower()
-    assert "already active" in reply
-
-
-# ── /store use catch_net ──────────────────────────────────────────────────────
-
-
-@pytest.mark.asyncio
-async def test_use_catch_net_not_in_bag():
-    update, ctx = _make_update(args=["use", "catch_net"])
-    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
-        "handlers.store.db.get_oldest_purchase", return_value=None
-    ):
-        await store_command(update, ctx)
-    assert "don't have" in update.message.reply_text.call_args[0][0].lower()
-
-
-@pytest.mark.asyncio
-async def test_use_catch_net_happy_path():
-    update, ctx = _make_update(args=["use", "catch_net"])
-    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
-        "handlers.store.db.get_oldest_purchase", return_value=_purchase_row()
-    ), patch("handlers.store.db.consume_purchase") as mock_consume, patch(
-        "handlers.store.db.set_catch_net"
-    ) as mock_set:
-        await store_command(update, ctx)
-    mock_consume.assert_called_once_with(1)
-    mock_set.assert_called_once_with(1, True)
-    assert "catch net" in update.message.reply_text.call_args[0][0].lower()
-
-
-@pytest.mark.asyncio
-async def test_use_catch_net_already_active():
-    update, ctx = _make_update(args=["use", "catch_net"])
-    with patch("handlers.store.db.get_user", return_value=_make_user(catch_net_active=1)):
-        await store_command(update, ctx)
-    reply = update.message.reply_text.call_args[0][0].lower()
-    assert "already active" in reply
-
-
-# ── /store use breed_accelerator ─────────────────────────────────────────────
-
-
-@pytest.mark.asyncio
-async def test_use_breed_accelerator_not_in_bag():
-    update, ctx = _make_update(args=["use", "breed_accelerator"])
-    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
-        "handlers.store.db.get_oldest_purchase", return_value=None
-    ):
-        await store_command(update, ctx)
-    assert "don't have" in update.message.reply_text.call_args[0][0].lower()
-
-
-@pytest.mark.asyncio
-async def test_use_breed_accelerator_no_active_breed():
-    update, ctx = _make_update(args=["use", "breed_accelerator"])
-    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
-        "handlers.store.db.get_oldest_purchase", return_value=_purchase_row()
-    ), patch("handlers.store.db.get_pending_breed", return_value=None):
-        await store_command(update, ctx)
-    assert "no active breed" in update.message.reply_text.call_args[0][0].lower()
-
-
-@pytest.mark.asyncio
-async def test_use_breed_accelerator_happy_path():
-    update, ctx = _make_update(args=["use", "breed_accelerator"])
-    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
-        "handlers.store.db.get_oldest_purchase", return_value=_purchase_row()
-    ), patch(
-        "handlers.store.db.get_pending_breed", return_value=_breed_row(hours_from_now=4)
-    ), patch(
-        "handlers.store.db.adjust_breed_time_and_consume"
-    ) as mock_adjust:
-        await store_command(update, ctx)
-    mock_adjust.assert_called_once()
-    assert "accelerator" in update.message.reply_text.call_args[0][0].lower()
 
 
 # ── store_callback ────────────────────────────────────────────────────────────
@@ -519,6 +251,18 @@ async def test_callback_buy_consumable_goes_to_bag():
 
 
 @pytest.mark.asyncio
+async def test_callback_buy_consumable_points_to_inventory():
+    update, query, ctx = _make_callback("store_buy_mega_feed")
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.deduct_coins"
+    ), patch("handlers.store.db.record_purchase"), patch(
+        "handlers.store.check_achievements", new_callable=AsyncMock
+    ):
+        await store_callback(update, ctx)
+    assert "/inventory" in query.answer.call_args[0][0]
+
+
+@pytest.mark.asyncio
 async def test_callback_buy_cosmetic_not_owned():
     update, query, ctx = _make_callback("store_buy_title_keeper")
     with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
@@ -534,6 +278,7 @@ async def test_callback_buy_cosmetic_not_owned():
     mock_deduct.assert_called_once()
     mock_record.assert_called_once_with(1, "title_keeper")
     assert "purchased" in query.answer.call_args[0][0].lower()
+    assert "/inventory" in query.answer.call_args[0][0]
 
 
 @pytest.mark.asyncio
@@ -545,13 +290,3 @@ async def test_callback_buy_cosmetic_already_owned():
         await store_callback(update, ctx)
     query.answer.assert_called_once()
     assert "already own" in query.answer.call_args[0][0].lower()
-
-
-@pytest.mark.asyncio
-async def test_callback_equip_title():
-    update, query, ctx = _make_callback("store_equip_title_keeper")
-    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
-        "handlers.store.db.has_purchased", return_value=True
-    ), patch("handlers.store.db.set_active_title") as mock_set:
-        await store_callback(update, ctx)
-    mock_set.assert_called_once_with(1, "title_keeper")

@@ -133,9 +133,9 @@ async def handle_callback(update, ctx):
         await zoo_page_callback(update, ctx)
     elif data.startswith("wild_catch_"):
         await wild_event_callback(update, ctx)
-    elif data.startswith("store_buy_") or data.startswith("store_equip_"):
+    elif data.startswith("store_buy_"):
         await store_callback(update, ctx)
-    elif data.startswith("inv_use_"):
+    elif data.startswith("inv_use_") or data.startswith("inv_equip_"):
         await inventory_callback(update, ctx)
     elif data == "zoo_noop":
         await update.callback_query.answer()
