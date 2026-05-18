@@ -8,7 +8,9 @@ from scheduler import (
     _check_hunger_alerts,
     _cleanup_expired_trades,
     _check_breed_completions,
+    wild_event_tick,
 )
+from conftest import make_row
 
 
 @pytest.fixture
@@ -267,6 +269,39 @@ async def test_breed_ready_no_repeat_within_interval(temp_db):
         await _check_breed_completions(ctx)
 
     ctx.bot.send_message.assert_not_called()
+
+
+# ── wild event tick ───────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_wild_event_tick_message_format():
+    species = make_row(
+        species_id=1,
+        name="Mouse",
+        emoji="🐭",
+        rarity="common",
+        habitat="woodland",
+        catch_rate=0.90,
+    )
+    ctx = MagicMock()
+    ctx.bot.send_message = AsyncMock(return_value=MagicMock(message_id=42))
+    ctx.bot.edit_message_reply_markup = AsyncMock()
+    ctx.job_queue.run_once = MagicMock()
+
+    with patch("scheduler.db.get_active_group_chats", return_value=[-100]), patch(
+        "scheduler.db.get_species_candidates", return_value=[species]
+    ), patch("scheduler.db.create_wild_event", return_value=1), patch(
+        "scheduler.db.set_setting"
+    ), patch(
+        "scheduler.random.randint", return_value=60
+    ):
+        await wild_event_tick(ctx)
+
+    text = ctx.bot.send_message.call_args[0][1]
+    assert "Common ⬜ | 🌲 Woodland" in text
+    assert "Catch rate: 90%" in text
+    assert "5 min" in text
 
 
 @pytest.mark.asyncio

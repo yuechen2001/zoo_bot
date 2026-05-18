@@ -12,7 +12,7 @@ from config import (
     WILD_EVENT_EXPIRY_MINUTES,
 )
 from keyboards import mood_keyboard
-from game.species_data import ENCLOSURE_LEVELS
+from game.species_data import ENCLOSURE_LEVELS, HABITATS, RARITY_LABELS
 from utils import format_mention
 
 logger = logging.getLogger(__name__)
@@ -332,7 +332,9 @@ async def wild_event_tick(ctx):
             msg = await ctx.bot.send_message(
                 group_chat_id,
                 f"🌿 *A wild {species['emoji']} {species['name']} appeared!*\n"
-                f"First to tap catches it!\n_{species['rarity'].title()} species_",
+                f"{RARITY_LABELS[species['rarity']]} | {HABITATS[species['habitat']]['emoji']} {HABITATS[species['habitat']]['name']}\n\n"
+                f"Catch rate: {int(species['catch_rate'] * 100)}%\n\n"
+                f"You have 5 min to decide.",
                 parse_mode="Markdown",
                 reply_markup=wild_catch_keyboard(0),
             )

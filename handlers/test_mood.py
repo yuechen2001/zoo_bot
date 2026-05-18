@@ -9,6 +9,7 @@ from handlers.mood import (
     resume_command,
     moodstart_command,
     moodstop_command,
+    help_command,
 )
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -347,3 +348,14 @@ async def test_resume_accepted_for_admin():
     update.message.reply_text.assert_called_once()
     reply = update.message.reply_text.call_args[0][0]
     assert "▶️" in reply or "Resumed" in reply
+
+
+@pytest.mark.asyncio
+async def test_help_footmassage_in_zoo_section():
+    update = _make_cmd_update()
+    await help_command(update, MagicMock())
+    text = update.message.reply_text.call_args[0][0]
+    zoo_section = text.split("*Enclosures:*")[0]
+    assert "/footmassage" in zoo_section
+    mood_section = text.split("*Mood prompts:*")[1]
+    assert "/footmassage" not in mood_section
