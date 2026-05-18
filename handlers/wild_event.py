@@ -42,13 +42,13 @@ async def wild_event_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await query.answer("Something went wrong.", show_alert=True)
         return
 
-    habitat = species["habitat"] or "woodland"
+    habitat = species["habitat"]
     enc_level = db.get_enclosure_level(tg_id, habitat)
     capacity = ENCLOSURE_LEVELS[enc_level]["capacity"]
     current = db.get_animal_count_by_habitat(tg_id, habitat)
     if current >= capacity:
         await query.answer(
-            f"Your {habitat} enclosure is full (Lv {enc_level}, capacity {capacity})!",
+            f"Your {habitat.title()} enclosure is full (Lv {enc_level}, capacity {capacity})!",
             show_alert=True,
         )
         return
@@ -57,7 +57,7 @@ async def wild_event_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     lure_row = db.get_oldest_purchase(tg_id, f"lure_{habitat}")
     if not lure_row:
         await query.answer(
-            f"You need a {habitat} lure to catch this! Buy one from /store.",
+            f"You need a {habitat.title()} lure to catch this! Buy one from /store.",
             show_alert=True,
         )
         return
