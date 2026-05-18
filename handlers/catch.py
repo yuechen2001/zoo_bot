@@ -45,7 +45,7 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             pass
 
     await update.message.reply_text(
-        "🎣 *Choose a lure!*\n_Each lure targets a specific habitat with 1.5× catch rate._",
+        "🎣 *Choose a lure!*\n_Habitat lures give 1.5× catch rate. Basic Lure picks from any habitat at base rate._",
         parse_mode="Markdown",
         reply_markup=lure_keyboard(counts),
     )
