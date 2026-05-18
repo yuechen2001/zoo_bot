@@ -55,6 +55,8 @@ from handlers import (
     enclosures_command,
     enclosure_upgrade_callback,
     directory_command,
+    inventory_command,
+    inventory_callback,
 )
 from handlers.gift import gift_command
 from handlers.store import store_command, store_callback
@@ -101,6 +103,7 @@ async def post_init(application):
             BotCommand("autofeed", "Auto-feed animals below a hunger threshold each tick"),
             BotCommand("gift", "Give an animal to another player"),
             BotCommand("store", "Browse the item store"),
+            BotCommand("inventory", "Your bag — use items and equip titles"),
             BotCommand("help", "Show all commands"),
         ]
     )
@@ -132,6 +135,8 @@ async def handle_callback(update, ctx):
         await wild_event_callback(update, ctx)
     elif data.startswith("store_buy_") or data.startswith("store_equip_"):
         await store_callback(update, ctx)
+    elif data.startswith("inv_use_"):
+        await inventory_callback(update, ctx)
     elif data == "zoo_noop":
         await update.callback_query.answer()
     else:
@@ -177,6 +182,7 @@ def main():
     app.add_handler(CommandHandler("autofeed", autofeed_command))
     app.add_handler(CommandHandler("gift", gift_command))
     app.add_handler(CommandHandler("store", store_command))
+    app.add_handler(CommandHandler("inventory", inventory_command))
     app.add_handler(CommandHandler("footmassage", footmassage_command))
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_error_handler(error_handler)
