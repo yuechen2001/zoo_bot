@@ -177,20 +177,15 @@ def achievements_keyboard(user_id: int, current_filter: str) -> InlineKeyboardMa
 
 def directory_page_keyboard(user_id: int, page: int, habitat_keys: list) -> InlineKeyboardMarkup:
     buttons = []
-    if page > 0:
-        prev_emoji = HABITATS[habitat_keys[page - 1]]["emoji"]
-        buttons.append(
-            InlineKeyboardButton(f"◀ {prev_emoji}", callback_data=f"dir_page_{user_id}_{page - 1}")
-        )
-    buttons.append(
-        InlineKeyboardButton(f"{page + 1} / {len(habitat_keys)}", callback_data="zoo_noop")
-    )
-    if page < len(habitat_keys) - 1:
-        next_emoji = HABITATS[habitat_keys[page + 1]]["emoji"]
-        buttons.append(
-            InlineKeyboardButton(f"{next_emoji} ▶", callback_data=f"dir_page_{user_id}_{page + 1}")
-        )
-    return InlineKeyboardMarkup([buttons])
+    for idx, key in enumerate(habitat_keys):
+        h = HABITATS[key]
+        label = f"{h['emoji']} {h['name']}"
+        if idx == page:
+            buttons.append(InlineKeyboardButton(f"▸ {label} ◂", callback_data="zoo_noop"))
+        else:
+            buttons.append(InlineKeyboardButton(label, callback_data=f"dir_page_{user_id}_{idx}"))
+    rows = [buttons[i : i + 3] for i in range(0, len(buttons), 3)]
+    return InlineKeyboardMarkup(rows)
 
 
 def breed_collect_keyboard():
@@ -214,20 +209,15 @@ def enclosure_upgrade_keyboard(habitats_with_cost: list[tuple[str, int]]):
 
 def zoo_page_keyboard(owner_id: int, page: int, habitat_keys: list[str]) -> InlineKeyboardMarkup:
     buttons = []
-    if page > 0:
-        prev_emoji = HABITATS[habitat_keys[page - 1]]["emoji"]
-        buttons.append(
-            InlineKeyboardButton(f"◀ {prev_emoji}", callback_data=f"zoo_page_{owner_id}_{page - 1}")
-        )
-    buttons.append(
-        InlineKeyboardButton(f"{page + 1} / {len(habitat_keys)}", callback_data="zoo_noop")
-    )
-    if page < len(habitat_keys) - 1:
-        next_emoji = HABITATS[habitat_keys[page + 1]]["emoji"]
-        buttons.append(
-            InlineKeyboardButton(f"{next_emoji} ▶", callback_data=f"zoo_page_{owner_id}_{page + 1}")
-        )
-    return InlineKeyboardMarkup([buttons])
+    for idx, key in enumerate(habitat_keys):
+        h = HABITATS[key]
+        label = f"{h['emoji']} {h['name']}"
+        if idx == page:
+            buttons.append(InlineKeyboardButton(f"▸ {label} ◂", callback_data="zoo_noop"))
+        else:
+            buttons.append(InlineKeyboardButton(label, callback_data=f"zoo_page_{owner_id}_{idx}"))
+    rows = [buttons[i : i + 3] for i in range(0, len(buttons), 3)]
+    return InlineKeyboardMarkup(rows)
 
 
 def store_keyboard(owned_keys: set) -> InlineKeyboardMarkup:
