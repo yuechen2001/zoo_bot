@@ -280,7 +280,7 @@ ACHIEVEMENTS = {
         "trigger": "catch",
         "check": lambda uid, u: all(
             db.get_animal_count_by_habitat(uid, h) > 0
-            for h in ["woodland", "savanna", "tropical", "aquatic", "tundra", "mythic"]
+            for h in ["woodland", "savanna", "tropical", "aquatic", "tundra", "mythic", "spectral"]
         ),
     },
     "mythic_tamer": {
@@ -289,6 +289,28 @@ ACHIEVEMENTS = {
         "desc": "Catch your first mythic animal",
         "trigger": "catch",
         "check": lambda uid, u: db.get_animal_count_by_habitat(uid, "mythic") >= 1,
+    },
+    # ── Spectral ──────────────────────────────────────────────────────────────
+    "spectral_first": {
+        "emoji": "👻",
+        "name": "Ghost Whisperer",
+        "desc": "Catch your first Spectral creature",
+        "trigger": "catch",
+        "check": lambda uid, u: db.get_animal_count_by_habitat(uid, "spectral") >= 1,
+    },
+    "spectral_collector": {
+        "emoji": "🕸️",
+        "name": "Spirit Collector",
+        "desc": "Own 3 Spectral creatures",
+        "trigger": "catch",
+        "check": lambda uid, u: db.get_animal_count_by_habitat(uid, "spectral") >= 3,
+    },
+    "spectral_master": {
+        "emoji": "💀",
+        "name": "Haunted Keeper",
+        "desc": "Own at least one of every Spectral species",
+        "trigger": "catch",
+        "check": lambda uid, u: db.count_distinct_species_in_habitat(uid, "spectral") >= 7,
     },
     "streak_100": {
         "emoji": "💫",

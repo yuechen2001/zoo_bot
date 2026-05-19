@@ -99,6 +99,13 @@ STORE_ITEMS: dict[str, dict] = {
         "category": "item",
         "desc": "Attract a Tundra animal with 1.5× catch rate — select when using /catch",
     },
+    "lure_spectral": {
+        "name": "Spectral Lure",
+        "emoji": "👻",
+        "price": 150,
+        "category": "item",
+        "desc": "Attract a Spectral creature with 1.5× catch rate — select when using /catch",
+    },
     "lure_mythic": {
         "name": "Mythic Lure",
         "emoji": "🌟",

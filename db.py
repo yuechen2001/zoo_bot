@@ -1223,6 +1223,16 @@ def count_distinct_species(user_id: int) -> int:
         ).fetchone()[0]
 
 
+def count_distinct_species_in_habitat(user_id: int, habitat: str) -> int:
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT COUNT(DISTINCT a.species_id) FROM animals a "
+            "JOIN species s ON s.species_id = a.species_id "
+            "WHERE a.user_id = ? AND s.habitat = ?",
+            (user_id, habitat),
+        ).fetchone()[0]
+
+
 def user_owns_all_rarities(user_id: int) -> bool:
     with get_conn() as conn:
         return (
