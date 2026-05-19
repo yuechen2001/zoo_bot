@@ -258,6 +258,66 @@ ACHIEVEMENTS = {
         "trigger": "checkin",
         "check": lambda uid, u: (u["coins"] or 0) >= 5000,
     },
+    # ── New milestones ────────────────────────────────────────────────────────
+    "zoo_30": {
+        "emoji": "🏟",
+        "name": "Mega Zoo",
+        "desc": "Own 30 animals",
+        "trigger": "catch",
+        "check": lambda uid, u: db.count_animals(uid) >= 30,
+    },
+    "species_20": {
+        "emoji": "📖",
+        "name": "Naturalist",
+        "desc": "Own 20 different species",
+        "trigger": "catch",
+        "check": lambda uid, u: db.count_distinct_species(uid) >= 20,
+    },
+    "explorer": {
+        "emoji": "🗺️",
+        "name": "Explorer",
+        "desc": "Own at least one animal from every habitat",
+        "trigger": "catch",
+        "check": lambda uid, u: all(
+            db.get_animal_count_by_habitat(uid, h) > 0
+            for h in ["woodland", "savanna", "tropical", "aquatic", "tundra", "mythic"]
+        ),
+    },
+    "mythic_tamer": {
+        "emoji": "✨",
+        "name": "Mythic Tamer",
+        "desc": "Catch your first mythic animal",
+        "trigger": "catch",
+        "check": lambda uid, u: db.get_animal_count_by_habitat(uid, "mythic") >= 1,
+    },
+    "streak_100": {
+        "emoji": "💫",
+        "name": "Centurion",
+        "desc": "Reach a 100-window check-in streak",
+        "trigger": "checkin",
+        "check": lambda uid, u: (u["streak_windows"] or 0) >= 100,
+    },
+    "checkin_100": {
+        "emoji": "🎭",
+        "name": "Mood Legend",
+        "desc": "Complete 100 mood check-ins",
+        "trigger": "checkin",
+        "check": lambda uid, u: db.count_mood_checkins(uid) >= 100,
+    },
+    "coins_10000": {
+        "emoji": "🏦",
+        "name": "Millionaire",
+        "desc": "Accumulate 10,000 coins",
+        "trigger": "checkin",
+        "check": lambda uid, u: (u["coins"] or 0) >= 10000,
+    },
+    "breed_20": {
+        "emoji": "🧬",
+        "name": "Master Breeder",
+        "desc": "Collect 20 offspring",
+        "trigger": "breed",
+        "check": lambda uid, u: db.count_collected_breeds(uid) >= 20,
+    },
 }
 
 
