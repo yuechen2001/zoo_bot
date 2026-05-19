@@ -29,6 +29,7 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     ctx.user_data.pop("pending_catch", None)
 
     catch_chat_id, catch_message_id = db.get_catch_message(tg_id)
+    old_cmd = ctx.user_data.pop("catch_cmd", None)
 
     if has_lures:
         lure_text = "🎣 *Choose a lure!*\n_Habitat lures give 1.5× catch rate._"
@@ -39,17 +40,14 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     msg = await update.message.reply_text(lure_text, parse_mode="Markdown", reply_markup=lure_kb)
     db.set_catch_message(tg_id, update.effective_chat.id, msg.message_id)
+    ctx.user_data["catch_cmd"] = (update.effective_chat.id, update.message.message_id)
 
-    try:
-        await update.message.delete()
-    except Exception:
-        pass
-
-    # Delete the old bot message after the new one is visible so /catch feels instant
     if catch_chat_id and catch_message_id:
         asyncio.create_task(
             ctx.bot.delete_message(chat_id=catch_chat_id, message_id=catch_message_id)
         )
+    if old_cmd:
+        asyncio.create_task(ctx.bot.delete_message(chat_id=old_cmd[0], message_id=old_cmd[1]))
 
 
 async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
