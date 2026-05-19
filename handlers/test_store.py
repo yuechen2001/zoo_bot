@@ -149,7 +149,7 @@ async def test_store_buy_item_records_purchase():
         "handlers.store.db.deduct_coins"
     ) as mock_deduct, patch("handlers.store.db.record_purchase") as mock_record:
         await store_command(update, ctx)
-    mock_deduct.assert_called_once_with(1, 50)
+    mock_deduct.assert_called_once_with(1, 80)
     mock_record.assert_called_once_with(1, "lucky_token")
     reply = update.message.reply_text.call_args[0][0]
     assert "Lucky Token" in reply

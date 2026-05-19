@@ -427,10 +427,10 @@ SPECIES = [
 
 # Weighted encounter probabilities per rarity
 ENCOUNTER_WEIGHTS = {
-    "common": 60,
+    "common": 57,
     "rare": 25,
-    "epic": 12,
-    "legendary": 3,
+    "epic": 14,
+    "legendary": 4,
 }
 
 RARITY_ORDER = ["common", "rare", "epic", "legendary"]

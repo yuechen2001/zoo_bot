@@ -116,7 +116,7 @@ async def test_gamble_bet_over_max_rejected():
 
 
 def test_max_bet_constant():
-    assert MAX_BET == 100
+    assert MAX_BET == 200
 
 
 def test_gamble_distribution_is_50_50():

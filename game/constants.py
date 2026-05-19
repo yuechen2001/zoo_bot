@@ -7,12 +7,12 @@ FEED_HUNGER = 40
 
 # Slots
 SPIN_COST = 10
-WIN_3 = 200
-WIN_2 = 20
+WIN_3 = 150
+WIN_2 = 10
 SYMBOLS = ["🐭", "🐸", "🐱", "🦊", "🐼", "🦄"]
 
 # Gamble
-MAX_BET = 100
+MAX_BET = 200
 
 # Foot massage
 MASSAGE_COST = 25
