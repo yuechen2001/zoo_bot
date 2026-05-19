@@ -60,7 +60,7 @@ async def enclosures_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         db.give_starter_enclosures(tg_id)
 
     text, upgradeable = _render_enclosures(tg_id, user["coins"])
-    keyboard = enclosure_upgrade_keyboard(upgradeable) if upgradeable else None
+    keyboard = enclosure_upgrade_keyboard(upgradeable)
     await update.message.reply_text(text, parse_mode="Markdown", reply_markup=keyboard)
 
 
@@ -107,3 +107,27 @@ async def enclosure_upgrade_callback(update: Update, ctx: ContextTypes.DEFAULT_T
     new_level = db.get_enclosure_level(tg_id, habitat)
     await query.answer(f"{h_info['emoji']} {h_info['name']} upgraded to Lv {new_level}!")
     await query.edit_message_text(text, parse_mode="Markdown", reply_markup=keyboard)
+
+
+async def enclosure_collect_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    tg_id = query.from_user.id
+
+    user = db.get_user(tg_id)
+    if not user:
+        await query.answer("Use /start first!", show_alert=True)
+        return
+
+    amount = db.collect_enclosure_coins(tg_id)
+    if amount == 0:
+        await query.answer("Nothing to collect yet — income builds up hourly.", show_alert=True)
+        return
+
+    user = db.get_user(tg_id)
+    await query.answer(f"💰 Collected {amount} 🪙! Balance: {user['coins']} 🪙")
+    text, upgradeable = _render_enclosures(tg_id, user["coins"])
+    keyboard = enclosure_upgrade_keyboard(upgradeable)
+    try:
+        await query.edit_message_text(text, parse_mode="Markdown", reply_markup=keyboard)
+    except Exception:
+        pass

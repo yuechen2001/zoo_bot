@@ -70,6 +70,7 @@ from handlers import (
     sell_cancel_callback,
     enclosures_command,
     enclosure_upgrade_callback,
+    enclosure_collect_callback,
     directory_command,
     directory_page_callback,
     inventory_command,
@@ -168,6 +169,8 @@ async def handle_callback(update, ctx):
         await trade_callback(update, ctx)
     elif data.startswith("enc_upgrade_"):
         await enclosure_upgrade_callback(update, ctx)
+    elif data == "enc_collect":
+        await enclosure_collect_callback(update, ctx)
     elif data.startswith("zoo_page_"):
         await zoo_page_callback(update, ctx)
     elif data.startswith("wild_catch_"):
