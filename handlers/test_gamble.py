@@ -119,6 +119,15 @@ def test_max_bet_constant():
     assert MAX_BET == 200
 
 
+@pytest.mark.asyncio
+async def test_gamble_bet_callback_rejects_unknown_user():
+    update, query, _ = _make_bet_query(50)
+    with patch("handlers.gamble.db.get_user", return_value=None):
+        await gamble_bet_callback(update, MagicMock())
+    query.answer.assert_called_once_with("Use /start first!", show_alert=True)
+    query.edit_message_text.assert_not_called()
+
+
 def test_gamble_distribution_is_50_50():
     """random.random() < 0.5 is the win condition — verify it's fair over many trials."""
     import random

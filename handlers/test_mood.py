@@ -10,6 +10,7 @@ from handlers.mood import (
     moodstart_command,
     moodstop_command,
     help_command,
+    help_tab_callback,
 )
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -368,3 +369,187 @@ async def test_help_footmassage_in_zoo_section():
     await help_command(update, MagicMock())
     text = update.message.reply_text.call_args[0][0]
     assert "/footmassage" in text
+
+
+# ── moodstop unknown user ──────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_moodstop_rejects_unknown_user():
+    update = _make_cmd_update()
+    with patch("handlers.mood.db.get_user", return_value=None):
+        await moodstop_command(update, MagicMock())
+    update.message.reply_text.assert_called_once_with("Use /start first!")
+
+
+# ── pause edge cases ───────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_pause_rejects_unknown_user():
+    update = _make_cmd_update(user_id=1)
+    with patch("handlers.mood.ADMIN_IDS", {1}), patch(
+        "handlers.mood.db.get_user", return_value=None
+    ):
+        await pause_command(update, MagicMock())
+    update.message.reply_text.assert_called_once_with("Use /start first!")
+
+
+@pytest.mark.asyncio
+async def test_pause_rejects_no_args():
+    update = _make_cmd_update(user_id=1)
+    ctx = MagicMock()
+    ctx.args = []
+    with patch("handlers.mood.ADMIN_IDS", {1}), patch(
+        "handlers.mood.db.get_user", return_value={"streak_windows": 0}
+    ):
+        await pause_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0]
+    assert "Usage" in reply
+
+
+@pytest.mark.asyncio
+async def test_pause_rejects_invalid_format():
+    update = _make_cmd_update(user_id=1)
+    ctx = MagicMock()
+    ctx.args = ["2days"]
+    with patch("handlers.mood.ADMIN_IDS", {1}), patch(
+        "handlers.mood.db.get_user", return_value={"streak_windows": 0}
+    ):
+        await pause_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0]
+    assert "Format" in reply
+
+
+# ── checkin branch coverage ────────────────────────────────────────────────────
+
+
+def _checkin_user(**kw):
+    base = {
+        "user_id": 1,
+        "opted_in": 1,
+        "streak_windows": 1,
+        "group_chat_id": None,
+        "last_prompt_at": (
+            datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            - datetime.timedelta(minutes=2)
+        ).isoformat(),
+        "mood_booster_active": 0,
+    }
+    return {**base, **kw}
+
+
+@pytest.mark.asyncio
+async def test_mood_callback_no_last_prompt_still_succeeds():
+    user = _checkin_user(last_prompt_at=None)
+    query = _make_query(user_id=1)
+    update = _make_update(query)
+    with patch("handlers.mood.db.get_user", return_value=user), patch(
+        "handlers.mood.db.record_prompt_response", return_value=True
+    ), patch("handlers.mood.db.record_checkin"), patch("game.achievements.check_achievements"):
+        await mood_checkin_callback(update, MagicMock())
+    query.answer.assert_called_once()
+    assert "coins" in query.answer.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_mood_callback_mood_booster_doubles_coins():
+    user = _checkin_user(mood_booster_active=1)
+    query = _make_query(user_id=1, emoji="🤩")
+    update = _make_update(query)
+    with patch("handlers.mood.db.get_user", return_value=user), patch(
+        "handlers.mood.db.record_prompt_response", return_value=True
+    ), patch("handlers.mood.db.record_checkin"), patch(
+        "handlers.mood.db.set_mood_booster"
+    ) as mock_clear, patch(
+        "game.achievements.check_achievements"
+    ):
+        await mood_checkin_callback(update, MagicMock())
+    mock_clear.assert_called_once_with(1, False)
+    assert "coins" in query.answer.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_mood_callback_streak_multiplier_shown():
+    user = _checkin_user(streak_windows=4)  # new_streak becomes 5 → shows multiplier
+    query = _make_query(user_id=1)
+    update = _make_update(query)
+    with patch("handlers.mood.db.get_user", return_value=user), patch(
+        "handlers.mood.db.record_prompt_response", return_value=True
+    ), patch("handlers.mood.db.record_checkin"), patch("game.achievements.check_achievements"):
+        await mood_checkin_callback(update, MagicMock())
+    reply = query.answer.call_args[0][0]
+    assert "streak bonus" in reply.lower()
+
+
+@pytest.mark.asyncio
+async def test_mood_callback_group_chat_id_synced():
+    user = _checkin_user(group_chat_id=None)
+    query = _make_query(user_id=1)
+    query.message.chat.type = "supergroup"
+    query.message.chat_id = -500
+    update = _make_update(query)
+    with patch("handlers.mood.db.get_user", return_value=user), patch(
+        "handlers.mood.db.update_group_chat_id"
+    ) as mock_sync, patch("handlers.mood.db.record_prompt_response", return_value=True), patch(
+        "handlers.mood.db.record_checkin"
+    ), patch(
+        "game.achievements.check_achievements"
+    ):
+        await mood_checkin_callback(update, MagicMock())
+    mock_sync.assert_called_once_with(1, -500)
+
+
+@pytest.mark.asyncio
+async def test_mood_callback_group_collapse_exception_swallowed():
+    prompt_time = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        - datetime.timedelta(minutes=2)
+    ).isoformat()
+    user = _checkin_user(group_chat_id=-100, last_prompt_at=prompt_time)
+    query = _make_query(user_id=1)
+    query.edit_message_text = AsyncMock(side_effect=Exception("flood"))
+    update = _make_update(query)
+    with patch("handlers.mood.db.get_user", return_value=user), patch(
+        "handlers.mood.db.record_prompt_response", return_value=True
+    ), patch("handlers.mood.db.record_checkin"), patch(
+        "handlers.mood.db.all_group_members_checked_in", return_value=True
+    ), patch(
+        "game.achievements.check_achievements"
+    ):
+        await mood_checkin_callback(update, MagicMock())  # must not raise
+    query.answer.assert_called_once()
+
+
+# ── help_tab_callback ──────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_help_tab_callback_renders_requested_section():
+    query = MagicMock()
+    query.data = "help_tab_breeding"
+    query.answer = AsyncMock()
+    query.edit_message_text = AsyncMock()
+    update = MagicMock()
+    update.callback_query = query
+
+    await help_tab_callback(update, MagicMock())
+
+    query.edit_message_text.assert_called_once()
+    text = query.edit_message_text.call_args[0][0]
+    assert "Breeding" in text or "/breed" in text
+
+
+@pytest.mark.asyncio
+async def test_help_tab_callback_unknown_section_falls_back_to_zoo():
+    query = MagicMock()
+    query.data = "help_tab_nonexistent"
+    query.answer = AsyncMock()
+    query.edit_message_text = AsyncMock()
+    update = MagicMock()
+    update.callback_query = query
+
+    await help_tab_callback(update, MagicMock())
+
+    text = query.edit_message_text.call_args[0][0]
+    assert "/zoo" in text

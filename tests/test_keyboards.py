@@ -6,8 +6,11 @@ from keyboards import (
     zoo_page_keyboard,
     directory_page_keyboard,
     store_tab_keyboard,
+    store_keyboard,
     lure_keyboard,
     trade_keyboard,
+    slots_keyboard,
+    gamble_keyboard,
 )
 
 
@@ -193,3 +196,62 @@ class TestTradeKeyboard:
         btns = [btn for row in kb.inline_keyboard for btn in row]
         callbacks = [b.callback_data for b in btns]
         assert "trade_decline_42_7" in callbacks
+
+
+class TestStoreKeyboard:
+    def test_has_item_buy_buttons(self):
+        kb = store_keyboard(owned_keys=set())
+        all_callbacks = [btn.callback_data for row in kb.inline_keyboard for btn in row]
+        assert any(cb.startswith("store_buy_") for cb in all_callbacks)
+
+    def test_has_lure_buy_buttons(self):
+        kb = store_keyboard(owned_keys=set())
+        all_callbacks = [btn.callback_data for row in kb.inline_keyboard for btn in row]
+        assert any(cb.startswith("store_buy_lure_") for cb in all_callbacks)
+
+    def test_unowned_cosmetic_has_buy_callback(self):
+        from game.store_data import COSMETICS
+
+        first_key = next(iter(COSMETICS))
+        kb = store_keyboard(owned_keys=set())
+        all_callbacks = [btn.callback_data for row in kb.inline_keyboard for btn in row]
+        assert f"store_buy_{first_key}" in all_callbacks
+
+    def test_owned_cosmetic_shows_checkmark_and_noop(self):
+        from game.store_data import COSMETICS
+
+        first_key = next(iter(COSMETICS))
+        kb = store_keyboard(owned_keys={first_key})
+        all_btns = [btn for row in kb.inline_keyboard for btn in row]
+        owned_btn = next(b for b in all_btns if b.callback_data == "zoo_noop" and "✅" in b.text)
+        assert owned_btn is not None
+
+
+class TestSlotsKeyboard:
+    def test_has_spin_callback(self):
+        kb = slots_keyboard()
+        assert kb.inline_keyboard[0][0].callback_data == "slots_spin"
+
+    def test_shows_spin_cost(self):
+        from game.constants import SPIN_COST
+
+        kb = slots_keyboard()
+        assert str(SPIN_COST) in kb.inline_keyboard[0][0].text
+
+
+class TestGambleKeyboard:
+    def test_affordable_buttons_have_bet_callbacks(self):
+        kb = gamble_keyboard(user_coins=500)
+        all_callbacks = [btn.callback_data for row in kb.inline_keyboard for btn in row]
+        assert any(cb.startswith("gamble_bet_") for cb in all_callbacks)
+
+    def test_unaffordable_buttons_are_noop(self):
+        kb = gamble_keyboard(user_coins=5)
+        all_callbacks = [btn.callback_data for row in kb.inline_keyboard for btn in row]
+        assert all(cb == "zoo_noop" for cb in all_callbacks)
+
+    def test_mixed_affordability(self):
+        kb = gamble_keyboard(user_coins=15)
+        all_callbacks = [btn.callback_data for row in kb.inline_keyboard for btn in row]
+        assert any(cb.startswith("gamble_bet_") for cb in all_callbacks)
+        assert any(cb == "zoo_noop" for cb in all_callbacks)
