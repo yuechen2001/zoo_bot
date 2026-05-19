@@ -1,3 +1,4 @@
+import asyncio
 import random
 import uuid
 import datetime
@@ -27,13 +28,7 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     ctx.user_data.pop("pending_catch", None)
 
-    # Delete the previous catch message so the new one always appears at the bottom
     catch_chat_id, catch_message_id = db.get_catch_message(tg_id)
-    if catch_chat_id and catch_message_id:
-        try:
-            await ctx.bot.delete_message(chat_id=catch_chat_id, message_id=catch_message_id)
-        except Exception:
-            pass
 
     if has_lures:
         lure_text = "🎣 *Choose a lure!*\n_Habitat lures give 1.5× catch rate._"
@@ -44,6 +39,12 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     msg = await update.message.reply_text(lure_text, parse_mode="Markdown", reply_markup=lure_kb)
     db.set_catch_message(tg_id, update.effective_chat.id, msg.message_id)
+
+    # Delete the old message after the new one is visible so /catch feels instant
+    if catch_chat_id and catch_message_id:
+        asyncio.create_task(
+            ctx.bot.delete_message(chat_id=catch_chat_id, message_id=catch_message_id)
+        )
 
 
 async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
