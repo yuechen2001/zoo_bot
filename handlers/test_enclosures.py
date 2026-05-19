@@ -161,26 +161,47 @@ async def test_enclosures_command_unregistered_user():
 
 
 @pytest.mark.asyncio
-async def test_collect_nothing_pending():
-    from handlers.enclosures import enclosures_command
+async def test_collect_button_nothing_pending():
+    from handlers.enclosures import enclosure_collect_callback
 
-    update, ctx = _make_update_cmd(args=["collect"])
+    query = MagicMock()
+    query.from_user.id = 1
+    query.data = "enc_collect"
+    query.answer = AsyncMock()
+    update = MagicMock()
+    update.callback_query = query
+    ctx = MagicMock()
+
     with patch("handlers.enclosures.db.get_user", return_value=_make_user_row()), patch(
         "handlers.enclosures.db.collect_enclosure_coins", return_value=0
     ):
-        await enclosures_command(update, ctx)
-    reply = update.message.reply_text.call_args[0][0]
-    assert "nothing" in reply.lower() or "no" in reply.lower() or "builds" in reply.lower()
+        await enclosure_collect_callback(update, ctx)
+
+    query.answer.assert_called_once()
+    msg = query.answer.call_args[0][0]
+    assert "nothing" in msg.lower() or "builds" in msg.lower()
 
 
 @pytest.mark.asyncio
-async def test_collect_credits_pending_coins():
-    from handlers.enclosures import enclosures_command
+async def test_collect_button_credits_pending_coins():
+    from handlers.enclosures import enclosure_collect_callback
 
-    update, ctx = _make_update_cmd(args=["collect"])
-    with patch("handlers.enclosures.db.get_user", return_value=_make_user_row(coins=100)), patch(
+    query = MagicMock()
+    query.from_user.id = 1
+    query.data = "enc_collect"
+    query.answer = AsyncMock()
+    query.edit_message_text = AsyncMock()
+    update = MagicMock()
+    update.callback_query = query
+    ctx = MagicMock()
+
+    with patch("handlers.enclosures.db.get_user", return_value=_make_user_row(coins=142)), patch(
         "handlers.enclosures.db.collect_enclosure_coins", return_value=42
-    ), patch("handlers.enclosures.db.get_user", return_value=_make_user_row(coins=142)):
-        await enclosures_command(update, ctx)
-    reply = update.message.reply_text.call_args[0][0]
-    assert "42" in reply or "Collected" in reply
+    ), patch("handlers.enclosures.db.get_enclosures", return_value={}), patch(
+        "handlers.enclosures.db.get_animal_count_by_habitat", return_value=0
+    ):
+        await enclosure_collect_callback(update, ctx)
+
+    query.answer.assert_called_once()
+    msg = query.answer.call_args[0][0]
+    assert "42" in msg

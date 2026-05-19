@@ -168,8 +168,7 @@ _HELP_SECTIONS = {
         "/directory — browse all species & see which you own\n"
         "/achievements — view your milestones\n"
         "/footmassage — halve animal hunger decay for 1h (25 🪙, 4h cooldown)\n"
-        "/enclosures — view and upgrade your habitat enclosures\n"
-        "/enclosures collect — claim your pending enclosure income"
+        "/enclosures — view and upgrade your habitat enclosures (tap 💰 to collect income)"
     ),
     "breeding": (
         "🥚 *Zoo Bot — Breeding*\n\n"

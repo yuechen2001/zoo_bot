@@ -95,8 +95,7 @@ python main.py
 | `/sell <number>` | Sell an animal for coins |
 | `/gift <number> @user` | Give an animal to another player |
 | `/trade @user <yours> <theirs>` | Offer an animal swap |
-| `/enclosures` | View and upgrade your habitat enclosures |
-| `/enclosures collect` | Claim pending passive income |
+| `/enclosures` | View and upgrade your habitat enclosures — tap 💰 Collect income to claim passive income |
 | `/store` | Browse consumables and cosmetic titles |
 | `/inventory` | Your bag — use items and equip titles |
 | `/achievements` | View your achievements |
