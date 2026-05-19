@@ -103,8 +103,7 @@ python main.py
 | `/trivia` | Animal trivia — +40 correct, +5 wrong, 4h cooldown |
 | `/gamble <amount>` | Coin flip bet (max 200 🪙) |
 | `/slots` | Spin the slot machine (10 🪙 per spin) |
-| `/invest <amount>` | Invest coins (25% return after 24h) |
-| `/invest collect` | Claim your matured investment |
+| `/invest <amount>` | Invest coins (25% return after 24h) — tap *Collect now* when ready |
 | `/autofeed <threshold> <max_coins>` | Auto-feed animals below hunger threshold each tick (e.g. `/autofeed 50 100`) |
 | `/autofeed off` | Disable auto-feed |
 | `/directory` | Browse all species and see which you own |

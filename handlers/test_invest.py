@@ -82,47 +82,6 @@ async def test_invest_blocked_when_insufficient_coins():
 
 
 @pytest.mark.asyncio
-async def test_invest_collect_too_early():
-    update = _make_update()
-    ctx = _make_ctx(args=["collect"])
-    inv = {
-        "id": 1,
-        "amount": 100,
-        "return_amount": 125,
-        "invested_at": datetime.datetime.now(datetime.timezone.utc)
-        .replace(tzinfo=None)
-        .isoformat(),
-    }
-    with patch("handlers.invest.db.get_user", return_value=_make_user()), patch(
-        "handlers.invest.db.get_active_investment", return_value=inv
-    ):
-        await invest_command(update, ctx)
-    reply = update.message.reply_text.call_args[0][0]
-    assert "not ready" in reply.lower() or "come back" in reply.lower()
-
-
-@pytest.mark.asyncio
-async def test_invest_collect_success():
-    update = _make_update()
-    ctx = _make_ctx(args=["collect"])
-    past = (
-        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-        - datetime.timedelta(hours=25)
-    ).isoformat()
-    inv = {"id": 1, "amount": 100, "return_amount": 125, "invested_at": past}
-    with patch("handlers.invest.db.get_user", return_value=_make_user()), patch(
-        "handlers.invest.db.get_active_investment", return_value=inv
-    ), patch("handlers.invest.db.collect_investment") as mock_collect, patch(
-        "handlers.invest.db.get_conn", return_value=_make_conn_mock()
-    ):
-        await invest_command(update, ctx)
-    mock_collect.assert_called_once_with(1)
-    reply = update.message.reply_text.call_args[0][0]
-    assert "125" in reply
-    assert "25" in reply  # profit
-
-
-@pytest.mark.asyncio
 async def test_invest_unknown_arg_shows_status_card():
     """Unknown args now show the interactive status card."""
     update = _make_update()

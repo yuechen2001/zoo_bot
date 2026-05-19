@@ -194,8 +194,7 @@ _HELP_SECTIONS = {
         "/gamble <amount> — coin flip bet (max 100 🪙)\n"
         "/slots — spin the slot machine (10 🪙 per spin)\n"
         "/trade @user <yours> <theirs> — offer an animal swap\n"
-        "/invest <amount> — invest coins (25% return after 24h, shown in /zoo)\n"
-        "/invest collect — collect your matured investment\n\n"
+        "/invest <amount> — invest coins (25% return after 24h) — tap *Collect now* when ready\n\n"
         "💡 Mood prompts earn coins too — see the Mood tab."
     ),
     "more": (

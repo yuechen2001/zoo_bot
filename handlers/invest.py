@@ -61,9 +61,7 @@ async def invest_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     args = ctx.args or []
     subcommand = args[0].lower() if args else ""
 
-    if subcommand == "collect":
-        await _collect(update, tg_id, user)
-    elif subcommand.isdigit() or (len(args) == 1 and args[0].lstrip("-").isdigit()):
+    if subcommand.isdigit() or (len(args) == 1 and args[0].lstrip("-").isdigit()):
         await _invest(update, tg_id, user, args[0])
     else:
         inv = db.get_active_investment(tg_id)
@@ -107,34 +105,7 @@ async def _invest(update, tg_id, user, amount_str):
         f"📈 Invested *{amount}* 🪙!\n\n"
         f"Return: *{return_amount}* 🪙 (+{int(INVESTMENT_RETURN_RATE * 100)}%)\n"
         f"Ready in: *{INVESTMENT_HOURS}h*\n\n"
-        f"Use `/invest collect` when the time is up!",
-        parse_mode="Markdown",
-    )
-
-
-async def _collect(update, tg_id, user):
-    inv = db.get_active_investment(tg_id)
-    if not inv:
-        await update.message.reply_text(
-            "No active investment. Use `/invest <amount>` to start one.",
-            parse_mode="Markdown",
-        )
-        return
-
-    if not _is_ready(inv):
-        await update.message.reply_text(
-            f"⏳ Not ready yet! Come back in *{_countdown_str(inv)}*.", parse_mode="Markdown"
-        )
-        return
-
-    db.collect_investment(inv["id"])
-    db.add_coins(tg_id, inv["return_amount"])
-
-    profit = inv["return_amount"] - inv["amount"]
-    await update.message.reply_text(
-        f"💰 Investment collected!\n\n"
-        f"You received *{inv['return_amount']}* 🪙\n"
-        f"Profit: *+{profit}* 🪙",
+        f"Tap *Collect now* in /invest when the time is up!",
         parse_mode="Markdown",
     )
 
