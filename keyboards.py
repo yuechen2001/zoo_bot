@@ -1,6 +1,6 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from game.species_data import HABITATS
-from game.constants import MIN_INVEST
+from game.constants import MIN_INVEST, SPIN_COST, MAX_BET
 
 MOOD_EMOJIS = ["😢", "😐", "🙂", "😄", "🤩"]
 
@@ -88,7 +88,7 @@ def store_welcome_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
             [
-                InlineKeyboardButton("🧪 Items", callback_data="store_tab_consumables"),
+                InlineKeyboardButton("🧪 Items", callback_data="store_tab_items"),
                 InlineKeyboardButton("🎣 Lures", callback_data="store_tab_lures"),
                 InlineKeyboardButton("🎩 Titles", callback_data="store_tab_titles"),
             ]
@@ -294,6 +294,27 @@ def lure_keyboard(lure_counts: dict[str, int]) -> InlineKeyboardMarkup:
         )
     rows.append([InlineKeyboardButton("❌ Cancel", callback_data="catch_cancel")])
     return InlineKeyboardMarkup(rows)
+
+
+_GAMBLE_PRESETS = [10, 25, 50, 100]
+
+
+def slots_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [[InlineKeyboardButton(f"🎰 Spin ({SPIN_COST} 🪙)", callback_data="slots_spin")]]
+    )
+
+
+def gamble_keyboard(user_coins: int) -> InlineKeyboardMarkup:
+    btns = [
+        InlineKeyboardButton(
+            f"{amt} 🪙" if user_coins >= amt else f"💸 {amt}",
+            callback_data=f"gamble_bet_{amt}" if user_coins >= amt else "zoo_noop",
+        )
+        for amt in _GAMBLE_PRESETS
+        if amt <= MAX_BET
+    ]
+    return InlineKeyboardMarkup([btns[:2], btns[2:]])
 
 
 def trade_keyboard(trade_id: int, recipient_id: int):

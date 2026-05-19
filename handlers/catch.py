@@ -87,6 +87,8 @@ async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     rarity = roll_encounter()
     if user["catch_net_active"]:
         rarity = "legendary"
+    elif habitat == "mythic":
+        rarity = "legendary"
     elif user["rare_magnet_active"] and rarity == "common":
         rare_candidates = db.get_species_candidates("rare", None if is_basic else habitat)
         if rare_candidates:
@@ -213,7 +215,7 @@ async def catch_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await query.answer("Caught!")
         await query.edit_message_text(
             f"🎉 You caught the {pending['emoji']} *{pending['name']}*!\n\n"
-            f"Use `/name <number> <name>` to give it a nickname.",
+            f"Use /name to give it a nickname.",
             parse_mode="Markdown",
         )
         await check_achievements(tg_id, "catch", ctx)

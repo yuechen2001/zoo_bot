@@ -160,7 +160,7 @@ _HELP_SECTIONS = {
         "/zoo — view your zoo (one habitat per page, tap ◀ ▶ to browse)\n"
         "/catch — search for a wild animal (requires a lure from /store)\n"
         "/feed <numbers> — feed animal(s) (cost varies by rarity)\n"
-        "/name <number> <name> — nickname an animal\n"
+        "/name — nickname an animal\n"
         "/sell <number> — sell an animal for coins\n"
         "/gift <number> @user — give an animal to another player\n"
         "/autofeed <threshold> <max\\_coins> — auto-feed below hunger level each tick\n"
