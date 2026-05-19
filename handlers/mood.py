@@ -157,8 +157,8 @@ _HELP_SECTIONS = {
     "zoo": (
         "🦁 *Zoo Bot — Your Zoo*\n\n"
         "/start — join and get your starter animal\n"
-        "/zoo — view your zoo (one habitat per page, tap ◀ ▶ to browse)\n"
-        "/catch — search for a wild animal (requires a lure from /store)\n"
+        "/zoo — view your zoo (tap a habitat button to jump to it)\n"
+        "/catch — search for a wild animal (free to catch; habitat lures from /store give 1.5× bonus)\n"
         "/feed <numbers> — feed animal(s) (cost varies by rarity)\n"
         "/name — nickname an animal\n"
         "/sell <number> — sell an animal for coins\n"
@@ -185,13 +185,13 @@ _HELP_SECTIONS = {
         "/inventory — view your bag and owned titles\n"
         "/inventory use <item> — activate an item\n"
         "/inventory equip <title> — set your zoo title\n\n"
-        "💡 Each habitat has its own lure — habitat lures give 1.5× catch rate."
+        "💡 Habitat lures are optional — use one during /catch for 1.5× catch rate and habitat filter."
     ),
     "coins": (
         "🪙 *Zoo Bot — Earning Coins*\n\n"
         "/daily — claim daily coins (50→75→100→150 on consecutive days)\n"
         "/trivia — animal trivia (+40 correct, +5 wrong, 4h cooldown)\n"
-        "/gamble <amount> — coin flip bet (max 100 🪙)\n"
+        "/gamble <amount> — coin flip bet (max 200 🪙)\n"
         "/slots — spin the slot machine (10 🪙 per spin)\n"
         "/trade @user <yours> <theirs> — offer an animal swap\n"
         "/invest <amount> — invest coins (25% return after 24h) — tap *Collect now* when ready\n\n"
