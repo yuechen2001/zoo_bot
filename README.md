@@ -22,7 +22,7 @@ A Telegram bot for couples. Build your own virtual zoo by catching and breeding 
 - **Trading** — swap animals with your partner
 - **Investments** — park coins for a 25% return after 24h
 - **Auto-feed** — set a hunger threshold and coin cap; the bot feeds your animals automatically each tick
-- **Animal directory** — browse all 40 species and track which you've discovered
+- **Animal directory** — browse all 58 species and track which you've discovered
 - **Admin commands** — debug tools for the bot owner
 
 ---
@@ -136,7 +136,7 @@ If everyone in the group calls `/moodstop`, prompts stop for the group entirely 
 
 ## Animals
 
-40 species across 4 rarities:
+58 species across 4 rarities:
 
 | Rarity | Encounter | Catch rate | Catch cost |
 |---|---|---|---|
@@ -192,12 +192,12 @@ Every player starts with a level-1 enclosure in all 6 habitats. Upgrade with `/e
 
 | Habitat | Animals |
 |---|---|
-| 🌲 Woodland | Mouse, Snail, Bunny, Fox, Owl, Deer, Hedgehog, Raccoon, Bear, Ladybug |
-| 🌾 Savanna | Hamster, Sheep, Chicken, Pig, Cat, Dog, Lion, Giraffe, Elephant |
-| 🌴 Tropical | Frog, Parrot, Panda, Koala, Tiger, Gorilla, Peacock |
-| 🐠 Aquatic | Duck, Fish, Hippo, Crocodile, Flamingo, Whale, Shark |
-| ❄️ Tundra | Penguin, Wolf, Eagle, Mammoth |
-| ✨ Mythic | Unicorn, Dragon, T-Rex |
+| 🌲 Woodland | Mouse, Snail, Squirrel, Ladybug, Bunny, Fox, Owl, Deer, Hedgehog, Raccoon, Badger, Bear |
+| 🌾 Savanna | Hamster, Sheep, Chicken, Pig, Cat, Dog, Zebra, Lion, Rhino, Giraffe, Elephant |
+| 🌴 Tropical | Frog, Turtle, Lizard, Parrot, Snake, Butterfly, Panda, Koala, Tiger, Gorilla, Peacock |
+| 🐠 Aquatic | Duck, Fish, Crab, Pufferfish, Dolphin, Octopus, Squid, Hippo, Crocodile, Flamingo, Whale, Shark |
+| ❄️ Tundra | Polar Bear, Arctic Hare, Penguin, Seal, Musk Ox, Wolf, Snow Leopard, Eagle, Mammoth |
+| ✨ Mythic | Phoenix, Unicorn, Dragon, T-Rex |
 
 | Level | Capacity | Coins/hr per animal | Breed bonus | Upgrade cost |
 |---|---|---|---|---|
@@ -241,15 +241,31 @@ Offspring inherits one parent's rarity, with a **10% chance** of bumping up one 
 | 💫 Dedicated | 10-window streak |
 | ⚡ Unstoppable | 25-window streak |
 | 👑 Legendary Checker | 50-window streak |
+| 💫 Centurion | 100-window streak |
 | 🎯 First Catch | Catch your first animal |
 | 🦁 Zoo Opening | Own 5 animals |
 | 🌟 Zoo Master | Own 10 animals |
+| 🐘 Full House | Own 20 animals |
+| 🏟 Mega Zoo | Own 30 animals |
 | 🟦 Rare Find | Catch a rare |
 | 🟪 Epic Discovery | Catch an epic |
 | 🟨 Legend Hunter | Catch a legendary |
+| ✨ Mythic Tamer | Catch a mythic animal |
+| 🗺️ Explorer | Own an animal from every habitat |
+| 📚 Variety Pack | Own 10 different species |
+| 📖 Naturalist | Own 20 different species |
 | 🥚 Parent | Collect your first offspring |
 | 🐣 Breeder | Collect 5 offspring |
-| ✨ Legendary Lineage | Breed a legendary |
+| 🐥 Prolific | Collect 10 offspring |
+| 🧬 Master Breeder | Collect 20 offspring |
+| 💜 Epic Lineage | Breed an epic offspring |
+| ✨ Legendary Lineage | Breed a legendary offspring |
+| 🎭 Mood Master | 50 mood check-ins |
+| 🎭 Mood Legend | 100 mood check-ins |
+| 💰 Coin Hoarder | Accumulate 500 coins |
+| 💎 Wealthy | Accumulate 1,000 coins |
+| 🏦 Tycoon | Accumulate 5,000 coins |
+| 🏦 Millionaire | Accumulate 10,000 coins |
 
 ---
 
