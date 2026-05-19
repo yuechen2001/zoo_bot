@@ -426,7 +426,7 @@ SPECIES = [
     # ── Tundra additions ───────────────────────────────────────────────────────
     {
         "name": "Polar Bear",
-        "emoji": "🐻❄️",
+        "emoji": "🐻‍❄️",
         "rarity": "common",
         "habitat": "tundra",
         "catch_rate": 0.90,
