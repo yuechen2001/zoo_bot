@@ -40,7 +40,12 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = await update.message.reply_text(lure_text, parse_mode="Markdown", reply_markup=lure_kb)
     db.set_catch_message(tg_id, update.effective_chat.id, msg.message_id)
 
-    # Delete the old message after the new one is visible so /catch feels instant
+    try:
+        await update.message.delete()
+    except Exception:
+        pass
+
+    # Delete the old bot message after the new one is visible so /catch feels instant
     if catch_chat_id and catch_message_id:
         asyncio.create_task(
             ctx.bot.delete_message(chat_id=catch_chat_id, message_id=catch_message_id)
