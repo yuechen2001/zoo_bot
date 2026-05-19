@@ -61,56 +61,69 @@ _HABITATS_3 = ["woodland", "aquatic", "savanna"]
 
 
 class TestZooPageKeyboard:
-    def test_first_page_no_prev_has_next(self):
+    def test_active_habitat_is_noop(self):
         kb = zoo_page_keyboard(1, 0, _HABITATS_3)
-        texts = [btn.callback_data for btn in kb.inline_keyboard[0]]
-        assert not any(t.endswith("_-1") or "zoo_page" not in t and "◀" in t for t in texts)
-        assert any("zoo_page_1_1" == t for t in texts)
-        assert not any(f"zoo_page_1_{-1}" in t for t in texts)
+        all_btns = [btn for row in kb.inline_keyboard for btn in row]
+        assert all_btns[0].callback_data == "zoo_noop"
+        assert "▸" in all_btns[0].text
 
-    def test_first_page_has_no_prev_button(self):
+    def test_inactive_habitats_have_callbacks(self):
         kb = zoo_page_keyboard(1, 0, _HABITATS_3)
-        callbacks = [btn.callback_data for btn in kb.inline_keyboard[0]]
-        assert "zoo_page_1_-1" not in callbacks
-        assert not any(cb == "zoo_page_1_-1" for cb in callbacks)
-        assert all("_-1" not in cb for cb in callbacks)
+        all_callbacks = [btn.callback_data for row in kb.inline_keyboard for btn in row]
+        assert "zoo_page_1_1" in all_callbacks
+        assert "zoo_page_1_2" in all_callbacks
 
-    def test_first_page_has_next_button(self):
+    def test_no_out_of_range_callback(self):
         kb = zoo_page_keyboard(1, 0, _HABITATS_3)
-        callbacks = [btn.callback_data for btn in kb.inline_keyboard[0]]
-        assert "zoo_page_1_1" in callbacks
+        all_callbacks = [btn.callback_data for row in kb.inline_keyboard for btn in row]
+        assert all("_-1" not in cb for cb in all_callbacks)
+        assert "zoo_page_1_3" not in all_callbacks
 
-    def test_last_page_has_prev_no_next(self):
-        kb = zoo_page_keyboard(1, 2, _HABITATS_3)
-        callbacks = [btn.callback_data for btn in kb.inline_keyboard[0]]
-        assert "zoo_page_1_1" in callbacks
-        assert "zoo_page_1_3" not in callbacks
+    def test_buttons_in_rows_of_three(self):
+        kb = zoo_page_keyboard(1, 0, _HABITATS_3)
+        assert len(kb.inline_keyboard) == 1
+        assert len(kb.inline_keyboard[0]) == 3
 
-    def test_middle_page_has_both(self):
+    def test_five_habitats_wraps_to_two_rows(self):
+        five = ["woodland", "savanna", "tropical", "aquatic", "tundra"]
+        kb = zoo_page_keyboard(1, 0, five)
+        assert len(kb.inline_keyboard) == 2
+        assert len(kb.inline_keyboard[0]) == 3
+        assert len(kb.inline_keyboard[1]) == 2
+
+    def test_middle_page_active_others_clickable(self):
         kb = zoo_page_keyboard(1, 1, _HABITATS_3)
-        callbacks = [btn.callback_data for btn in kb.inline_keyboard[0]]
-        assert "zoo_page_1_0" in callbacks
-        assert "zoo_page_1_2" in callbacks
+        all_btns = [btn for row in kb.inline_keyboard for btn in row]
+        assert all_btns[1].callback_data == "zoo_noop"
+        assert all_btns[0].callback_data == "zoo_page_1_0"
+        assert all_btns[2].callback_data == "zoo_page_1_2"
 
 
 class TestDirectoryPageKeyboard:
-    def test_first_page_has_next_no_prev(self):
+    def test_active_habitat_is_noop(self):
         kb = directory_page_keyboard(1, 0, _HABITATS_3)
-        callbacks = [btn.callback_data for btn in kb.inline_keyboard[0]]
-        assert "dir_page_1_1" in callbacks
-        assert all("_-1" not in cb for cb in callbacks)
+        all_btns = [btn for row in kb.inline_keyboard for btn in row]
+        assert all_btns[0].callback_data == "zoo_noop"
+        assert "▸" in all_btns[0].text
 
-    def test_last_page_has_prev_no_next(self):
+    def test_inactive_habitats_have_callbacks(self):
+        kb = directory_page_keyboard(1, 0, _HABITATS_3)
+        all_callbacks = [btn.callback_data for row in kb.inline_keyboard for btn in row]
+        assert "dir_page_1_1" in all_callbacks
+        assert "dir_page_1_2" in all_callbacks
+
+    def test_no_out_of_range_callback(self):
         kb = directory_page_keyboard(1, 2, _HABITATS_3)
-        callbacks = [btn.callback_data for btn in kb.inline_keyboard[0]]
-        assert "dir_page_1_1" in callbacks
-        assert "dir_page_1_3" not in callbacks
+        all_callbacks = [btn.callback_data for row in kb.inline_keyboard for btn in row]
+        assert all("_-1" not in cb for cb in all_callbacks)
+        assert "dir_page_1_3" not in all_callbacks
 
-    def test_middle_page_has_both(self):
+    def test_middle_page_active_others_clickable(self):
         kb = directory_page_keyboard(1, 1, _HABITATS_3)
-        callbacks = [btn.callback_data for btn in kb.inline_keyboard[0]]
-        assert "dir_page_1_0" in callbacks
-        assert "dir_page_1_2" in callbacks
+        all_btns = [btn for row in kb.inline_keyboard for btn in row]
+        assert all_btns[1].callback_data == "zoo_noop"
+        assert all_btns[0].callback_data == "dir_page_1_0"
+        assert all_btns[2].callback_data == "dir_page_1_2"
 
 
 class TestStoreTabKeyboard:
