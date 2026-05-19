@@ -8,8 +8,8 @@ A Telegram bot for couples. Build your own virtual zoo by catching and breeding 
 
 - **Mood check-ins** — bot prompts every 30 min, earn coins for responding
 - **Streak multiplier** — longer streaks = more coins per check-in (up to 3×)
-- **Catch system** — buy a lure from /store, use /catch to pick it and encounter an animal; pay coins to attempt the catch
-- **Lures** — Basic Lure (any habitat, no bonus) or habitat-specific lures (1.5× catch rate, pre-checks enclosure capacity)
+- **Catch system** — use /catch to encounter a random animal; pay coins to attempt the catch
+- **Lures** — optional habitat-specific powerups (1.5× catch rate, filters by habitat); select one during /catch or catch for free without one
 - **Habitat enclosures** — 6 typed enclosures (Woodland, Savanna, Tropical, Aquatic, Tundra, Mythic); upgrade for higher capacity, passive income, and breeding bonuses
 - **Breeding** — pair two animals and wait for an offspring; same-habitat pairs get a time reduction
 - **Hunger** — animals decay over time, feed them before they run away
@@ -102,7 +102,7 @@ python main.py
 | `/achievements` | View your achievements |
 | `/daily` | Claim daily coins (50→75→100→150 on consecutive days) |
 | `/trivia` | Animal trivia — +40 correct, +5 wrong, 4h cooldown |
-| `/gamble <amount>` | Coin flip bet (max 100 🪙) |
+| `/gamble <amount>` | Coin flip bet (max 200 🪙) |
 | `/slots` | Spin the slot machine (10 🪙 per spin) |
 | `/invest <amount>` | Invest coins (25% return after 24h) |
 | `/invest collect` | Claim your matured investment |
@@ -140,12 +140,12 @@ If everyone in the group calls `/moodstop`, prompts stop for the group entirely 
 
 | Rarity | Encounter | Catch rate | Catch cost |
 |---|---|---|---|
-| Common ⬜ | 60% | 90% | 20 🪙 |
+| Common ⬜ | 57% | 90% | 20 🪙 |
 | Rare 🟦 | 25% | 60% | 60 🪙 |
-| Epic 🟪 | 12% | 35% | 80 🪙 |
-| Legendary 🟨 | 3% | 10% | 200 🪙 |
+| Epic 🟪 | 14% | 35% | 80 🪙 |
+| Legendary 🟨 | 4% | 10% | 200 🪙 |
 
-Catch rate is multiplied by 1.5× when using a habitat-specific lure. A lure is always consumed on use — if no species are found, it is refunded.
+Catch rate is multiplied by 1.5× when using a habitat-specific lure. Lures are always consumed on use — even if no species are found.
 
 ---
 
@@ -153,17 +153,16 @@ Catch rate is multiplied by 1.5× when using a habitat-specific lure. A lure is 
 
 Use `/store` to browse and buy items. Use `/inventory` to activate consumables and equip titles — no need to remember item keys.
 
-**Lures** (required for `/catch`):
+**Lures** (optional — select during `/catch` for a habitat bonus):
 
 | Item | Price | Effect |
 |---|---|---|
-| 🎣 Basic Lure | 10 🪙 | Any habitat, base catch rate |
-| 🌲 Woodland Lure | 80 🪙 | Woodland habitat, 1.5× catch rate |
-| 🌾 Savanna Lure | 80 🪙 | Savanna habitat, 1.5× catch rate |
-| 🌴 Tropical Lure | 80 🪙 | Tropical habitat, 1.5× catch rate |
-| 🐠 Aquatic Lure | 80 🪙 | Aquatic habitat, 1.5× catch rate |
-| ❄️ Tundra Lure | 80 🪙 | Tundra habitat, 1.5× catch rate |
-| 🌟 Mythic Lure | 200 🪙 | Mythic habitat, 1.5× catch rate |
+| 🌲 Woodland Lure | 60 🪙 | Woodland habitat, 1.5× catch rate |
+| 🌾 Savanna Lure | 60 🪙 | Savanna habitat, 1.5× catch rate |
+| 🌴 Tropical Lure | 60 🪙 | Tropical habitat, 1.5× catch rate |
+| 🐠 Aquatic Lure | 60 🪙 | Aquatic habitat, 1.5× catch rate |
+| ❄️ Tundra Lure | 60 🪙 | Tundra habitat, 1.5× catch rate |
+| 🌟 Mythic Lure | 150 🪙 | Mythic habitat, 1.5× catch rate |
 
 **Consumables** (sit in your bag until used):
 
@@ -172,9 +171,10 @@ Use `/store` to browse and buy items. Use `/inventory` to activate consumables a
 | 🍖 Mega Feed | 30 🪙 | Restore one animal's hunger to 100 |
 | ⚡ Breed Boost | 80 🪙 | Cut active breed time by 2h |
 | 🚀 Breed Accelerator | 100 🪙 | Halve remaining breed time |
-| 🎯 Lucky Token | 50 🪙 | 2× catch rate on next /catch |
+| 🎯 Lucky Token | 80 🪙 | 2× catch rate on next /catch |
 | ✨ Mood Booster | 60 🪙 | Double coins on next mood check-in |
-| 🪤 Catch Net | 800 🪙 | Guarantee a legendary encounter and successful catch |
+| 🪤 Catch Net | 600 🪙 | Guarantee a legendary encounter and successful catch |
+| 🧲 Rare Magnet | 100 🪙 | Guarantee a rare-or-higher encounter on next /catch |
 
 **Cosmetic titles** (shown in `/zoo`):
 
