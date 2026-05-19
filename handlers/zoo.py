@@ -8,6 +8,7 @@ from game.species_data import HABITATS, ENCLOSURE_LEVELS, RARITY_SQUARE
 from game.constants import POWERUP_LABELS
 from keyboards import zoo_page_keyboard
 from config import INVESTMENT_HOURS
+from utils import replace_command_ui
 
 
 def _time_remaining(ready_at_str: str) -> str:
@@ -211,7 +212,8 @@ async def zoo_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         active_powerups=user,
     )
     kb = zoo_page_keyboard(tg_id, 0, inhabited) if inhabited else None
-    await update.message.reply_text(text, parse_mode="Markdown", reply_markup=kb)
+    msg = await update.message.reply_text(text, parse_mode="Markdown", reply_markup=kb)
+    await replace_command_ui(ctx, "zoo_ui", update, msg)
 
 
 async def zoo_page_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

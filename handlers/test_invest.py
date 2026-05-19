@@ -14,6 +14,7 @@ def _make_update(user_id=1):
 def _make_ctx(args=None):
     ctx = MagicMock()
     ctx.args = args or []
+    ctx.user_data = {}
     return ctx
 
 

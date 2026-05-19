@@ -363,7 +363,7 @@ async def test_zoo_command_empty_zoo_sends_no_keyboard():
     ), patch("handlers.zoo.db.get_active_investment", return_value=None), patch(
         "handlers.zoo.db.get_active_breed", return_value=None
     ):
-        await zoo_command(update, MagicMock())
+        await zoo_command(update, MagicMock(user_data={}))
     call_kwargs = update.message.reply_text.call_args[1]
     assert call_kwargs.get("reply_markup") is None
 

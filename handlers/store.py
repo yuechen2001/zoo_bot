@@ -4,6 +4,7 @@ import db
 from game.achievements import triggers
 from game.store_data import STORE_ITEMS, ITEMS, LURES, COSMETICS
 from keyboards import store_tab_keyboard, store_welcome_keyboard
+from utils import replace_command_ui
 
 _ACTIVE_FLAGS = {
     "lucky_token": "lucky_catch_active",
@@ -100,11 +101,12 @@ async def store_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     args = ctx.args or []
     if not args or args[0].lower() != "buy":
-        await update.message.reply_text(
+        msg = await update.message.reply_text(
             "🏪 <b>Welcome to the Zoo Store!</b>\n\n" "What are you looking for?",
             parse_mode="HTML",
             reply_markup=store_welcome_keyboard(),
         )
+        await replace_command_ui(ctx, "store_ui", update, msg)
         return
 
     if len(args) < 2:

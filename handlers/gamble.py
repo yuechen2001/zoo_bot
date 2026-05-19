@@ -4,6 +4,7 @@ from telegram.ext import ContextTypes
 import db
 from game.constants import MAX_BET
 from keyboards import gamble_keyboard
+from utils import replace_command_ui
 
 
 async def gamble_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -13,11 +14,12 @@ async def gamble_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Use /start first!")
         return
 
-    await update.message.reply_text(
+    msg = await update.message.reply_text(
         f"🪙 *Coin Flip*\n\nPick your bet — 50% chance to double it.\nMax bet: {MAX_BET} 🪙",
         parse_mode="Markdown",
         reply_markup=gamble_keyboard(user["coins"]),
     )
+    await replace_command_ui(ctx, "gamble_ui", update, msg)
 
 
 async def gamble_bet_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

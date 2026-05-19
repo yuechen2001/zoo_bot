@@ -4,6 +4,7 @@ from telegram.ext import ContextTypes
 import db
 from game.constants import SPIN_COST, WIN_3, WIN_2, SYMBOLS
 from keyboards import slots_keyboard
+from utils import replace_command_ui
 
 
 async def slots_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -17,13 +18,14 @@ async def slots_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"Not enough coins! A spin costs {SPIN_COST} 🪙.")
         return
 
-    await update.message.reply_text(
+    msg = await update.message.reply_text(
         f"🎰 *Slot Machine*\n\n"
         f"Each spin costs {SPIN_COST} 🪙.\n"
         f"3 of a kind: +{WIN_3} 🪙  |  2 of a kind: +{WIN_2} 🪙",
         parse_mode="Markdown",
         reply_markup=slots_keyboard(),
     )
+    await replace_command_ui(ctx, "slots_ui", update, msg)
 
 
 def _spin_result(reels: list) -> tuple[int, str]:

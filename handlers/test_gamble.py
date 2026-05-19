@@ -35,8 +35,9 @@ async def test_gamble_rejects_unknown_user():
 @pytest.mark.asyncio
 async def test_gamble_command_shows_bet_buttons():
     update, user = _make_command_update(coins=200)
+    ctx = MagicMock(user_data={})
     with patch("handlers.gamble.db.get_user", return_value=user):
-        await gamble_command(update, MagicMock())
+        await gamble_command(update, ctx)
     kwargs = update.message.reply_text.call_args[1]
     kb = kwargs["reply_markup"]
     all_data = [btn.callback_data for row in kb.inline_keyboard for btn in row]
@@ -46,8 +47,9 @@ async def test_gamble_command_shows_bet_buttons():
 @pytest.mark.asyncio
 async def test_gamble_command_disables_unaffordable_buttons():
     update, _ = _make_command_update(coins=15)
+    ctx = MagicMock(user_data={})
     with patch("handlers.gamble.db.get_user", return_value={"coins": 15}):
-        await gamble_command(update, MagicMock())
+        await gamble_command(update, ctx)
     kwargs = update.message.reply_text.call_args[1]
     kb = kwargs["reply_markup"]
     noop_count = sum(

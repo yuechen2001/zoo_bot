@@ -366,7 +366,7 @@ async def test_help_footmassage_in_zoo_section():
     assert "/footmassage" not in _HELP_SECTIONS["more"]
     # help_command sends the zoo tab first
     update = _make_cmd_update()
-    await help_command(update, MagicMock())
+    await help_command(update, MagicMock(user_data={}))
     text = update.message.reply_text.call_args[0][0]
     assert "/footmassage" in text
 

@@ -4,6 +4,7 @@ from telegram.ext import ContextTypes
 import db
 from game.constants import BREED_BOOST_HOURS
 from game.store_data import ITEMS, LURES, COSMETICS
+from utils import replace_command_ui
 
 _NO_ARG_USABLE = {
     "lucky_token",
@@ -91,7 +92,8 @@ async def inventory_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     args = ctx.args or []
     if not args:
         text, kb = _render(tg_id, user)
-        await update.message.reply_text(text, parse_mode="Markdown", reply_markup=kb)
+        msg = await update.message.reply_text(text, parse_mode="Markdown", reply_markup=kb)
+        await replace_command_ui(ctx, "inventory_ui", update, msg)
         return
 
     sub = args[0].lower()

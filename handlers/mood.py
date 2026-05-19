@@ -6,6 +6,7 @@ import db
 from game.mood_engine import calc_coins, EMOJI_LABELS
 from config import CHECKIN_WINDOW_MINUTES, ADMIN_IDS
 from game.achievements import triggers
+from utils import replace_command_ui
 
 
 async def moodstart_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -213,11 +214,12 @@ _HELP_SECTIONS = {
 async def help_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     from keyboards import help_keyboard
 
-    await update.message.reply_text(
+    msg = await update.message.reply_text(
         _HELP_SECTIONS["zoo"],
         parse_mode="Markdown",
         reply_markup=help_keyboard("zoo"),
     )
+    await replace_command_ui(ctx, "help_ui", update, msg)
 
 
 async def help_tab_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

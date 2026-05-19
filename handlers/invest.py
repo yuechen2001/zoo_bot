@@ -5,6 +5,7 @@ import db
 from config import INVESTMENT_HOURS, INVESTMENT_RETURN_RATE
 from game.constants import MIN_INVEST
 from keyboards import invest_keyboard
+from utils import replace_command_ui
 
 
 def _now():
@@ -67,11 +68,12 @@ async def invest_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         inv = db.get_active_investment(tg_id)
         ready = _is_ready(inv) if inv else False
         kb = invest_keyboard(user["coins"], inv is not None, ready)
-        await update.message.reply_text(
+        msg = await update.message.reply_text(
             _status_text(user, inv),
             reply_markup=kb,
             parse_mode="Markdown",
         )
+        await replace_command_ui(ctx, "invest_ui", update, msg)
 
 
 async def _invest(update, tg_id, user, amount_str):

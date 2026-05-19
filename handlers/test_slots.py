@@ -90,7 +90,7 @@ async def test_slots_command_shows_spin_button():
     update.message.reply_text = AsyncMock()
 
     with patch("handlers.slots.db.get_user", return_value={"coins": 100}):
-        await slots_command(update, MagicMock())
+        await slots_command(update, MagicMock(user_data={}))
 
     kwargs = update.message.reply_text.call_args[1]
     kb = kwargs["reply_markup"]
