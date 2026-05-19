@@ -34,7 +34,7 @@ from .invest import (
     invest_collect_callback,
 )
 from .sell import sell_command, sell_pick_callback, sell_yes_callback, sell_cancel_callback
-from .enclosures import enclosures_command, enclosure_upgrade_callback
+from .enclosures import enclosures_command, enclosure_upgrade_callback, enclosure_collect_callback
 from .directory import directory_command, directory_page_callback
 from .inventory import inventory_command, inventory_callback
 
@@ -83,6 +83,7 @@ __all__ = [
     "sell_cancel_callback",
     "enclosures_command",
     "enclosure_upgrade_callback",
+    "enclosure_collect_callback",
     "directory_command",
     "directory_page_callback",
     "achievements_tab_callback",
