@@ -721,6 +721,22 @@ def set_rare_magnet(user_id: int, active: bool):
         )
 
 
+def set_streak_shield(user_id: int, active: bool):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET streak_shield_active = ? WHERE user_id = ?",
+            (1 if active else 0, user_id),
+        )
+
+
+def set_epic_magnet(user_id: int, active: bool):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET epic_magnet_active = ? WHERE user_id = ?",
+            (1 if active else 0, user_id),
+        )
+
+
 def get_item_counts(user_id: int) -> dict[str, int]:
     with get_conn() as conn:
         rows = conn.execute(

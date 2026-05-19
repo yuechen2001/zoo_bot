@@ -96,6 +96,11 @@ async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         rarity = "legendary"
     elif habitat == "mythic":
         rarity = "legendary"
+    elif user["epic_magnet_active"] and rarity in ("common", "rare"):
+        epic_candidates = db.get_species_candidates("epic", None if is_unfiltered else habitat)
+        if epic_candidates:
+            rarity = "epic"
+        db.set_epic_magnet(tg_id, False)
     elif user["rare_magnet_active"] and rarity == "common":
         rare_candidates = db.get_species_candidates("rare", None if is_unfiltered else habitat)
         if rare_candidates:

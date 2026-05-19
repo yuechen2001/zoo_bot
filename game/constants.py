@@ -50,4 +50,6 @@ POWERUP_LABELS = [
     ("mood_booster_active", "✨ Mood Boost"),
     ("catch_net_active", "🪤 Catch Net"),
     ("rare_magnet_active", "🧲 Rare Magnet"),
+    ("epic_magnet_active", "💜 Epic Magnet"),
+    ("streak_shield_active", "🛡️ Streak Shield"),
 ]

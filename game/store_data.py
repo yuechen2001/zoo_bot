@@ -42,6 +42,27 @@ STORE_ITEMS: dict[str, dict] = {
         "category": "item",
         "desc": "Guarantee a rare-or-higher encounter on your next /catch — activate from /inventory",
     },
+    "epic_magnet": {
+        "name": "Epic Magnet",
+        "emoji": "💜",
+        "price": 300,
+        "category": "item",
+        "desc": "Guarantee an epic-or-higher encounter on your next /catch — activate from /inventory",
+    },
+    "streak_shield": {
+        "name": "Streak Shield",
+        "emoji": "🛡️",
+        "price": 150,
+        "category": "item",
+        "desc": "Absorb one streak-breaking miss — shield consumed instead of resetting streak — activate from /inventory",
+    },
+    "breed_accelerator": {
+        "name": "Breed Accelerator",
+        "emoji": "🚀",
+        "price": 100,
+        "category": "item",
+        "desc": "Halve remaining breed time on your active breed — activate from /inventory",
+    },
     # ── Lures ─────────────────────────────────────────────────────────────────
     "lure_woodland": {
         "name": "Woodland Lure",

@@ -108,8 +108,20 @@ async def _send_mood_prompts(ctx):
             if last_prompt and not responded:
                 new_misses = (user["consecutive_misses"] or 0) + 1
                 if new_misses >= 2:
-                    db.reset_user_streak(tg_id)
-                    reset_names.append(user["username"] or f"user {tg_id}")
+                    if user["streak_shield_active"]:
+                        db.set_streak_shield(tg_id, False)
+                        db.set_consecutive_misses(tg_id, 0)
+                        try:
+                            await ctx.bot.send_message(
+                                group_chat_id,
+                                f"🛡️ *{user['username'] or 'Someone'}*'s Streak Shield absorbed the miss — streak preserved!",
+                                parse_mode="Markdown",
+                            )
+                        except Exception:
+                            pass
+                    else:
+                        db.reset_user_streak(tg_id)
+                        reset_names.append(user["username"] or f"user {tg_id}")
                 else:
                     db.set_consecutive_misses(tg_id, new_misses)
 

@@ -149,6 +149,8 @@ def _render_with_powerups(**flags):
         "mood_booster_active": 0,
         "catch_net_active": 0,
         "rare_magnet_active": 0,
+        "epic_magnet_active": 0,
+        "streak_shield_active": 0,
         **flags,
     }
     with _zoo_patches():
@@ -334,6 +336,8 @@ def _make_user(**kw):
         mood_booster_active=0,
         catch_net_active=0,
         rare_magnet_active=0,
+        epic_magnet_active=0,
+        streak_shield_active=0,
     )
     return make_row(**{**defaults, **kw})
 

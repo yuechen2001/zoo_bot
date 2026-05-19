@@ -24,7 +24,12 @@ def _ago(minutes: float) -> str:
 
 
 def _mock_user(
-    tg_id=1, group_chat_id=-100, last_prompt=None, consecutive_misses=0, username="alice"
+    tg_id=1,
+    group_chat_id=-100,
+    last_prompt=None,
+    consecutive_misses=0,
+    username="alice",
+    streak_shield_active=0,
 ):
     return make_row(
         user_id=tg_id,
@@ -32,6 +37,7 @@ def _mock_user(
         last_prompt_at=last_prompt,
         consecutive_misses=consecutive_misses,
         username=username,
+        streak_shield_active=streak_shield_active,
     )
 
 

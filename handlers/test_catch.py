@@ -102,7 +102,12 @@ async def test_catch_lure_callback_blocks_when_lure_not_in_inventory():
 
     with patch(
         "handlers.catch.db.get_user",
-        return_value={"coins": 200, "catch_net_active": 0, "rare_magnet_active": 0},
+        return_value={
+            "coins": 200,
+            "catch_net_active": 0,
+            "rare_magnet_active": 0,
+            "epic_magnet_active": 0,
+        },
     ), patch("handlers.catch.db.get_oldest_purchase", return_value=None):
         await catch_lure_callback(update, ctx)
 
@@ -142,7 +147,12 @@ async def test_catch_lure_callback_generates_encounter_and_stores_pending():
 
     with patch(
         "handlers.catch.db.get_user",
-        return_value={"coins": 200, "catch_net_active": 0, "rare_magnet_active": 0},
+        return_value={
+            "coins": 200,
+            "catch_net_active": 0,
+            "rare_magnet_active": 0,
+            "epic_magnet_active": 0,
+        },
     ), patch("handlers.catch.db.get_oldest_purchase", return_value=lure_purchase), patch(
         "handlers.catch.db.consume_purchase"
     ), patch(
@@ -182,7 +192,12 @@ async def test_catch_lure_callback_exhausts_lure_when_no_species_found():
 
     with patch(
         "handlers.catch.db.get_user",
-        return_value={"coins": 200, "catch_net_active": 0, "rare_magnet_active": 0},
+        return_value={
+            "coins": 200,
+            "catch_net_active": 0,
+            "rare_magnet_active": 0,
+            "epic_magnet_active": 0,
+        },
     ), patch("handlers.catch.db.get_oldest_purchase", return_value=lure_purchase), patch(
         "handlers.catch.db.consume_purchase"
     ) as mock_consume, patch(
@@ -230,7 +245,12 @@ async def test_catch_lure_none_does_not_consume_lure_and_uses_base_multiplier():
 
     with patch(
         "handlers.catch.db.get_user",
-        return_value={"coins": 100, "catch_net_active": 0, "rare_magnet_active": 0},
+        return_value={
+            "coins": 100,
+            "catch_net_active": 0,
+            "rare_magnet_active": 0,
+            "epic_magnet_active": 0,
+        },
     ), patch("handlers.catch.db.get_oldest_purchase") as mock_get_purchase, patch(
         "handlers.catch.db.consume_purchase"
     ) as mock_consume, patch(
@@ -279,7 +299,12 @@ async def test_catch_lure_mythic_forces_legendary_rarity():
 
     with patch(
         "handlers.catch.db.get_user",
-        return_value={"coins": 500, "catch_net_active": 0, "rare_magnet_active": 0},
+        return_value={
+            "coins": 500,
+            "catch_net_active": 0,
+            "rare_magnet_active": 0,
+            "epic_magnet_active": 0,
+        },
     ), patch("handlers.catch.db.get_oldest_purchase", return_value=lure_purchase), patch(
         "handlers.catch.db.consume_purchase"
     ), patch(
