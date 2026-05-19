@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from handlers.achievements import achievements_command
-from game.achievements import check_achievements
+from game.achievements import check_achievements, ACHIEVEMENTS
 import sys
 import os
 
@@ -93,3 +93,81 @@ async def test_check_achievements_uses_row_key_access():
         await check_achievements(1, "checkin", ctx)
 
     ctx.bot.send_message.assert_called_once()
+
+
+# ── New achievement check function tests ──────────────────────────────────────
+
+
+def _get_check(key):
+    return ACHIEVEMENTS[key]["check"]
+
+
+def test_zoo_30_check():
+    check = _get_check("zoo_30")
+    with patch("game.achievements.db.count_animals", return_value=30):
+        assert check(1, {}) is True
+    with patch("game.achievements.db.count_animals", return_value=29):
+        assert check(1, {}) is False
+
+
+def test_species_20_check():
+    check = _get_check("species_20")
+    with patch("game.achievements.db.count_distinct_species", return_value=20):
+        assert check(1, {}) is True
+    with patch("game.achievements.db.count_distinct_species", return_value=19):
+        assert check(1, {}) is False
+
+
+def test_mythic_tamer_check():
+    check = _get_check("mythic_tamer")
+    with patch("game.achievements.db.get_animal_count_by_habitat", return_value=1):
+        assert check(1, {}) is True
+    with patch("game.achievements.db.get_animal_count_by_habitat", return_value=0):
+        assert check(1, {}) is False
+
+
+def test_explorer_check_all_habitats():
+    check = _get_check("explorer")
+    with patch("game.achievements.db.get_animal_count_by_habitat", return_value=1):
+        assert check(1, {}) is True
+
+
+def test_explorer_check_missing_one_habitat():
+    check = _get_check("explorer")
+
+    # Return 0 only for "mythic", non-zero for others
+    def side_effect(uid, h):
+        return 0 if h == "mythic" else 1
+
+    with patch("game.achievements.db.get_animal_count_by_habitat", side_effect=side_effect):
+        assert check(1, {}) is False
+
+
+def test_streak_100_check():
+    check = _get_check("streak_100")
+    assert check(1, {"streak_windows": 100}) is True
+    assert check(1, {"streak_windows": 99}) is False
+    assert check(1, {"streak_windows": None}) is False
+
+
+def test_checkin_100_check():
+    check = _get_check("checkin_100")
+    with patch("game.achievements.db.count_mood_checkins", return_value=100):
+        assert check(1, {}) is True
+    with patch("game.achievements.db.count_mood_checkins", return_value=99):
+        assert check(1, {}) is False
+
+
+def test_coins_10000_check():
+    check = _get_check("coins_10000")
+    assert check(1, {"coins": 10000}) is True
+    assert check(1, {"coins": 9999}) is False
+    assert check(1, {"coins": None}) is False
+
+
+def test_breed_20_check():
+    check = _get_check("breed_20")
+    with patch("game.achievements.db.count_collected_breeds", return_value=20):
+        assert check(1, {}) is True
+    with patch("game.achievements.db.count_collected_breeds", return_value=19):
+        assert check(1, {}) is False
