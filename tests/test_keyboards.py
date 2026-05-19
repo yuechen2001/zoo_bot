@@ -155,6 +155,11 @@ class TestLureKeyboard:
         assert all_rows[0][0].callback_data == "catch_lure_none"
         assert all_rows[1][0].callback_data == "catch_cancel"
 
+    def test_always_has_no_lure_option(self):
+        kb = lure_keyboard({"lure_woodland": 2})
+        all_callbacks = [btn.callback_data for row in kb.inline_keyboard for btn in row]
+        assert "catch_lure_none" in all_callbacks
+
 
 class TestStoreTabKeyboardLures:
     def test_lures_tab_has_store_buy_callbacks(self):

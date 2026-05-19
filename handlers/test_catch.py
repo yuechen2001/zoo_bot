@@ -203,6 +203,53 @@ async def test_catch_lure_callback_exhausts_lure_when_no_species_found():
 
 
 @pytest.mark.asyncio
+async def test_catch_lure_none_does_not_consume_lure_and_uses_base_multiplier():
+    query = MagicMock()
+    query.from_user.id = 1
+    query.data = "catch_lure_none"
+    query.answer = AsyncMock()
+    msg = MagicMock()
+    msg.message_id = 55
+    query.edit_message_text = AsyncMock(return_value=msg)
+
+    update = MagicMock()
+    update.callback_query = query
+
+    ctx = MagicMock()
+    ctx.user_data = {}
+
+    species = {
+        "species_id": 7,
+        "name": "Duck",
+        "emoji": "🦆",
+        "rarity": "common",
+        "habitat": "aquatic",
+        "catch_rate": 0.9,
+        "catch_cost": 20,
+    }
+
+    with patch(
+        "handlers.catch.db.get_user",
+        return_value={"coins": 100, "catch_net_active": 0, "rare_magnet_active": 0},
+    ), patch("handlers.catch.db.get_oldest_purchase") as mock_get_purchase, patch(
+        "handlers.catch.db.consume_purchase"
+    ) as mock_consume, patch(
+        "handlers.catch.roll_encounter", return_value="common"
+    ), patch(
+        "handlers.catch.db.get_species_candidates", return_value=[species]
+    ), patch(
+        "handlers.catch.catch_keyboard", return_value=MagicMock()
+    ):
+        await catch_lure_callback(update, ctx)
+
+    mock_get_purchase.assert_not_called()
+    mock_consume.assert_not_called()
+    pending = ctx.user_data.get("pending_catch")
+    assert pending is not None
+    assert pending["lure_multiplier"] == 1.0
+
+
+@pytest.mark.asyncio
 async def test_catch_lure_mythic_forces_legendary_rarity():
     """Mythic lure must override roll_encounter() and always request legendary candidates."""
     query = MagicMock()
