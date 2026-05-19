@@ -130,6 +130,8 @@ Base coins per mood: 😢 10 · 😐 20 · 🙂 35 · 😄 55 · 🤩 80
 
 You have **15 minutes** to respond after a prompt. Missing 2 prompts in a row resets your streak.
 
+If everyone in the group calls `/moodstop`, prompts stop for the group entirely — no special group-pause state is set; the bot simply has no opted-in recipients to ping. Prompts resume as soon as any member calls `/moodstart` again.
+
 ---
 
 ## Animals
