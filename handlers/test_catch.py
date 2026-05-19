@@ -38,22 +38,28 @@ def _make_pending(species_id=1, lure_multiplier=1.5):
 
 
 @pytest.mark.asyncio
-async def test_catch_command_blocks_without_lures():
+async def test_catch_command_shows_no_lure_button_when_no_lures():
     update = MagicMock()
     update.effective_user.id = 1
-    update.message.reply_text = AsyncMock()
+    update.message.reply_text = AsyncMock(return_value=MagicMock(message_id=99))
+    update.effective_chat.id = 1
 
     ctx = MagicMock()
     ctx.user_data = {}
 
     with patch("handlers.catch.db.get_user", return_value={"coins": 200}), patch(
         "handlers.catch.db.get_item_counts", return_value={}
+    ), patch("handlers.catch.db.get_catch_message", return_value=(None, None)), patch(
+        "handlers.catch.db.set_catch_message"
     ):
         await catch_command(update, ctx)
 
     update.message.reply_text.assert_called_once()
-    reply = update.message.reply_text.call_args[0][0]
-    assert "lure" in reply.lower()
+    call_kwargs = update.message.reply_text.call_args[1]
+    kb = call_kwargs.get("reply_markup")
+    assert kb is not None
+    buttons = [btn for row in kb.inline_keyboard for btn in row]
+    assert any(btn.callback_data == "catch_lure_none" for btn in buttons)
 
 
 @pytest.mark.asyncio
@@ -159,7 +165,7 @@ async def test_catch_lure_callback_generates_encounter_and_stores_pending():
 
 
 @pytest.mark.asyncio
-async def test_catch_lure_callback_refunds_when_no_species_found():
+async def test_catch_lure_callback_exhausts_lure_when_no_species_found():
     query = MagicMock()
     query.from_user.id = 1
     query.data = "catch_lure_woodland"
@@ -179,7 +185,7 @@ async def test_catch_lure_callback_refunds_when_no_species_found():
         return_value={"coins": 200, "catch_net_active": 0, "rare_magnet_active": 0},
     ), patch("handlers.catch.db.get_oldest_purchase", return_value=lure_purchase), patch(
         "handlers.catch.db.consume_purchase"
-    ), patch(
+    ) as mock_consume, patch(
         "handlers.catch.db.get_enclosure_level", return_value=1
     ), patch(
         "handlers.catch.db.get_animal_count_by_habitat", return_value=0
@@ -192,7 +198,8 @@ async def test_catch_lure_callback_refunds_when_no_species_found():
     ) as mock_refund:
         await catch_lure_callback(update, ctx)
 
-    mock_refund.assert_called_once_with(1, "lure_woodland")
+    mock_consume.assert_called_once()
+    mock_refund.assert_not_called()
 
 
 @pytest.mark.asyncio

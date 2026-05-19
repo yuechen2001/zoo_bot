@@ -266,6 +266,12 @@ def store_keyboard(owned_keys: set) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(rows)
 
 
+def no_lure_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [[InlineKeyboardButton("🎲 Catch!", callback_data="catch_lure_none")]]
+    )
+
+
 def lure_keyboard(lure_counts: dict[str, int]) -> InlineKeyboardMarkup:
     from game.store_data import LURES
 
@@ -280,18 +286,14 @@ def lure_keyboard(lure_counts: dict[str, int]) -> InlineKeyboardMarkup:
         rows.append(
             [
                 InlineKeyboardButton(
-                    f"{item['emoji']} "
-                    + (
-                        HABITATS[key.removeprefix("lure_")]["name"]
-                        if key.removeprefix("lure_") in HABITATS
-                        else item["name"]
-                    )
+                    f"{item['emoji']} {HABITATS[key.removeprefix('lure_')]['name']}"
                     + (f" ×{n}" if n > 1 else ""),
                     callback_data=f"catch_lure_{key.removeprefix('lure_')}",
                 )
                 for key, item, n in chunk
             ]
         )
+    rows.append([InlineKeyboardButton("🎲 No lure", callback_data="catch_lure_none")])
     rows.append([InlineKeyboardButton("❌ Cancel", callback_data="catch_cancel")])
     return InlineKeyboardMarkup(rows)
 

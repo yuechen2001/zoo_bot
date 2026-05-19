@@ -36,7 +36,7 @@ def _store_section_text(section: str, tg_id: int) -> str:
     elif section == "lures":
         lines = [
             "🏪 <b>Zoo Store — Lures</b> 🎣\n",
-            "<i>Each /catch requires a lure. Habitat lures give 1.5× catch rate.</i>\n",
+            "<i>Habitat lures boost your next /catch to 1.5× catch rate — or catch for free without one.</i>\n",
         ]
         for key, item in LURES.items():
             line = f"  {item['emoji']} <b>{item['name']}</b> — {item['price']} 🪙\n  {item['desc']}"

@@ -5,7 +5,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 import db
 from game.catch_engine import roll_encounter, roll_catch
-from keyboards import catch_keyboard, lure_keyboard
+from keyboards import catch_keyboard, lure_keyboard, no_lure_keyboard
 from game.species_data import RARITY_LABELS, HABITATS, ENCLOSURE_LEVELS
 from config import CATCH_EXPIRY_MINUTES
 from game.achievements import check_achievements
@@ -24,17 +24,8 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     from game.store_data import LURES
 
     has_lures = any(counts.get(k, 0) > 0 for k in LURES)
-    if not has_lures:
-        await update.message.reply_text(
-            "🎣 You need a lure to catch animals!\n\n"
-            "Buy one from /store — each habitat has its own lure."
-        )
-        return
 
     ctx.user_data.pop("pending_catch", None)
-
-    lure_text = "🎣 *Choose a lure!*\n_Habitat lures give 1.5× catch rate. Basic Lure picks from any habitat at base rate._"
-    lure_kb = lure_keyboard(counts)
 
     # Delete the previous catch message so the new one always appears at the bottom
     catch_chat_id, catch_message_id = db.get_catch_message(tg_id)
@@ -43,6 +34,13 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             await ctx.bot.delete_message(chat_id=catch_chat_id, message_id=catch_message_id)
         except Exception:
             pass
+
+    if has_lures:
+        lure_text = "🎣 *Choose a lure!*\n_Habitat lures give 1.5× catch rate._"
+        lure_kb = lure_keyboard(counts)
+    else:
+        lure_text = "🌿 *Go catch an animal!*\n_No lure — a random animal will appear._"
+        lure_kb = no_lure_keyboard()
 
     msg = await update.message.reply_text(lure_text, parse_mode="Markdown", reply_markup=lure_kb)
     db.set_catch_message(tg_id, update.effective_chat.id, msg.message_id)
@@ -58,17 +56,26 @@ async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await query.answer("Use /start first!", show_alert=True)
         return
 
-    is_basic = habitat == "basic"
-    lure_multiplier = 1.0 if is_basic else LURE_MULTIPLIER
+    is_no_lure = habitat == "none"
+    is_legacy_basic = habitat == "basic"
+    is_habitat_lure = not is_no_lure and not is_legacy_basic
 
-    # Verify lure is still in inventory (race condition guard)
-    purchase = db.get_oldest_purchase(tg_id, f"lure_{habitat}")
-    if not purchase:
-        await query.answer("You don't have that lure anymore!", show_alert=True)
-        return
+    lure_multiplier = LURE_MULTIPLIER if is_habitat_lure else 1.0
 
-    # For habitat lures, pre-check enclosure capacity before consuming
-    if not is_basic:
+    if is_no_lure:
+        pass  # free catch — no inventory check, no consumption
+    elif is_legacy_basic:
+        # backward compat: consume remaining lure_basic stock if present
+        purchase = db.get_oldest_purchase(tg_id, "lure_basic")
+        if purchase:
+            db.consume_purchase(purchase["id"])
+    else:
+        # Verify lure is still in inventory (race condition guard)
+        purchase = db.get_oldest_purchase(tg_id, f"lure_{habitat}")
+        if not purchase:
+            await query.answer("You don't have that lure anymore!", show_alert=True)
+            return
+        # Pre-check enclosure capacity before consuming
         enc_level = db.get_enclosure_level(tg_id, habitat)
         capacity = ENCLOSURE_LEVELS[enc_level]["capacity"]
         used = db.get_animal_count_by_habitat(tg_id, habitat)
@@ -79,30 +86,33 @@ async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 show_alert=True,
             )
             return
+        db.consume_purchase(purchase["id"])
 
-    # Consume the lure
-    db.consume_purchase(purchase["id"])
+    is_unfiltered = is_no_lure or is_legacy_basic
 
-    # Generate encounter — basic lure picks from any habitat, others filter
     rarity = roll_encounter()
     if user["catch_net_active"]:
         rarity = "legendary"
     elif habitat == "mythic":
         rarity = "legendary"
     elif user["rare_magnet_active"] and rarity == "common":
-        rare_candidates = db.get_species_candidates("rare", None if is_basic else habitat)
+        rare_candidates = db.get_species_candidates("rare", None if is_unfiltered else habitat)
         if rare_candidates:
             rarity = "rare"
-        db.set_rare_magnet(tg_id, False)
-    candidates = db.get_species_candidates(rarity, None if is_basic else habitat)
+        db.set_rare_magnet(
+            tg_id, False
+        )  # one-shot: consumed on the next common roll even if no rare candidates exist
+    candidates = db.get_species_candidates(rarity, None if is_unfiltered else habitat)
     species = random.choice(candidates) if candidates else None
 
     if not species:
-        db.record_purchase(tg_id, f"lure_{habitat}")
-        await query.answer("No animals found — lure refunded!", show_alert=True)
+        if is_no_lure:
+            await query.answer("No animals found — try again!", show_alert=True)
+        else:
+            await query.answer("No animals found — the lure was used up.", show_alert=True)
         return
 
-    h = HABITATS[species["habitat"]] if is_basic else HABITATS[habitat]
+    h = HABITATS[species["habitat"]] if is_unfiltered else HABITATS[habitat]
     catch_rate_display = (
         "100% 🪤"
         if user["catch_net_active"]

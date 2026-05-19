@@ -148,11 +148,12 @@ class TestLureKeyboard:
         lure_btns = [t for t in all_texts if "Cancel" not in t]
         assert any("×3" in t for t in lure_btns)
 
-    def test_empty_shows_only_cancel(self):
+    def test_empty_shows_no_lure_and_cancel(self):
         kb = lure_keyboard({})
         all_rows = kb.inline_keyboard
-        assert len(all_rows) == 1
-        assert all_rows[0][0].callback_data == "catch_cancel"
+        assert len(all_rows) == 2
+        assert all_rows[0][0].callback_data == "catch_lure_none"
+        assert all_rows[1][0].callback_data == "catch_cancel"
 
 
 class TestStoreTabKeyboardLures:
