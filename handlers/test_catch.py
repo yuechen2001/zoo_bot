@@ -195,6 +195,53 @@ async def test_catch_lure_callback_refunds_when_no_species_found():
     mock_refund.assert_called_once_with(1, "lure_woodland")
 
 
+@pytest.mark.asyncio
+async def test_catch_lure_mythic_forces_legendary_rarity():
+    """Mythic lure must override roll_encounter() and always request legendary candidates."""
+    query = MagicMock()
+    query.from_user.id = 1
+    query.data = "catch_lure_mythic"
+    query.answer = AsyncMock()
+    query.edit_message_text = AsyncMock()
+
+    update = MagicMock()
+    update.callback_query = query
+
+    ctx = MagicMock()
+    ctx.user_data = {}
+
+    lure_purchase = MagicMock()
+    lure_purchase.__getitem__ = lambda self, key: 42 if key == "id" else None
+
+    species = {
+        "species_id": 99,
+        "name": "Unicorn",
+        "emoji": "🦄",
+        "rarity": "legendary",
+        "habitat": "mythic",
+        "catch_rate": 0.10,
+        "catch_cost": 200,
+    }
+
+    with patch(
+        "handlers.catch.db.get_user",
+        return_value={"coins": 500, "catch_net_active": 0, "rare_magnet_active": 0},
+    ), patch("handlers.catch.db.get_oldest_purchase", return_value=lure_purchase), patch(
+        "handlers.catch.db.consume_purchase"
+    ), patch(
+        "handlers.catch.db.get_enclosure_level", return_value=1
+    ), patch(
+        "handlers.catch.db.get_animal_count_by_habitat", return_value=0
+    ), patch(
+        "handlers.catch.roll_encounter", return_value="common"
+    ), patch(
+        "handlers.catch.db.get_species_candidates", return_value=[species]
+    ) as mock_candidates:
+        await catch_lure_callback(update, ctx)
+
+    mock_candidates.assert_called_once_with("legendary", "mythic")
+
+
 # ── catch_callback capacity gate ──────────────────────────────────────────────
 
 

@@ -1,103 +1,118 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from handlers.gamble import gamble_command, MAX_BET
+from handlers.gamble import gamble_command, gamble_bet_callback, MAX_BET
 
 
-def _make_conn_mock():
-    inner = MagicMock()
-    cm = MagicMock()
-    cm.__enter__ = MagicMock(return_value=inner)
-    cm.__exit__ = MagicMock(return_value=False)
-    return cm
-
-
-def _setup(coins=200, args=None, chat_type="private"):
+def _make_command_update(coins: int = 200):
     update = MagicMock()
-    update.effective_chat.type = chat_type
     update.effective_user.id = 1
     update.message.reply_text = AsyncMock()
-    ctx = MagicMock()
-    ctx.args = args or []
-    return update, ctx, {"coins": coins}
+    return update, {"coins": coins}
 
 
-# ── validation ─────────────────────────────────────────────────────────────────
+def _make_bet_query(amount: int, coins: int = 200):
+    query = MagicMock()
+    query.from_user.id = 1
+    query.data = f"gamble_bet_{amount}"
+    query.answer = AsyncMock()
+    query.edit_message_text = AsyncMock()
+    update = MagicMock()
+    update.callback_query = query
+    return update, query, {"coins": coins}
+
+
+# ── gamble_command ─────────────────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
 async def test_gamble_rejects_unknown_user():
-    update, ctx, _ = _setup()
+    update, _ = _make_command_update()
     with patch("handlers.gamble.db.get_user", return_value=None):
-        await gamble_command(update, ctx)
+        await gamble_command(update, MagicMock())
     update.message.reply_text.assert_called_once_with("Use /start first!")
 
 
 @pytest.mark.asyncio
-async def test_gamble_no_args_shows_usage():
-    update, ctx, user = _setup(args=[])
+async def test_gamble_command_shows_bet_buttons():
+    update, user = _make_command_update(coins=200)
     with patch("handlers.gamble.db.get_user", return_value=user):
-        await gamble_command(update, ctx)
-    reply = update.message.reply_text.call_args[0][0]
-    assert "Usage" in reply or "usage" in reply.lower()
-    assert str(MAX_BET) in reply
+        await gamble_command(update, MagicMock())
+    kwargs = update.message.reply_text.call_args[1]
+    kb = kwargs["reply_markup"]
+    all_data = [btn.callback_data for row in kb.inline_keyboard for btn in row]
+    assert any(d.startswith("gamble_bet_") for d in all_data)
 
 
 @pytest.mark.asyncio
-async def test_gamble_zero_bet_rejected():
-    update, ctx, user = _setup(args=["0"])
-    with patch("handlers.gamble.db.get_user", return_value=user):
-        await gamble_command(update, ctx)
-    reply = update.message.reply_text.call_args[0][0]
-    assert "1 coin" in reply or "at least" in reply.lower()
+async def test_gamble_command_disables_unaffordable_buttons():
+    update, _ = _make_command_update(coins=15)
+    with patch("handlers.gamble.db.get_user", return_value={"coins": 15}):
+        await gamble_command(update, MagicMock())
+    kwargs = update.message.reply_text.call_args[1]
+    kb = kwargs["reply_markup"]
+    noop_count = sum(
+        1 for row in kb.inline_keyboard for btn in row if btn.callback_data == "zoo_noop"
+    )
+    assert noop_count >= 1
+
+
+# ── gamble_bet_callback ────────────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_gamble_over_max_bet_rejected():
-    update, ctx, user = _setup(args=[str(MAX_BET + 1)])
-    with patch("handlers.gamble.db.get_user", return_value=user):
-        await gamble_command(update, ctx)
-    reply = update.message.reply_text.call_args[0][0]
-    assert str(MAX_BET) in reply
-
-
-@pytest.mark.asyncio
-async def test_gamble_insufficient_coins_rejected():
-    update, ctx, _ = _setup(coins=30, args=["50"])
-    with patch("handlers.gamble.db.get_user", return_value={"coins": 30}):
-        await gamble_command(update, ctx)
-    reply = update.message.reply_text.call_args[0][0]
-    assert "Not enough" in reply or "30" in reply
-
-
-# ── win / lose paths ──────────────────────────────────────────────────────────
-
-
-@pytest.mark.asyncio
-async def test_gamble_win_adds_coins():
-    update, ctx, user = _setup(coins=100, args=["50"])
-    with patch("handlers.gamble.db.get_user", return_value=user), patch(
-        "handlers.gamble.db.get_conn", return_value=_make_conn_mock()
+async def test_gamble_bet_win():
+    update, query, user = _make_bet_query(50, coins=100)
+    after = {"coins": 150}
+    with patch("handlers.gamble.db.get_user", side_effect=[user, after]), patch(
+        "handlers.gamble.db.add_coins"
     ), patch(
         "handlers.gamble.random.random", return_value=0.1
-    ):  # 0.1 < 0.5 → win
-        await gamble_command(update, ctx)
+    ):  # win
+        await gamble_bet_callback(update, MagicMock())
 
-    reply = update.message.reply_text.call_args[0][0]
-    assert "Heads" in reply or "+50" in reply
+    text = query.edit_message_text.call_args[0][0]
+    assert "Heads" in text
+    assert "+50" in text
 
 
 @pytest.mark.asyncio
-async def test_gamble_lose_deducts_coins():
-    update, ctx, user = _setup(coins=100, args=["50"])
-    with patch("handlers.gamble.db.get_user", return_value=user), patch(
-        "handlers.gamble.db.get_conn", return_value=_make_conn_mock()
+async def test_gamble_bet_lose():
+    update, query, user = _make_bet_query(50, coins=100)
+    after = {"coins": 50}
+    with patch("handlers.gamble.db.get_user", side_effect=[user, after]), patch(
+        "handlers.gamble.db.add_coins"
     ), patch(
         "handlers.gamble.random.random", return_value=0.9
-    ):  # 0.9 >= 0.5 → lose
-        await gamble_command(update, ctx)
+    ):  # lose
+        await gamble_bet_callback(update, MagicMock())
 
-    reply = update.message.reply_text.call_args[0][0]
-    assert "Tails" in reply or "-50" in reply
+    text = query.edit_message_text.call_args[0][0]
+    assert "Tails" in text
+    assert "-50" in text
+
+
+@pytest.mark.asyncio
+async def test_gamble_bet_insufficient_coins():
+    update, query, user = _make_bet_query(50, coins=30)
+    with patch("handlers.gamble.db.get_user", return_value=user):
+        await gamble_bet_callback(update, MagicMock())
+
+    query.edit_message_text.assert_not_called()
+    query.answer.assert_called_once()
+    assert "30" in query.answer.call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_gamble_bet_over_max_rejected():
+    update, query, user = _make_bet_query(MAX_BET + 1, coins=500)
+    with patch("handlers.gamble.db.get_user", return_value=user):
+        await gamble_bet_callback(update, MagicMock())
+
+    query.edit_message_text.assert_not_called()
+    assert str(MAX_BET) in query.answer.call_args[0][0]
+
+
+# ── constants ──────────────────────────────────────────────────────────────────
 
 
 def test_max_bet_constant():

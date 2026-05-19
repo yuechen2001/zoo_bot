@@ -23,9 +23,9 @@ from .mood import (
     help_tab_callback,
 )
 from .trivia import trivia_command, trivia_callback
-from .gamble import gamble_command
+from .gamble import gamble_command, gamble_bet_callback
 from .daily import daily_command
-from .slots import slots_command
+from .slots import slots_command, slots_spin_callback
 from .trade import trade_command, trade_callback
 from .invest import (
     invest_command,
@@ -67,8 +67,10 @@ __all__ = [
     "trivia_command",
     "trivia_callback",
     "gamble_command",
+    "gamble_bet_callback",
     "daily_command",
     "slots_command",
+    "slots_spin_callback",
     "trade_command",
     "trade_callback",
     "invest_command",

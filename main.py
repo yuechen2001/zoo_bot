@@ -54,8 +54,10 @@ from handlers import (
     trivia_command,
     trivia_callback,
     gamble_command,
+    gamble_bet_callback,
     daily_command,
     slots_command,
+    slots_spin_callback,
     trade_command,
     trade_callback,
     invest_command,
@@ -170,6 +172,10 @@ async def handle_callback(update, ctx):
         await zoo_page_callback(update, ctx)
     elif data.startswith("wild_catch_"):
         await wild_event_callback(update, ctx)
+    elif data == "slots_spin":
+        await slots_spin_callback(update, ctx)
+    elif data.startswith("gamble_bet_"):
+        await gamble_bet_callback(update, ctx)
     elif data.startswith("store_tab_"):
         await store_tab_callback(update, ctx)
     elif data.startswith("store_buy_"):
