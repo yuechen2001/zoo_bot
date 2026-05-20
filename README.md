@@ -86,13 +86,13 @@ python main.py
 | `/start` | Join and receive a starter animal |
 | `/zoo` | View your zoo, one habitat per page — tap ◀ ▶ to browse |
 | `/footmassage` | Halve hunger decay for 1h (25 🪙, 4h cooldown) |
-| `/catch` | Pick a lure and search for a wild animal |
+| `/catch` | Pick a lure and search for a wild animal (no lure costs 10 🪙) |
 | `/feed <numbers>` | Feed animal(s) — 10 🪙 each |
 | `/breed <a> <b>` | Breed two animals together |
 | `/breed collect` | Claim your finished offspring |
 | `/breed status` | Check time remaining on active breed |
 | `/name <number> <name>` | Give an animal a nickname |
-| `/sell <number>` | Sell an animal for coins |
+| `/sell` | Sell an animal for coins (tap to pick from list) |
 | `/gift <number> @user` | Give an animal to another player |
 | `/trade @user <yours> <theirs>` | Offer an animal swap |
 | `/enclosures` | View and upgrade your habitat enclosures — tap 💰 Collect income to claim passive income |
@@ -160,7 +160,7 @@ Use `/store` to browse and buy items. Use `/inventory` to activate consumables a
 | 🌴 Tropical Lure | 60 🪙 | Tropical habitat, 1.5× catch rate |
 | 🐠 Aquatic Lure | 60 🪙 | Aquatic habitat, 1.5× catch rate |
 | ❄️ Tundra Lure | 60 🪙 | Tundra habitat, 1.5× catch rate |
-| 🌟 Mythic Lure | 150 🪙 | Mythic habitat, 1.5× catch rate |
+| 🌟 Mythic Lure | 150 🪙 | Mythic habitat, 1.5× catch rate, epic or legendary only |
 
 **Consumables** (sit in your bag until used):
 
