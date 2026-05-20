@@ -264,7 +264,6 @@ async def _tick_enclosure_income(ctx):
         lines = ["🏦 *Enclosure income ready!*"]
         for mention, coins, pending_total in earnings:
             lines.append(f"  {mention}: +{coins} 🪙 (total pending: {pending_total} 🪙)")
-        lines.append("\nUse `/enclosures collect` to claim.")
         try:
             await ctx.bot.send_message(group_chat_id, "\n".join(lines), parse_mode="Markdown")
         except Exception:

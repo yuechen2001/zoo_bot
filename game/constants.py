@@ -1,5 +1,6 @@
 # Catch / lures
 LURE_MULTIPLIER = 1.5
+NO_LURE_COST = 10
 
 # Feed
 FEED_COST_BY_RARITY = {"common": 5, "rare": 10, "epic": 15, "legendary": 20}

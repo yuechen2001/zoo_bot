@@ -166,7 +166,7 @@ async def test_collect_button_nothing_pending():
 
     query = MagicMock()
     query.from_user.id = 1
-    query.data = "enc_collect"
+    query.data = "enc_collect_1"
     query.answer = AsyncMock()
     update = MagicMock()
     update.callback_query = query
@@ -188,7 +188,7 @@ async def test_collect_button_credits_pending_coins():
 
     query = MagicMock()
     query.from_user.id = 1
-    query.data = "enc_collect"
+    query.data = "enc_collect_1"
     query.answer = AsyncMock()
     query.edit_message_text = AsyncMock()
     update = MagicMock()
@@ -205,3 +205,41 @@ async def test_collect_button_credits_pending_coins():
     query.answer.assert_called_once()
     msg = query.answer.call_args[0][0]
     assert "42" in msg
+
+
+@pytest.mark.asyncio
+async def test_collect_button_rejects_wrong_player():
+    from handlers.enclosures import enclosure_collect_callback
+
+    query = MagicMock()
+    query.from_user.id = 999  # different from owner 1
+    query.data = "enc_collect_1"
+    query.answer = AsyncMock()
+    update = MagicMock()
+    update.callback_query = query
+    ctx = MagicMock()
+
+    await enclosure_collect_callback(update, ctx)
+
+    query.answer.assert_called_once()
+    # should not have tried to collect anything
+    assert "enclosures" in query.answer.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_upgrade_button_rejects_wrong_player():
+    from handlers.enclosures import enclosure_upgrade_callback
+
+    query = MagicMock()
+    query.from_user.id = 999  # different from owner 1
+    query.data = "enc_upgrade_1_woodland"
+    query.answer = AsyncMock()
+    update = MagicMock()
+    update.callback_query = query
+    ctx = MagicMock()
+
+    with patch("handlers.enclosures.db.get_user", return_value=None):
+        await enclosure_upgrade_callback(update, ctx)
+
+    query.answer.assert_called_once()
+    assert "enclosures" in query.answer.call_args[0][0].lower()

@@ -36,6 +36,7 @@ async def test_gamble_rejects_unknown_user():
 async def test_gamble_command_shows_bet_buttons():
     update, user = _make_command_update(coins=200)
     ctx = MagicMock(user_data={})
+    ctx.args = []
     with patch("handlers.gamble.db.get_user", return_value=user):
         await gamble_command(update, ctx)
     kwargs = update.message.reply_text.call_args[1]
@@ -48,6 +49,7 @@ async def test_gamble_command_shows_bet_buttons():
 async def test_gamble_command_disables_unaffordable_buttons():
     update, _ = _make_command_update(coins=15)
     ctx = MagicMock(user_data={})
+    ctx.args = []
     with patch("handlers.gamble.db.get_user", return_value={"coins": 15}):
         await gamble_command(update, ctx)
     kwargs = update.message.reply_text.call_args[1]
@@ -128,6 +130,65 @@ async def test_gamble_bet_callback_rejects_unknown_user():
         await gamble_bet_callback(update, MagicMock())
     query.answer.assert_called_once_with("Use /start first!", show_alert=True)
     query.edit_message_text.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_gamble_command_with_amount_resolves_immediately():
+    update, user = _make_command_update(coins=200)
+    ctx = MagicMock()
+    ctx.args = ["150"]
+    after = {"coins": 350}
+    with patch("handlers.gamble.db.get_user", side_effect=[user, after]), patch(
+        "handlers.gamble.db.add_coins"
+    ), patch(
+        "handlers.gamble.random.random", return_value=0.1
+    ):  # win
+        await gamble_command(update, ctx)
+    update.message.reply_text.assert_called_once()
+    text = update.message.reply_text.call_args[0][0]
+    assert "150" in text
+
+
+@pytest.mark.asyncio
+async def test_gamble_command_amount_over_max_rejected():
+    update, user = _make_command_update(coins=500)
+    ctx = MagicMock()
+    ctx.args = [str(MAX_BET + 1)]
+    with patch("handlers.gamble.db.get_user", return_value=user), patch(
+        "handlers.gamble.db.add_coins"
+    ) as mock_add:
+        await gamble_command(update, ctx)
+    mock_add.assert_not_called()
+    text = update.message.reply_text.call_args[0][0]
+    assert str(MAX_BET) in text
+
+
+@pytest.mark.asyncio
+async def test_gamble_command_amount_zero_rejected():
+    update, user = _make_command_update(coins=200)
+    ctx = MagicMock()
+    ctx.args = ["0"]
+    with patch("handlers.gamble.db.get_user", return_value=user), patch(
+        "handlers.gamble.db.add_coins"
+    ) as mock_add:
+        await gamble_command(update, ctx)
+    mock_add.assert_not_called()
+    text = update.message.reply_text.call_args[0][0]
+    assert "minimum" in text.lower() or "1" in text
+
+
+@pytest.mark.asyncio
+async def test_gamble_command_amount_insufficient_coins_rejected():
+    update, user = _make_command_update(coins=20)
+    ctx = MagicMock()
+    ctx.args = ["100"]
+    with patch("handlers.gamble.db.get_user", return_value=user), patch(
+        "handlers.gamble.db.add_coins"
+    ) as mock_add:
+        await gamble_command(update, ctx)
+    mock_add.assert_not_called()
+    text = update.message.reply_text.call_args[0][0]
+    assert "20" in text
 
 
 def test_gamble_distribution_is_50_50():

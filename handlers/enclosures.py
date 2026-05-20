@@ -56,15 +56,22 @@ async def enclosures_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         db.give_starter_enclosures(tg_id)
 
     text, upgradeable = _render_enclosures(tg_id, user["coins"])
-    keyboard = enclosure_upgrade_keyboard(upgradeable)
+    keyboard = enclosure_upgrade_keyboard(upgradeable, tg_id)
     await update.message.reply_text(text, parse_mode="Markdown", reply_markup=keyboard)
 
 
 @triggers("enclosure")
 async def enclosure_upgrade_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    tg_id = query.from_user.id
-    habitat = query.data.removeprefix("enc_upgrade_")
+    rest = query.data.removeprefix("enc_upgrade_")
+    owner_id_str, _, habitat = rest.partition("_")
+    owner_id = int(owner_id_str)
+
+    if query.from_user.id != owner_id:
+        await query.answer("Use /enclosures to manage your own enclosures.", show_alert=False)
+        return
+
+    tg_id = owner_id
 
     if habitat not in HABITATS:
         await query.answer("Unknown enclosure.", show_alert=True)
@@ -83,7 +90,7 @@ async def enclosure_upgrade_callback(update: Update, ctx: ContextTypes.DEFAULT_T
 
     user = db.get_user(tg_id)
     text, upgradeable = _render_enclosures(tg_id, user["coins"])
-    keyboard = enclosure_upgrade_keyboard(upgradeable) if upgradeable else None
+    keyboard = enclosure_upgrade_keyboard(upgradeable, tg_id) if upgradeable else None
     h_info = HABITATS[habitat]
     new_level = db.get_enclosure_level(tg_id, habitat)
     await query.answer(f"{h_info['emoji']} {h_info['name']} upgraded to Lv {new_level}!")
@@ -92,7 +99,13 @@ async def enclosure_upgrade_callback(update: Update, ctx: ContextTypes.DEFAULT_T
 
 async def enclosure_collect_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    tg_id = query.from_user.id
+    owner_id = int(query.data.removeprefix("enc_collect_"))
+
+    if query.from_user.id != owner_id:
+        await query.answer("Use /enclosures to manage your own enclosures.", show_alert=False)
+        return
+
+    tg_id = owner_id
 
     user = db.get_user(tg_id)
     if not user:
@@ -107,7 +120,7 @@ async def enclosure_collect_callback(update: Update, ctx: ContextTypes.DEFAULT_T
     user = db.get_user(tg_id)
     await query.answer(f"💰 Collected {amount} 🪙! Balance: {user['coins']} 🪙")
     text, upgradeable = _render_enclosures(tg_id, user["coins"])
-    keyboard = enclosure_upgrade_keyboard(upgradeable)
+    keyboard = enclosure_upgrade_keyboard(upgradeable, tg_id)
     try:
         await query.edit_message_text(text, parse_mode="Markdown", reply_markup=keyboard)
     except Exception:

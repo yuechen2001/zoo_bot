@@ -169,7 +169,7 @@ async def handle_callback(update, ctx):
         await trade_callback(update, ctx)
     elif data.startswith("enc_upgrade_"):
         await enclosure_upgrade_callback(update, ctx)
-    elif data == "enc_collect":
+    elif data.startswith("enc_collect_"):
         await enclosure_collect_callback(update, ctx)
     elif data.startswith("zoo_page_"):
         await zoo_page_callback(update, ctx)

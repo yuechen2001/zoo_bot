@@ -21,9 +21,18 @@ def _make_ctx(args=None):
     return ctx
 
 
-def _make_animal(catch_cost=20, hunger=100, is_breeding=0, nickname="Mouse", emoji="🐭"):
+def _make_animal(
+    catch_cost=20,
+    hunger=100,
+    is_breeding=0,
+    nickname="Mouse",
+    emoji="🐭",
+    animal_id="a1",
+    user_id=1,
+):
     return {
-        "animal_id": "a1",
+        "animal_id": animal_id,
+        "user_id": user_id,
         "species_name": "Mouse",
         "nickname": nickname,
         "emoji": emoji,
@@ -43,7 +52,7 @@ def _make_conn_mock():
 
 
 @pytest.mark.asyncio
-async def test_sell_no_args_shows_picker_or_empty():
+async def test_sell_no_animals_shows_empty_message():
     update = _make_update()
     ctx = _make_ctx(args=[])
     with patch("handlers.sell.db.get_user", return_value={"coins": 100}), patch(
@@ -55,90 +64,17 @@ async def test_sell_no_args_shows_picker_or_empty():
 
 
 @pytest.mark.asyncio
-async def test_sell_invalid_position():
+async def test_sell_shows_picker_when_animals_exist():
     update = _make_update()
-    ctx = _make_ctx(args=["99"])
-    with patch("handlers.sell.db.get_user", return_value={"coins": 100}), patch(
-        "handlers.sell.db.get_animal_by_position", return_value=None
-    ):
-        await sell_command(update, ctx)
-    reply = update.message.reply_text.call_args[0][0]
-    assert "no animal" in reply.lower() or "position" in reply.lower()
-
-
-@pytest.mark.asyncio
-async def test_sell_blocked_for_breeding_animal():
-    update = _make_update()
-    ctx = _make_ctx(args=["1"])
-    animal = _make_animal(is_breeding=1)
-    with patch("handlers.sell.db.get_user", return_value={"coins": 100}), patch(
-        "handlers.sell.db.get_animal_by_position", return_value=animal
-    ):
-        await sell_command(update, ctx)
-    reply = update.message.reply_text.call_args[0][0]
-    assert "breeding" in reply.lower()
-
-
-@pytest.mark.asyncio
-async def test_sell_blocked_for_animal_in_trade():
-    update = _make_update()
-    ctx = _make_ctx(args=["1"])
+    ctx = _make_ctx(args=[])
     animal = _make_animal()
     with patch("handlers.sell.db.get_user", return_value={"coins": 100}), patch(
-        "handlers.sell.db.get_animal_by_position", return_value=animal
-    ), patch("handlers.sell.db.has_pending_trade_for_animal", return_value=True):
-        await sell_command(update, ctx)
-    reply = update.message.reply_text.call_args[0][0]
-    assert "trade" in reply.lower()
-
-
-@pytest.mark.asyncio
-async def test_sell_full_hunger_earns_half_catch_cost():
-    update = _make_update()
-    ctx = _make_ctx(args=["1"])
-    animal = _make_animal(catch_cost=20, hunger=100)
-    with patch("handlers.sell.db.get_user", return_value={"coins": 100}), patch(
-        "handlers.sell.db.get_animal_by_position", return_value=animal
-    ), patch("handlers.sell.db.has_pending_trade_for_animal", return_value=False), patch(
-        "handlers.sell.db.sell_animal"
-    ) as mock_sell:
-        await sell_command(update, ctx)
-    mock_sell.assert_called_once_with(1, "a1", 10)
-    # base = catch_cost // 2 = 10; hunger 100 → price = 10
-    reply = update.message.reply_text.call_args[0][0]
-    assert "10" in reply
-
-
-@pytest.mark.asyncio
-async def test_sell_low_hunger_reduces_price():
-    update = _make_update()
-    ctx = _make_ctx(args=["1"])
-    animal = _make_animal(catch_cost=40, hunger=50)
-    with patch("handlers.sell.db.get_user", return_value={"coins": 100}), patch(
-        "handlers.sell.db.get_animal_by_position", return_value=animal
-    ), patch("handlers.sell.db.has_pending_trade_for_animal", return_value=False), patch(
-        "handlers.sell.db.sell_animal"
+        "handlers.sell.db.get_animals", return_value=[animal]
     ):
         await sell_command(update, ctx)
+    # Should show picker, not an error
     reply = update.message.reply_text.call_args[0][0]
-    # base = 40 // 2 = 20; hunger 50 → price = max(1, round(20 * 50/100)) = 10
-    assert "10" in reply
-
-
-@pytest.mark.asyncio
-async def test_sell_legendary_full_hunger():
-    update = _make_update()
-    ctx = _make_ctx(args=["1"])
-    animal = _make_animal(catch_cost=200, hunger=100, nickname="Drgn", emoji="🐉")
-    with patch("handlers.sell.db.get_user", return_value={"coins": 100}), patch(
-        "handlers.sell.db.get_animal_by_position", return_value=animal
-    ), patch("handlers.sell.db.has_pending_trade_for_animal", return_value=False), patch(
-        "handlers.sell.db.sell_animal"
-    ):
-        await sell_command(update, ctx)
-    reply = update.message.reply_text.call_args[0][0]
-    # base = 200 // 2 = 100; hunger 100 → price = 100
-    assert "100" in reply
+    assert "sell" in reply.lower()
 
 
 # ── sell_pick_callback ────────────────────────────────────────────────────────
@@ -182,14 +118,28 @@ async def test_sell_pick_blocked_for_breeding():
 
 @pytest.mark.asyncio
 async def test_sell_yes_executes_sell():
-    update, query, ctx = _make_callback(data="sell_yes_1")
+    update, query, ctx = _make_callback(data="sell_yes_a1")
     animal = _make_animal(catch_cost=20, hunger=100)
-    with patch("handlers.sell.db.get_animal_by_position", return_value=animal), patch(
+    with patch("handlers.sell.db.get_animal", return_value=animal), patch(
         "handlers.sell.db.has_pending_trade_for_animal", return_value=False
     ), patch("handlers.sell.db.sell_animal") as mock_sell:
         await sell_yes_callback(update, ctx)
     mock_sell.assert_called_once_with(1, "a1", 10)
     query.edit_message_text.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_sell_yes_rejects_wrong_owner():
+    """sell_yes_ callback must reject if animal belongs to a different user."""
+    update, query, ctx = _make_callback(user_id=2, data="sell_yes_a1")
+    animal = _make_animal(catch_cost=20, hunger=100, user_id=1)  # owned by user 1
+    with patch("handlers.sell.db.get_animal", return_value=animal), patch(
+        "handlers.sell.db.sell_animal"
+    ) as mock_sell:
+        await sell_yes_callback(update, ctx)
+    mock_sell.assert_not_called()
+    query.answer.assert_called_once()
+    assert query.answer.call_args[1].get("show_alert") is True
 
 
 @pytest.mark.asyncio

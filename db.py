@@ -1110,6 +1110,14 @@ def claim_daily(user_id: int, coins: int, new_streak: int, now_str: str) -> None
 
 def sell_animal(user_id: int, animal_id: str, price: int) -> None:
     with get_conn() as conn:
+        conn.execute(
+            "DELETE FROM breeding_queue WHERE parent_a = ? OR parent_b = ?",
+            (animal_id, animal_id),
+        )
+        conn.execute(
+            "DELETE FROM trades WHERE proposer_animal_id = ? OR recipient_animal_id = ?",
+            (animal_id, animal_id),
+        )
         conn.execute("DELETE FROM animals WHERE animal_id = ?", (animal_id,))
         conn.execute("UPDATE users SET coins = coins + ? WHERE user_id = ?", (price, user_id))
 

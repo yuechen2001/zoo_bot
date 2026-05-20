@@ -92,4 +92,3 @@ async def test_enclosure_income_sends_named_group_message():
     assert args[0][0] == -100  # sent to group
     assert "alice" in args[0][1]
     assert "Enclosure income" in args[0][1]
-    assert "collect" in args[0][1].lower()

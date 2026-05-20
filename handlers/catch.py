@@ -10,7 +10,7 @@ from keyboards import catch_keyboard, lure_keyboard, no_lure_keyboard
 from game.species_data import RARITY_LABELS, HABITATS, ENCLOSURE_LEVELS
 from config import CATCH_EXPIRY_MINUTES
 from game.achievements import check_achievements
-from game.constants import LURE_MULTIPLIER
+from game.constants import LURE_MULTIPLIER, NO_LURE_COST
 
 
 async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -35,7 +35,7 @@ async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         lure_text = "🎣 *Choose a lure!*\n_Habitat lures give 1.5× catch rate._"
         lure_kb = lure_keyboard(counts)
     else:
-        lure_text = "🌿 *Go catch an animal!*\n_No lure — a random animal will appear._"
+        lure_text = f"🌿 *Go catch an animal!*\n_No lure — costs {NO_LURE_COST} 🪙, a random animal will appear._"
         lure_kb = no_lure_keyboard()
 
     msg = await update.message.reply_text(lure_text, parse_mode="Markdown", reply_markup=lure_kb)
@@ -67,7 +67,10 @@ async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     lure_multiplier = LURE_MULTIPLIER if is_habitat_lure else 1.0
 
     if is_no_lure:
-        pass  # free catch — no inventory check, no consumption
+        if user["coins"] < NO_LURE_COST:
+            await query.answer(f"Need {NO_LURE_COST} 🪙 to search without a lure!", show_alert=True)
+            return
+        db.add_coins(tg_id, -NO_LURE_COST)
     elif is_legacy_basic:
         # backward compat: consume remaining lure_basic stock if present
         purchase = db.get_oldest_purchase(tg_id, "lure_basic")
@@ -98,7 +101,7 @@ async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if user["catch_net_active"]:
         rarity = "legendary"
     elif habitat == "mythic":
-        rarity = "legendary"
+        rarity = random.choices(["epic", "legendary"], weights=[30, 10])[0]
     elif user["epic_magnet_active"] and rarity in ("common", "rare"):
         epic_candidates = db.get_species_candidates("epic", None if is_unfiltered else habitat)
         if epic_candidates:
