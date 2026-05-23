@@ -186,7 +186,8 @@ def get_animals(user_id):
 def get_animal(animal_id):
     with get_conn() as conn:
         return conn.execute(
-            "SELECT a.*, s.name AS species_name, s.emoji, s.rarity, s.hunger_decay, s.breed_time_hrs, s.habitat "
+            "SELECT a.*, s.name AS species_name, s.emoji, s.rarity, s.hunger_decay, "
+            "s.breed_time_hrs, s.catch_cost, s.habitat "
             "FROM animals a JOIN species s ON s.species_id = a.species_id "
             "WHERE a.animal_id = ?",
             (animal_id,),
