@@ -22,7 +22,9 @@ async def sell_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("You have no animals to sell.")
         return
 
-    kb = animal_picker_keyboard(animals, "sell_pick", "sell_cancel")
+    kb = animal_picker_keyboard(
+        animals, "sell_pick", "sell_cancel", page=0, page_callback_prefix="sell_page"
+    )
     await update.message.reply_text("Which animal do you want to sell?", reply_markup=kb)
 
 
@@ -102,3 +104,16 @@ async def sell_cancel_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer("Cancelled")
     await query.edit_message_text("Sell cancelled.")
+
+
+async def sell_page_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    tg_id = query.from_user.id
+    page = int(query.data.removeprefix("sell_page_"))
+
+    animals = db.get_animals(tg_id)
+    kb = animal_picker_keyboard(
+        animals, "sell_pick", "sell_cancel", page=page, page_callback_prefix="sell_page"
+    )
+    await query.answer()
+    await query.edit_message_text("Which animal do you want to sell?", reply_markup=kb)

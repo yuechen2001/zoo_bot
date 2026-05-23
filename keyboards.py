@@ -1,6 +1,6 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from game.species_data import HABITATS
-from game.constants import MIN_INVEST, SPIN_COST, MAX_BET
+from game.constants import MIN_INVEST, SPIN_COST, MAX_BET, ANIMAL_PAGE_SIZE
 
 MOOD_EMOJIS = ["😢", "😐", "🙂", "😄", "🤩"]
 
@@ -20,10 +20,18 @@ def animal_picker_keyboard(
     callback_prefix: str,
     cancel_callback: str,
     disabled_ids: set = None,
+    page: int = 0,
+    page_callback_prefix: str = None,
 ) -> InlineKeyboardMarkup:
     disabled_ids = disabled_ids or set()
+    total = len(animals)
+    total_pages = max(1, (total + ANIMAL_PAGE_SIZE - 1) // ANIMAL_PAGE_SIZE)
+    start = page * ANIMAL_PAGE_SIZE
+    page_animals = animals[start : start + ANIMAL_PAGE_SIZE]
+
     rows = []
-    for pos, animal in enumerate(animals, start=1):
+    for i, animal in enumerate(page_animals):
+        pos = start + i + 1  # global 1-based position
         aid = animal["animal_id"]
         square = RARITY_SQUARE.get(animal["rarity"], "⬜")
         label_name = animal["nickname"] or animal["species_name"]
@@ -33,6 +41,20 @@ def animal_picker_keyboard(
         else:
             label = f"{square} {animal['emoji']} #{pos} {label_name}"
             rows.append([InlineKeyboardButton(label, callback_data=f"{callback_prefix}_{pos}")])
+
+    if page_callback_prefix and total_pages > 1:
+        nav = []
+        if page > 0:
+            nav.append(
+                InlineKeyboardButton("⬅️", callback_data=f"{page_callback_prefix}_{page - 1}")
+            )
+        nav.append(InlineKeyboardButton(f"{page + 1}/{total_pages}", callback_data="zoo_noop"))
+        if page < total_pages - 1:
+            nav.append(
+                InlineKeyboardButton("➡️", callback_data=f"{page_callback_prefix}_{page + 1}")
+            )
+        rows.append(nav)
+
     rows.append([InlineKeyboardButton("❌ Cancel", callback_data=cancel_callback)])
     return InlineKeyboardMarkup(rows)
 
@@ -199,7 +221,10 @@ def breed_collect_keyboard():
 
 
 def enclosure_upgrade_keyboard(
-    habitats_with_cost: list[tuple[str, int]], tg_id: int
+    habitats_with_cost: list[tuple[str, int]],
+    tg_id: int,
+    page: int = 0,
+    total_pages: int = 1,
 ) -> InlineKeyboardMarkup:
     buttons = [
         [
@@ -209,6 +234,14 @@ def enclosure_upgrade_keyboard(
         ]
         for habitat, cost in habitats_with_cost
     ]
+    if total_pages > 1:
+        nav = []
+        if page > 0:
+            nav.append(InlineKeyboardButton("⬅️", callback_data=f"enc_page_{tg_id}_{page - 1}"))
+        nav.append(InlineKeyboardButton(f"{page + 1}/{total_pages}", callback_data="zoo_noop"))
+        if page < total_pages - 1:
+            nav.append(InlineKeyboardButton("➡️", callback_data=f"enc_page_{tg_id}_{page + 1}"))
+        buttons.append(nav)
     buttons.append(
         [InlineKeyboardButton("💰 Collect income", callback_data=f"enc_collect_{tg_id}")]
     )

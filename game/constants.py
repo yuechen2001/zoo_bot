@@ -45,6 +45,10 @@ BREED_BOOST_HOURS = 2  # hours subtracted by Breed Boost item
 # Wild events — rarity weights for random encounter roll [common, rare, epic, legendary]
 WILD_EVENT_RARITY_WEIGHTS = [20, 40, 30, 10]
 
+# Pagination
+ANIMAL_PAGE_SIZE = 8
+ENC_PAGE_SIZE = 3
+
 # Power-up display labels for /zoo — (user_flag_column, display_label)
 POWERUP_LABELS = [
     ("lucky_catch_active", "🎯 Lucky"),

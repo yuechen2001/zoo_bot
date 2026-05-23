@@ -42,6 +42,8 @@ from handlers import (
     breed_p1_callback,
     breed_p2_callback,
     breed_cancel_callback,
+    breed_page_callback,
+    breed_p2_page_callback,
     name_command,
     name_pick_callback,
     name_cancel_callback,
@@ -68,9 +70,11 @@ from handlers import (
     sell_pick_callback,
     sell_yes_callback,
     sell_cancel_callback,
+    sell_page_callback,
     enclosures_command,
     enclosure_upgrade_callback,
     enclosure_collect_callback,
+    enclosure_page_callback,
     directory_command,
     directory_page_callback,
     inventory_command,
@@ -141,12 +145,18 @@ async def handle_callback(update, ctx):
         await catch_callback(update, ctx)
     elif data == "breed_collect":
         await breed_collect_callback(update, ctx)
+    elif data.startswith("breed_p2_page_"):
+        await breed_p2_page_callback(update, ctx)
     elif data.startswith("breed_p2_"):
         await breed_p2_callback(update, ctx)
     elif data.startswith("breed_p1_"):
         await breed_p1_callback(update, ctx)
+    elif data.startswith("breed_page_"):
+        await breed_page_callback(update, ctx)
     elif data == "breed_cancel":
         await breed_cancel_callback(update, ctx)
+    elif data.startswith("sell_page_"):
+        await sell_page_callback(update, ctx)
     elif data.startswith("sell_pick_"):
         await sell_pick_callback(update, ctx)
     elif data.startswith("sell_yes_"):
@@ -167,6 +177,8 @@ async def handle_callback(update, ctx):
         await trivia_callback(update, ctx)
     elif data.startswith("trade_"):
         await trade_callback(update, ctx)
+    elif data.startswith("enc_page_"):
+        await enclosure_page_callback(update, ctx)
     elif data.startswith("enc_upgrade_"):
         await enclosure_upgrade_callback(update, ctx)
     elif data.startswith("enc_collect_"):

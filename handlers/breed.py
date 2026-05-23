@@ -46,7 +46,14 @@ async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 parse_mode="Markdown",
             )
             return
-        kb = animal_picker_keyboard(animals, "breed_p1", "breed_cancel", disabled_ids=breeding_ids)
+        kb = animal_picker_keyboard(
+            animals,
+            "breed_p1",
+            "breed_cancel",
+            disabled_ids=breeding_ids,
+            page=0,
+            page_callback_prefix="breed_page",
+        )
         await update.message.reply_text("Choose the first parent:", reply_markup=kb)
         return
 
@@ -214,7 +221,12 @@ async def breed_p1_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     disabled_ids = breeding_ids | {animal_a["animal_id"]}
 
     kb = animal_picker_keyboard(
-        animals, f"breed_p2_{pos1}", "breed_cancel", disabled_ids=disabled_ids
+        animals,
+        f"breed_p2_{pos1}",
+        "breed_cancel",
+        disabled_ids=disabled_ids,
+        page=0,
+        page_callback_prefix=f"breed_p2_page_{pos1}",
     )
     await query.answer()
     await query.edit_message_text(
@@ -267,3 +279,60 @@ async def breed_cancel_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer("Cancelled")
     await query.edit_message_text("Breed cancelled.")
+
+
+async def breed_page_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    tg_id = query.from_user.id
+    page = int(query.data.removeprefix("breed_page_"))
+
+    pending = db.get_pending_breed(tg_id)
+    if pending:
+        await query.answer("Already breeding! Use /breed collect.", show_alert=True)
+        return
+
+    animals = db.get_animals(tg_id)
+    breeding_ids = {a["animal_id"] for a in animals if a["is_breeding"]}
+    kb = animal_picker_keyboard(
+        animals,
+        "breed_p1",
+        "breed_cancel",
+        disabled_ids=breeding_ids,
+        page=page,
+        page_callback_prefix="breed_page",
+    )
+    await query.answer()
+    await query.edit_message_text("Choose the first parent:", reply_markup=kb)
+
+
+async def breed_p2_page_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    tg_id = query.from_user.id
+    rest = query.data.removeprefix("breed_p2_page_")
+    pos1_str, page_str = rest.rsplit("_", 1)
+    pos1, page = int(pos1_str), int(page_str)
+
+    animal_a = db.get_animal_by_position(tg_id, pos1)
+    if not animal_a:
+        await query.answer("That animal no longer exists.", show_alert=True)
+        return
+
+    animals = db.get_animals(tg_id)
+    breeding_ids = {a["animal_id"] for a in animals if a["is_breeding"]}
+    disabled_ids = breeding_ids | {animal_a["animal_id"]}
+    name_a = animal_a["nickname"] or animal_a["species_name"]
+
+    kb = animal_picker_keyboard(
+        animals,
+        f"breed_p2_{pos1}",
+        "breed_cancel",
+        disabled_ids=disabled_ids,
+        page=page,
+        page_callback_prefix=f"breed_p2_page_{pos1}",
+    )
+    await query.answer()
+    await query.edit_message_text(
+        f"🐾 *{animal_a['emoji']} {name_a}* chosen as parent 1\n\nChoose parent 2:",
+        reply_markup=kb,
+        parse_mode="Markdown",
+    )
