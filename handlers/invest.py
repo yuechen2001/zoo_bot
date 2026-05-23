@@ -60,9 +60,8 @@ async def invest_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     args = ctx.args or []
-    subcommand = args[0].lower() if args else ""
 
-    if subcommand.isdigit() or (len(args) == 1 and args[0].lstrip("-").isdigit()):
+    if args and args[0].isdigit():
         await _invest(update, tg_id, user, args[0])
     else:
         inv = db.get_active_investment(tg_id)
