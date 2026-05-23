@@ -101,7 +101,7 @@ async def test_wild_event_enclosure_full():
 
 @pytest.mark.asyncio
 async def test_wild_event_catch_rate_fails():
-    """Catch rate roll fails → animal escapes, wild event NOT claimed."""
+    """Catch rate roll fails → animal escapes, wild event claimed as escaped (-1)."""
     update, query = _make_query()
     event = _make_event()
     species = _make_species(habitat="woodland", catch_rate=0.5)
@@ -122,7 +122,7 @@ async def test_wild_event_catch_rate_fails():
         "handlers.wild_event.random.random", return_value=1.0
     ):
         await wild_event_callback(update, MagicMock())
-    mock_claim.assert_not_called()
+    mock_claim.assert_called_once_with(event["id"], -1)
     query.answer.assert_called_once()
     assert "got away" in query.answer.call_args[0][0].lower()
 

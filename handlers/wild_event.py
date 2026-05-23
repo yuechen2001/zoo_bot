@@ -67,10 +67,18 @@ async def wild_event_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     # Roll catch rate with lure multiplier — wild animals can still escape
     catch_rate = min(1.0, species["catch_rate"] * LURE_MULTIPLIER)
     if not random.random() < catch_rate:
+        db.claim_wild_event(event_id, -1)
         await query.answer(
-            f"🌿 {species['emoji']} {species['name']} got away! Someone else might still catch it.",
+            f"🌿 {species['emoji']} {species['name']} got away!",
             show_alert=True,
         )
+        try:
+            await query.edit_message_text(
+                f"🌿 *The wild {species['name']} got away!*",
+                parse_mode="Markdown",
+            )
+        except Exception:
+            logger.exception("Failed to update wild event message %s", event_id)
         return
 
     claimed = db.claim_wild_event(event_id, tg_id)
