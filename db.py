@@ -855,7 +855,10 @@ def activate_massage(user_id: int, cost: int, massage_until: str) -> None:
 
 def feed_animal(user_id: int, animal_id: str, new_hunger: int, feed_cost: int) -> None:
     with get_conn() as conn:
-        conn.execute("UPDATE users SET coins = coins - ? WHERE user_id = ?", (feed_cost, user_id))
+        conn.execute(
+            "UPDATE users SET coins = coins - ?, feeds_given = feeds_given + 1 WHERE user_id = ?",
+            (feed_cost, user_id),
+        )
         conn.execute(
             "UPDATE animals SET hunger = ?, hunger_alerted = NULL WHERE animal_id = ?",
             (new_hunger, animal_id),
@@ -1316,4 +1319,96 @@ def set_catch_message(user_id: int, chat_id: int, message_id: int) -> None:
         conn.execute(
             "UPDATE users SET catch_chat_id = ?, catch_message_id = ? WHERE user_id = ?",
             (chat_id, message_id, user_id),
+        )
+
+
+# ── Quests ────────────────────────────────────────────────────────────────────
+
+
+def get_quest_progress(user_id: int) -> list:
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT * FROM user_quest_progress WHERE user_id = ? ORDER BY chapter_num",
+            (user_id,),
+        ).fetchall()
+
+
+def get_active_chapter(user_id: int) -> int | None:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT chapter_num FROM user_quest_progress "
+            "WHERE user_id = ? AND completed_at IS NULL ORDER BY chapter_num LIMIT 1",
+            (user_id,),
+        ).fetchone()
+        return row["chapter_num"] if row else None
+
+
+def start_chapter(user_id: int, chapter_num: int) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO user_quest_progress (user_id, chapter_num) VALUES (?, ?)",
+            (user_id, chapter_num),
+        )
+
+
+def set_quest_step(user_id: int, chapter_num: int, step: int) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE user_quest_progress SET step = ? WHERE user_id = ? AND chapter_num = ?",
+            (step, user_id, chapter_num),
+        )
+
+
+def complete_chapter(user_id: int, chapter_num: int, reward_coins: int) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE user_quest_progress SET completed_at = datetime('now') "
+            "WHERE user_id = ? AND chapter_num = ?",
+            (user_id, chapter_num),
+        )
+        conn.execute(
+            "UPDATE users SET coins = coins + ? WHERE user_id = ?",
+            (reward_coins, user_id),
+        )
+
+
+def award_quest_animal(user_id: int, species_name: str) -> bool:
+    import uuid
+
+    species = get_species_by_name(species_name)
+    if not species:
+        return False
+    animal_id = str(uuid.uuid4())
+    add_animal(animal_id, user_id, species["species_id"])
+    return True
+
+
+def count_habitats_occupied(user_id: int) -> int:
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT COUNT(DISTINCT s.habitat) FROM animals a "
+            "JOIN species s ON s.species_id = a.species_id WHERE a.user_id = ?",
+            (user_id,),
+        ).fetchone()[0]
+
+
+def has_any_lure(user_id: int) -> bool:
+    counts = get_item_counts(user_id)
+    return any(k.startswith("lure_") and v > 0 for k, v in counts.items())
+
+
+def has_any_store_item(user_id: int) -> bool:
+    counts = get_item_counts(user_id)
+    if any(v > 0 for v in counts.values()):
+        return True
+    return bool(get_owned_title_keys(user_id))
+
+
+def has_any_investment(user_id: int) -> bool:
+    with get_conn() as conn:
+        return (
+            conn.execute(
+                "SELECT COUNT(*) FROM investments WHERE user_id = ?", (user_id,)
+            ).fetchone()[0]
+            > 0
         )
