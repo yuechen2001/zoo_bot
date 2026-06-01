@@ -61,8 +61,7 @@ async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     is_no_lure = habitat == "none"
-    is_legacy_basic = habitat == "basic"
-    is_habitat_lure = not is_no_lure and not is_legacy_basic
+    is_habitat_lure = not is_no_lure
 
     lure_multiplier = LURE_MULTIPLIER if is_habitat_lure else 1.0
 
@@ -71,11 +70,6 @@ async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             await query.answer(f"Need {NO_LURE_COST} 🪙 to search without a lure!", show_alert=True)
             return
         db.add_coins(tg_id, -NO_LURE_COST)
-    elif is_legacy_basic:
-        # backward compat: consume remaining lure_basic stock if present
-        purchase = db.get_oldest_purchase(tg_id, "lure_basic")
-        if purchase:
-            db.consume_purchase(purchase["id"])
     else:
         # Verify lure is still in inventory (race condition guard)
         purchase = db.get_oldest_purchase(tg_id, f"lure_{habitat}")
@@ -93,7 +87,7 @@ async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 show_alert=True,
             )
             return
-    is_unfiltered = is_no_lure or is_legacy_basic
+    is_unfiltered = is_no_lure
 
     rarity = roll_encounter()
     if user["catch_net_active"]:
