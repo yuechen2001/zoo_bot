@@ -1046,16 +1046,6 @@ SPECIES = [
         "breed_time_hrs": 10,
     },
     {
-        "name": "Red Panda",
-        "emoji": "🐾",
-        "rarity": "epic",
-        "habitat": "tundra",
-        "catch_rate": 0.0,
-        "catch_cost": 0,
-        "hunger_decay": 10,
-        "breed_time_hrs": 18,
-    },
-    {
         "name": "Axolotl",
         "emoji": "🫧",
         "rarity": "legendary",
