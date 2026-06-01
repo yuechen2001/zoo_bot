@@ -590,6 +590,16 @@ SPECIES = [
     },
     # ── Woodland additions ─────────────────────────────────────────────────────
     {
+        "name": "Moose",
+        "emoji": "🫎",
+        "rarity": "legendary",
+        "habitat": "woodland",
+        "catch_rate": 0.10,
+        "catch_cost": 200,
+        "hunger_decay": 2,
+        "breed_time_hrs": 48,
+    },
+    {
         "name": "Squirrel",
         "emoji": "🐿️",
         "rarity": "common",
