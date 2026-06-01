@@ -1034,6 +1034,47 @@ SPECIES = [
         "hunger_decay": 2,
         "breed_time_hrs": 48,
     },
+    # Quest-exclusive — catch_rate 0.0 keeps them out of the wild catch pool
+    {
+        "name": "Capybara",
+        "emoji": "🦫",
+        "rarity": "rare",
+        "habitat": "savanna",
+        "catch_rate": 0.0,
+        "catch_cost": 0,
+        "hunger_decay": 7,
+        "breed_time_hrs": 10,
+    },
+    {
+        "name": "Red Panda",
+        "emoji": "🐾",
+        "rarity": "epic",
+        "habitat": "tundra",
+        "catch_rate": 0.0,
+        "catch_cost": 0,
+        "hunger_decay": 10,
+        "breed_time_hrs": 18,
+    },
+    {
+        "name": "Axolotl",
+        "emoji": "🫧",
+        "rarity": "legendary",
+        "habitat": "aquatic",
+        "catch_rate": 0.0,
+        "catch_cost": 0,
+        "hunger_decay": 15,
+        "breed_time_hrs": 36,
+    },
+    {
+        "name": "Quetzal",
+        "emoji": "🪶",
+        "rarity": "legendary",
+        "habitat": "mythic",
+        "catch_rate": 0.0,
+        "catch_cost": 0,
+        "hunger_decay": 15,
+        "breed_time_hrs": 48,
+    },
 ]
 
 # Weighted encounter probabilities per rarity
