@@ -1,6 +1,6 @@
 import functools
 import db
-from game.species_data import MAX_ENCLOSURE_LEVEL
+from game.species_data import HABITATS, MAX_ENCLOSURE_LEVEL
 
 
 # Each achievement: emoji, name, desc, trigger, check(user_id, user_row) -> bool
@@ -278,10 +278,7 @@ ACHIEVEMENTS = {
         "name": "Explorer",
         "desc": "Own at least one animal from every habitat",
         "trigger": "catch",
-        "check": lambda uid, u: all(
-            db.get_animal_count_by_habitat(uid, h) > 0
-            for h in ["woodland", "savanna", "tropical", "aquatic", "tundra", "mythic", "spectral"]
-        ),
+        "check": lambda uid, u: all(db.get_animal_count_by_habitat(uid, h) > 0 for h in HABITATS),
     },
     "mythic_tamer": {
         "emoji": "✨",
@@ -310,7 +307,44 @@ ACHIEVEMENTS = {
         "name": "Haunted Keeper",
         "desc": "Own at least one of every Spectral species",
         "trigger": "catch",
-        "check": lambda uid, u: db.count_distinct_species_in_habitat(uid, "spectral") >= 7,
+        "check": lambda uid, u: db.count_distinct_species_in_habitat(uid, "spectral") >= 10,
+    },
+    # ── Desert ────────────────────────────────────────────────────────────────
+    "desert_first": {
+        "emoji": "🏜️",
+        "name": "Sand Walker",
+        "desc": "Catch your first Desert animal",
+        "trigger": "catch",
+        "check": lambda uid, u: db.get_animal_count_by_habitat(uid, "desert") >= 1,
+    },
+    "desert_collector": {
+        "emoji": "🐪",
+        "name": "Desert Nomad",
+        "desc": "Own 3 Desert animals",
+        "trigger": "catch",
+        "check": lambda uid, u: db.get_animal_count_by_habitat(uid, "desert") >= 3,
+    },
+    "desert_master": {
+        "emoji": "🐲",
+        "name": "Dune Lord",
+        "desc": "Own at least one of every Desert species",
+        "trigger": "catch",
+        "check": lambda uid, u: db.count_distinct_species_in_habitat(uid, "desert") >= 8,
+    },
+    # ── Extended milestones ───────────────────────────────────────────────────
+    "zoo_50": {
+        "emoji": "🏟️",
+        "name": "Megazoo",
+        "desc": "Own 50 animals",
+        "trigger": "catch",
+        "check": lambda uid, u: db.count_animals(uid) >= 50,
+    },
+    "species_30": {
+        "emoji": "🔬",
+        "name": "Zoologist",
+        "desc": "Own 30 different species",
+        "trigger": "catch",
+        "check": lambda uid, u: db.count_distinct_species(uid) >= 30,
     },
     "streak_100": {
         "emoji": "💫",
