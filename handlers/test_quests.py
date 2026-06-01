@@ -1,4 +1,5 @@
 import pytest
+from contextlib import ExitStack
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from handlers.quests import quests_command, quest_tab_callback, _render_quests
@@ -205,14 +206,34 @@ async def test_quest_tab_callback_renders_correct_arc():
 # ── _render_quests ─────────────────────────────────────────────────────────────
 
 
+def _quest_db_patches(user):
+    """Patch all db calls reachable from task check lambdas in game/quests_data.py."""
+    return (
+        patch("game.quests_data.db.get_user", return_value=user),
+        patch("game.quests_data.db.count_animals", return_value=0),
+        patch("game.quests_data.db.count_mood_checkins", return_value=0),
+        patch("game.quests_data.db.user_owns_rarity", return_value=False),
+        patch("game.quests_data.db.count_trivia_answered", return_value=0),
+        patch("game.quests_data.db.get_max_enclosure_level", return_value=1),
+        patch("game.quests_data.db.count_collected_breeds", return_value=0),
+        patch("game.quests_data.db.has_any_lure", return_value=False),
+        patch("game.quests_data.db.has_any_store_item", return_value=False),
+        patch("game.quests_data.db.has_any_investment", return_value=False),
+        patch("game.quests_data.db.count_habitats_occupied", return_value=0),
+        patch("game.quests_data.db.count_distinct_species", return_value=0),
+        patch("game.quests_data.db.user_bred_rarity", return_value=False),
+    )
+
+
 def test_render_quests_shows_active_chapter():
     user = {"group_chat_id": None, "streak_windows": 2, "feeds_given": 1, "coins": 100}
-    with (
-        patch("handlers.quests.db.get_quest_progress", return_value=[]),
-        patch("handlers.quests.db.get_active_chapter", return_value=1),
-        patch("handlers.quests.db.get_user", return_value=user),
-        patch("handlers.quests.db.get_species_by_name", return_value=None),
-    ):
+    with ExitStack() as stack:
+        stack.enter_context(patch("handlers.quests.db.get_quest_progress", return_value=[]))
+        stack.enter_context(patch("handlers.quests.db.get_active_chapter", return_value=1))
+        stack.enter_context(patch("handlers.quests.db.get_user", return_value=user))
+        stack.enter_context(patch("handlers.quests.db.get_species_by_name", return_value=None))
+        for p in _quest_db_patches(user):
+            stack.enter_context(p)
         text = _render_quests(1, arc=1)
     assert "▶️" in text
     assert "First Steps" in text
@@ -228,12 +249,13 @@ def test_render_quests_shows_locked_future_chapters():
         "completed_at": "2024-01-01",
     }[key]
 
-    with (
-        patch("handlers.quests.db.get_quest_progress", return_value=[ch1_row]),
-        patch("handlers.quests.db.get_active_chapter", return_value=2),
-        patch("handlers.quests.db.get_user", return_value=user),
-        patch("handlers.quests.db.get_species_by_name", return_value=None),
-    ):
+    with ExitStack() as stack:
+        stack.enter_context(patch("handlers.quests.db.get_quest_progress", return_value=[ch1_row]))
+        stack.enter_context(patch("handlers.quests.db.get_active_chapter", return_value=2))
+        stack.enter_context(patch("handlers.quests.db.get_user", return_value=user))
+        stack.enter_context(patch("handlers.quests.db.get_species_by_name", return_value=None))
+        for p in _quest_db_patches(user):
+            stack.enter_context(p)
         text = _render_quests(1, arc=1)
     assert "✅" in text
     assert "▶️" in text
@@ -241,11 +263,12 @@ def test_render_quests_shows_locked_future_chapters():
 
 def test_render_quests_shows_arc_name():
     user = {"group_chat_id": None, "streak_windows": 0, "feeds_given": 0, "coins": 0}
-    with (
-        patch("handlers.quests.db.get_quest_progress", return_value=[]),
-        patch("handlers.quests.db.get_active_chapter", return_value=1),
-        patch("handlers.quests.db.get_user", return_value=user),
-        patch("handlers.quests.db.get_species_by_name", return_value=None),
-    ):
+    with ExitStack() as stack:
+        stack.enter_context(patch("handlers.quests.db.get_quest_progress", return_value=[]))
+        stack.enter_context(patch("handlers.quests.db.get_active_chapter", return_value=1))
+        stack.enter_context(patch("handlers.quests.db.get_user", return_value=user))
+        stack.enter_context(patch("handlers.quests.db.get_species_by_name", return_value=None))
+        for p in _quest_db_patches(user):
+            stack.enter_context(p)
         text = _render_quests(1, arc=1)
     assert "The Zoo Opens" in text
