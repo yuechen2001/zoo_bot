@@ -168,6 +168,7 @@ _HELP_SECTIONS = {
         "/autofeed off — disable auto-feed\n"
         "/directory — browse all species & see which you own\n"
         "/achievements — view your milestones\n"
+        "/quests — track the Zoo Expedition storyline (12 chapters, exclusive animals)\n"
         "/footmassage — halve animal hunger decay for 1h (25 🪙, 4h cooldown)\n"
         "/enclosures — view and upgrade your habitat enclosures (tap 💰 to collect income)"
     ),
