@@ -1383,6 +1383,14 @@ def award_quest_animal(user_id: int, species_name: str) -> bool:
     return True
 
 
+def get_max_enclosure_level(user_id: int) -> int:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT MAX(level) FROM user_enclosures WHERE user_id = ?", (user_id,)
+        ).fetchone()
+        return row[0] or 0
+
+
 def count_habitats_occupied(user_id: int) -> int:
     with get_conn() as conn:
         return conn.execute(
