@@ -8,8 +8,8 @@ FEED_HUNGER = 40
 
 # Slots
 SPIN_COST = 10
-WIN_3 = 150
-WIN_2 = 10
+WIN_3 = 200
+WIN_2 = 18
 SYMBOLS = ["🐭", "🐸", "🐱", "🦊", "🐼", "🦄"]
 
 # Gamble

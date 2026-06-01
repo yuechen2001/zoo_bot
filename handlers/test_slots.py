@@ -18,12 +18,12 @@ def test_spin_cost_is_10():
     assert SPIN_COST == 10
 
 
-def test_win_3_is_150():
-    assert WIN_3 == 150
+def test_win_3_is_200():
+    assert WIN_3 == 200
 
 
-def test_win_2_is_10():
-    assert WIN_2 == 10
+def test_win_2_is_18():
+    assert WIN_2 == 18
 
 
 def test_symbols_has_6_entries():
