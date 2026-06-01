@@ -7,6 +7,74 @@ ARCS = {
     4: "The Legacy",
 }
 
+# Re-export so handlers can import from one place
+__all__ = ["ARCS", "CHAPTERS", "check_quest_advance"]
+
+
+async def check_quest_advance(user_id: int, ctx) -> None:
+    try:
+        await _do_check_quest_advance(user_id, ctx)
+    except Exception:
+        return
+
+
+async def _do_check_quest_advance(user_id: int, ctx) -> None:
+    user = db.get_user(user_id)
+    if not user:
+        return
+
+    if not db.get_quest_progress(user_id):
+        db.start_chapter(user_id, 1)
+
+    while True:
+        active_ch = db.get_active_chapter(user_id)
+        if active_ch is None:
+            break
+
+        ch = CHAPTERS.get(active_ch)
+        if not ch:
+            break
+
+        user = db.get_user(user_id)
+        tasks_passing = sum(1 for t in ch["tasks"] if t["check"](user_id, user))
+        db.set_quest_step(user_id, active_ch, tasks_passing)
+
+        if tasks_passing < len(ch["tasks"]):
+            break
+
+        db.complete_chapter(user_id, active_ch, ch["reward_coins"])
+
+        if ch["reward_species"]:
+            db.award_quest_animal(user_id, ch["reward_species"])
+
+        if ch["reward_title"]:
+            db.record_purchase(user_id, ch["reward_title"])
+
+        next_ch = active_ch + 1
+        if next_ch in CHAPTERS:
+            db.start_chapter(user_id, next_ch)
+
+        if user["group_chat_id"]:
+            name = user["username"] or "Someone"
+            sp_extra = ""
+            if ch["reward_species"]:
+                sp = db.get_species_by_name(ch["reward_species"])
+                if sp:
+                    sp_extra = f"\n{sp['emoji']} *{ch['reward_species']}* added to your zoo!"
+            try:
+                await ctx.bot.send_message(
+                    user["group_chat_id"],
+                    f"📖 *{name}* completed *Chapter {active_ch}: {ch['title']}*!\n"
+                    f"_{ch['outro']}_\n\n"
+                    f"+{ch['reward_coins']}🪙{sp_extra}",
+                    parse_mode="Markdown",
+                )
+            except Exception:
+                pass
+
+
+# ── Chapter definitions ───────────────────────────────────────────────────────
+
 CHAPTERS: dict[int, dict] = {
     # ── Arc 1: The Zoo Opens ──────────────────────────────────────────────────
     1: {

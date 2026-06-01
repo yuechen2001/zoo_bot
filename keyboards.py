@@ -363,3 +363,17 @@ def trade_keyboard(trade_id: int, recipient_id: int):
             ]
         ]
     )
+
+
+def quests_keyboard(user_id: int, current_arc: int) -> InlineKeyboardMarkup:
+    arc_labels = {1: "Arc 1", 2: "Arc 2", 3: "Arc 3", 4: "Arc 4"}
+    arc_row = []
+    for arc_num, label in arc_labels.items():
+        if arc_num == current_arc:
+            arc_row.append(InlineKeyboardButton(f"▸ {label} ◂", callback_data="zoo_noop"))
+        else:
+            arc_row.append(
+                InlineKeyboardButton(label, callback_data=f"quest_arc_{user_id}_{arc_num}")
+            )
+    refresh = InlineKeyboardButton("🔄 Refresh", callback_data=f"quest_arc_{user_id}_{current_arc}")
+    return InlineKeyboardMarkup([arc_row, [refresh]])

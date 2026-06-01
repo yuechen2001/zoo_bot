@@ -378,12 +378,15 @@ ACHIEVEMENTS = {
 
 
 def triggers(event: str):
+    from game.quests_data import check_quest_advance
+
     def decorator(fn):
         @functools.wraps(fn)
         async def wrapper(update, ctx):
             result = await fn(update, ctx)
             tg_id = (update.effective_user or update.callback_query.from_user).id
             await check_achievements(tg_id, event, ctx)
+            await check_quest_advance(tg_id, ctx)
             return result
 
         return wrapper

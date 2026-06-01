@@ -50,6 +50,7 @@ from .enclosures import (
 )
 from .directory import directory_command, directory_page_callback
 from .inventory import inventory_command, inventory_callback
+from .quests import quests_command, quest_tab_callback
 
 __all__ = [
     "start_command",
@@ -107,4 +108,6 @@ __all__ = [
     "help_tab_callback",
     "inventory_command",
     "inventory_callback",
+    "quests_command",
+    "quest_tab_callback",
 ]
