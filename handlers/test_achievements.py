@@ -171,3 +171,53 @@ def test_breed_20_check():
         assert check(1, {}) is True
     with patch("game.achievements.db.count_collected_breeds", return_value=19):
         assert check(1, {}) is False
+
+
+def test_explorer_requires_desert():
+    check = _get_check("explorer")
+
+    def missing_desert(uid, h):
+        return 0 if h == "desert" else 1
+
+    with patch("game.achievements.db.get_animal_count_by_habitat", side_effect=missing_desert):
+        assert check(1, {}) is False
+
+
+def test_desert_first_check():
+    check = _get_check("desert_first")
+    with patch("game.achievements.db.get_animal_count_by_habitat", return_value=1):
+        assert check(1, {}) is True
+    with patch("game.achievements.db.get_animal_count_by_habitat", return_value=0):
+        assert check(1, {}) is False
+
+
+def test_desert_collector_check():
+    check = _get_check("desert_collector")
+    with patch("game.achievements.db.get_animal_count_by_habitat", return_value=3):
+        assert check(1, {}) is True
+    with patch("game.achievements.db.get_animal_count_by_habitat", return_value=2):
+        assert check(1, {}) is False
+
+
+def test_desert_master_check():
+    check = _get_check("desert_master")
+    with patch("game.achievements.db.count_distinct_species_in_habitat", return_value=8):
+        assert check(1, {}) is True
+    with patch("game.achievements.db.count_distinct_species_in_habitat", return_value=7):
+        assert check(1, {}) is False
+
+
+def test_zoo_50_check():
+    check = _get_check("zoo_50")
+    with patch("game.achievements.db.count_animals", return_value=50):
+        assert check(1, {}) is True
+    with patch("game.achievements.db.count_animals", return_value=49):
+        assert check(1, {}) is False
+
+
+def test_species_30_check():
+    check = _get_check("species_30")
+    with patch("game.achievements.db.count_distinct_species", return_value=30):
+        assert check(1, {}) is True
+    with patch("game.achievements.db.count_distinct_species", return_value=29):
+        assert check(1, {}) is False
