@@ -165,3 +165,112 @@ async def test_invest_collect_callback_blocked_when_not_ready():
         await invest_collect_callback(update, ctx)
     assert query.answer.call_args[1].get("show_alert") is True
     query.edit_message_text.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_invest_unregistered_user():
+    update = _make_update()
+    ctx = _make_ctx(args=[])
+    with patch("handlers.invest.db.get_user", return_value=None):
+        await invest_command(update, ctx)
+    assert "start" in update.message.reply_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_invest_below_minimum():
+    update = _make_update()
+    ctx = _make_ctx(args=["5"])
+    with patch("handlers.invest.db.get_user", return_value=_make_user(coins=500)), patch(
+        "handlers.invest.db.get_active_investment", return_value=None
+    ):
+        await invest_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0]
+    assert "minimum" in reply.lower()
+
+
+@pytest.mark.asyncio
+async def test_invest_collect_no_investment():
+    update, query, ctx = _make_callback(data="invest_collect")
+    with patch("handlers.invest.db.get_user", return_value=_make_user()), patch(
+        "handlers.invest.db.get_active_investment", return_value=None
+    ):
+        await invest_collect_callback(update, ctx)
+    assert query.answer.call_args[1].get("show_alert") is True
+    query.edit_message_text.assert_not_called()
+
+
+# ── invest_max_callback ───────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_invest_max_callback_creates_investment():
+    from handlers.invest import invest_max_callback
+
+    update, query, ctx = _make_callback(data="invest_max")
+    inv = {"id": 1, "amount": 500, "return_amount": 625, "invested_at": "2099-01-01T00:00:00"}
+    with patch("handlers.invest.db.get_user", return_value=_make_user(coins=500)), patch(
+        "handlers.invest.db.get_active_investment", side_effect=[None, inv]
+    ), patch("handlers.invest.db.create_investment") as mock_create, patch(
+        "handlers.invest.db.add_coins"
+    ):
+        await invest_max_callback(update, ctx)
+    mock_create.assert_called_once()
+    query.edit_message_text.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_invest_max_callback_no_user():
+    from handlers.invest import invest_max_callback
+
+    update, query, ctx = _make_callback(data="invest_max")
+    with patch("handlers.invest.db.get_user", return_value=None):
+        await invest_max_callback(update, ctx)
+    assert query.answer.call_args[1].get("show_alert") is True
+    query.edit_message_text.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_invest_max_callback_already_active():
+    from handlers.invest import invest_max_callback
+
+    update, query, ctx = _make_callback(data="invest_max")
+    existing = {"id": 1, "amount": 100, "return_amount": 125, "invested_at": "2099-01-01T00:00:00"}
+    with patch("handlers.invest.db.get_user", return_value=_make_user(coins=500)), patch(
+        "handlers.invest.db.get_active_investment", return_value=existing
+    ):
+        await invest_max_callback(update, ctx)
+    assert query.answer.call_args[1].get("show_alert") is True
+    query.edit_message_text.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_invest_max_callback_below_minimum():
+    from handlers.invest import invest_max_callback
+
+    update, query, ctx = _make_callback(data="invest_max")
+    with patch("handlers.invest.db.get_user", return_value=_make_user(coins=5)), patch(
+        "handlers.invest.db.get_active_investment", return_value=None
+    ):
+        await invest_max_callback(update, ctx)
+    assert query.answer.call_args[1].get("show_alert") is True
+
+
+@pytest.mark.asyncio
+async def test_invest_deposit_callback_insufficient_coins():
+    update, query, ctx = _make_callback(data="invest_deposit_1000")
+    with patch("handlers.invest.db.get_user", return_value=_make_user(coins=50)), patch(
+        "handlers.invest.db.get_active_investment", return_value=None
+    ):
+        await invest_deposit_callback(update, ctx)
+    assert query.answer.call_args[1].get("show_alert") is True
+    query.edit_message_text.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_invest_deposit_callback_no_user():
+    from handlers.invest import invest_deposit_callback
+
+    update, query, ctx = _make_callback(data="invest_deposit_100")
+    with patch("handlers.invest.db.get_user", return_value=None):
+        await invest_deposit_callback(update, ctx)
+    assert query.answer.call_args[1].get("show_alert") is True

@@ -442,3 +442,170 @@ class TestCatchCapacityGate:
             await catch_callback(update, ctx)
 
         query.answer.assert_called_with("Caught!")
+
+
+# ── catch_callback other paths ────────────────────────────────────────────────
+
+
+def _make_catch_callback(data="catch_attempt_1", pending=None):
+    query = MagicMock()
+    query.from_user.id = 1
+    query.data = data
+    query.answer = AsyncMock()
+    query.edit_message_text = AsyncMock()
+    update = MagicMock()
+    update.callback_query = query
+    ctx = MagicMock()
+    ctx.user_data = {"pending_catch": pending} if pending else {}
+    return update, query, ctx
+
+
+@pytest.mark.asyncio
+async def test_catch_cancel():
+    update, query, ctx = _make_catch_callback(data="catch_cancel", pending=_make_pending())
+    await catch_callback(update, ctx)
+    query.answer.assert_called_once_with("Cancelled")
+    assert "cancelled" in query.edit_message_text.call_args[0][0].lower()
+    assert ctx.user_data.get("pending_catch") is None
+
+
+@pytest.mark.asyncio
+async def test_catch_skip():
+    update, query, ctx = _make_catch_callback(data="catch_skip", pending=_make_pending())
+    await catch_callback(update, ctx)
+    query.answer.assert_called_once_with("Skipped")
+    assert "let it go" in query.edit_message_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_catch_no_pending():
+    update, query, ctx = _make_catch_callback(data="catch_attempt_1", pending=None)
+    await catch_callback(update, ctx)
+    query.answer.assert_called_once()
+    assert "no active catch" in query.answer.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_catch_outdated_species_id():
+    pending = _make_pending(species_id=1)
+    update, query, ctx = _make_catch_callback(data="catch_attempt_999", pending=pending)
+    await catch_callback(update, ctx)
+    assert query.answer.call_args[1].get("show_alert") is True
+    assert "outdated" in query.answer.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_catch_expired():
+    import datetime
+
+    old_pending = {
+        "species_id": 1,
+        "catch_rate": 0.9,
+        "catch_cost": 20,
+        "rarity": "common",
+        "name": "Mouse",
+        "emoji": "🐭",
+        "at": (
+            datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            - datetime.timedelta(hours=2)
+        ).isoformat(),
+        "message_id": 42,
+        "lure_multiplier": 1.0,
+    }
+    update, query, ctx = _make_catch_callback(data="catch_attempt_1", pending=old_pending)
+    await catch_callback(update, ctx)
+    query.answer.assert_called_once()
+    assert (
+        "time" in query.answer.call_args[0][0].lower()
+        or "slow" in query.answer.call_args[0][0].lower()
+    )
+
+
+@pytest.mark.asyncio
+async def test_catch_insufficient_coins():
+    pending = _make_pending(species_id=1)
+    update, query, ctx = _make_catch_callback(data="catch_attempt_1", pending=pending)
+    with patch(
+        "handlers.catch.db.get_user",
+        return_value={"coins": 0, "lucky_catch_active": 0, "catch_net_active": 0},
+    ):
+        await catch_callback(update, ctx)
+    query.answer.assert_called_once()
+    assert (
+        "enough" in query.answer.call_args[0][0].lower()
+        or "need" in query.answer.call_args[0][0].lower()
+    )
+
+
+@pytest.mark.asyncio
+async def test_catch_miss():
+    pending = _make_pending(species_id=1)
+    update, query, ctx = _make_catch_callback(data="catch_attempt_1", pending=pending)
+    with patch(
+        "handlers.catch.db.get_user",
+        return_value={"coins": 500, "lucky_catch_active": 0, "catch_net_active": 0},
+    ), patch("handlers.catch.db.get_species_habitat", return_value="woodland"), patch(
+        "handlers.catch.db.get_animal_count_by_habitat", return_value=0
+    ), patch(
+        "handlers.catch.db.get_enclosure_level", return_value=1
+    ), patch(
+        "handlers.catch.db.add_coins"
+    ), patch(
+        "handlers.catch.roll_catch", return_value=False
+    ):
+        await catch_callback(update, ctx)
+    query.answer.assert_called_once_with("It escaped...")
+    assert "broke free" in query.edit_message_text.call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_catch_lure_callback_catch_net_gives_legendary():
+    """catch_net_active overrides rarity to legendary."""
+    query = MagicMock()
+    query.from_user.id = 1
+    query.data = "catch_lure_none"
+    query.answer = AsyncMock()
+    msg = MagicMock()
+    msg.message_id = 55
+    query.edit_message_text = AsyncMock(return_value=msg)
+
+    update = MagicMock()
+    update.callback_query = query
+
+    ctx = MagicMock()
+    ctx.user_data = {}
+
+    species = {
+        "species_id": 10,
+        "name": "Dragon",
+        "emoji": "🐉",
+        "rarity": "legendary",
+        "habitat": "mythic",
+        "catch_rate": 0.1,
+        "catch_cost": 100,
+    }
+
+    rarity_used = []
+
+    def capture(rarity, habitat):
+        rarity_used.append(rarity)
+        return [species]
+
+    with patch(
+        "handlers.catch.db.get_user",
+        return_value={
+            "coins": 200,
+            "catch_net_active": 1,
+            "rare_magnet_active": 0,
+            "epic_magnet_active": 0,
+        },
+    ), patch("handlers.catch.db.add_coins"), patch(
+        "handlers.catch.roll_encounter", return_value="common"
+    ), patch(
+        "handlers.catch.db.get_species_candidates", side_effect=capture
+    ), patch(
+        "handlers.catch.catch_keyboard", return_value=MagicMock()
+    ):
+        await catch_lure_callback(update, ctx)
+
+    assert rarity_used[0] == "legendary"

@@ -148,3 +148,88 @@ async def test_sell_cancel_dismisses():
     await sell_cancel_callback(update, ctx)
     query.answer.assert_called_once_with("Cancelled")
     query.edit_message_text.assert_called_once_with("Sell cancelled.")
+
+
+@pytest.mark.asyncio
+async def test_sell_command_unregistered_user():
+    update = _make_update()
+    ctx = _make_ctx()
+    with patch("handlers.sell.db.get_user", return_value=None):
+        await sell_command(update, ctx)
+    assert "start" in update.message.reply_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_sell_pick_animal_not_found():
+    update, query, ctx = _make_callback(data="sell_pick_99")
+    with patch("handlers.sell.db.get_animal_by_position", return_value=None):
+        await sell_pick_callback(update, ctx)
+    assert query.answer.call_args[1].get("show_alert") is True
+    query.edit_message_text.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_sell_pick_has_pending_trade():
+    update, query, ctx = _make_callback(data="sell_pick_1")
+    animal = _make_animal()
+    with patch("handlers.sell.db.get_animal_by_position", return_value=animal), patch(
+        "handlers.sell.db.has_pending_trade_for_animal", return_value=True
+    ):
+        await sell_pick_callback(update, ctx)
+    assert query.answer.call_args[1].get("show_alert") is True
+    query.edit_message_text.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_sell_yes_animal_not_found():
+    update, query, ctx = _make_callback(data="sell_yes_a1")
+    with patch("handlers.sell.db.get_animal", return_value=None), patch(
+        "handlers.sell.db.sell_animal"
+    ) as mock_sell:
+        await sell_yes_callback(update, ctx)
+    mock_sell.assert_not_called()
+    assert query.answer.call_args[1].get("show_alert") is True
+
+
+@pytest.mark.asyncio
+async def test_sell_yes_is_breeding():
+    update, query, ctx = _make_callback(data="sell_yes_a1")
+    animal = _make_animal(is_breeding=1)
+    with patch("handlers.sell.db.get_animal", return_value=animal), patch(
+        "handlers.sell.db.sell_animal"
+    ) as mock_sell:
+        await sell_yes_callback(update, ctx)
+    mock_sell.assert_not_called()
+    assert query.answer.call_args[1].get("show_alert") is True
+
+
+@pytest.mark.asyncio
+async def test_sell_yes_has_pending_trade():
+    update, query, ctx = _make_callback(data="sell_yes_a1")
+    animal = _make_animal()
+    with patch("handlers.sell.db.get_animal", return_value=animal), patch(
+        "handlers.sell.db.has_pending_trade_for_animal", return_value=True
+    ), patch("handlers.sell.db.sell_animal") as mock_sell:
+        await sell_yes_callback(update, ctx)
+    mock_sell.assert_not_called()
+    assert query.answer.call_args[1].get("show_alert") is True
+
+
+@pytest.mark.asyncio
+async def test_sell_page_callback():
+    from handlers.sell import sell_page_callback
+
+    query = MagicMock()
+    query.from_user.id = 1
+    query.data = "sell_page_1"
+    query.answer = AsyncMock()
+    query.edit_message_text = AsyncMock()
+    update = MagicMock()
+    update.callback_query = query
+    ctx = MagicMock()
+
+    animal = _make_animal()
+    with patch("handlers.sell.db.get_animals", return_value=[animal]):
+        await sell_page_callback(update, ctx)
+    query.edit_message_text.assert_called_once()
+    assert "sell" in query.edit_message_text.call_args[0][0].lower()

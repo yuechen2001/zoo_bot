@@ -346,3 +346,74 @@ async def test_callback_inv_equip_sets_title():
     mock_set.assert_called_once_with(1, "title_keeper")
     query.answer.assert_called_once()
     assert "title" in query.answer.call_args[0][0].lower()
+
+
+# ── lures and cosmetics in _render ────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_inventory_shows_lures_in_bag():
+    update, ctx = _make_update()
+    counts = {"lure_woodland": 2}
+    with patch("handlers.inventory.db.get_user", return_value=_make_user()), patch(
+        "handlers.inventory.db.get_item_counts", return_value=counts
+    ), patch("handlers.inventory.db.get_owned_title_keys", return_value=[]):
+        await inventory_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0]
+    assert "Lures" in reply or "lure" in reply.lower()
+
+
+# ── remaining _apply items ────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_inventory_use_epic_magnet_happy_path():
+    update, ctx = _make_update(args=["use", "epic_magnet"])
+    with patch("handlers.inventory.db.get_user", return_value=_make_user()), patch(
+        "handlers.inventory.db.get_oldest_purchase", return_value=_purchase_row()
+    ), patch("handlers.inventory.db.consume_purchase") as mock_consume, patch(
+        "handlers.inventory.db.set_epic_magnet"
+    ) as mock_set:
+        await inventory_command(update, ctx)
+    mock_consume.assert_called_once()
+    mock_set.assert_called_once_with(1, True)
+    assert "epic" in update.message.reply_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_inventory_use_streak_shield_happy_path():
+    update, ctx = _make_update(args=["use", "streak_shield"])
+    with patch("handlers.inventory.db.get_user", return_value=_make_user()), patch(
+        "handlers.inventory.db.get_oldest_purchase", return_value=_purchase_row()
+    ), patch("handlers.inventory.db.consume_purchase") as mock_consume, patch(
+        "handlers.inventory.db.set_streak_shield"
+    ) as mock_set:
+        await inventory_command(update, ctx)
+    mock_consume.assert_called_once()
+    mock_set.assert_called_once_with(1, True)
+    assert "shield" in update.message.reply_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_inventory_use_breed_accelerator_no_active_breed():
+    update, ctx = _make_update(args=["use", "breed_accelerator"])
+    with patch("handlers.inventory.db.get_user", return_value=_make_user()), patch(
+        "handlers.inventory.db.get_oldest_purchase", return_value=_purchase_row()
+    ), patch("handlers.inventory.db.get_pending_breed", return_value=None):
+        await inventory_command(update, ctx)
+    assert "no active breed" in update.message.reply_text.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_inventory_use_breed_accelerator_happy_path():
+    update, ctx = _make_update(args=["use", "breed_accelerator"])
+    with patch("handlers.inventory.db.get_user", return_value=_make_user()), patch(
+        "handlers.inventory.db.get_oldest_purchase", return_value=_purchase_row()
+    ), patch(
+        "handlers.inventory.db.get_pending_breed", return_value=_breed_row(hours_from_now=4)
+    ), patch(
+        "handlers.inventory.db.adjust_breed_time_and_consume"
+    ) as mock_adjust:
+        await inventory_command(update, ctx)
+    mock_adjust.assert_called_once()
+    assert "halved" in update.message.reply_text.call_args[0][0].lower()

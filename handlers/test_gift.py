@@ -120,3 +120,51 @@ async def test_gift_successful_transfer():
     ctx.bot.send_message.assert_called_once()
     msg = ctx.bot.send_message.call_args[0][1]
     assert "gifted" in msg.lower() or "🎁" in msg
+
+
+@pytest.mark.asyncio
+async def test_gift_unregistered_sender():
+    update, ctx = _make_update(args=["1", "@bob"])
+    with patch("handlers.gift.db.get_user", return_value=None):
+        await gift_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0]
+    assert "start" in reply.lower()
+
+
+@pytest.mark.asyncio
+async def test_gift_self_gift_blocked():
+    update, ctx = _make_update(args=["1", "@alice"])
+    with patch("handlers.gift.db.get_user", return_value=_make_sender()), patch(
+        "handlers.gift.db.get_user_by_username",
+        return_value=_make_sender(),  # same user_id=1
+    ):
+        await gift_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0]
+    assert "yourself" in reply.lower()
+
+
+@pytest.mark.asyncio
+async def test_gift_animal_not_found():
+    update, ctx = _make_update(args=["99", "@bob"])
+    with patch("handlers.gift.db.get_user", return_value=_make_sender()), patch(
+        "handlers.gift.db.get_user_by_username", return_value=_make_recipient()
+    ), patch("handlers.gift.db.get_animal_by_position", return_value=None), patch(
+        "handlers.gift.db.get_animals", return_value=[]
+    ):
+        await gift_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0]
+    assert "no animal" in reply.lower() or "position" in reply.lower()
+
+
+@pytest.mark.asyncio
+async def test_gift_pending_trade_blocked():
+    update, ctx = _make_update(args=["1", "@bob"])
+    animal = _make_animal()
+    with patch("handlers.gift.db.get_user", return_value=_make_sender()), patch(
+        "handlers.gift.db.get_user_by_username", return_value=_make_recipient()
+    ), patch("handlers.gift.db.get_animal_by_position", return_value=animal), patch(
+        "handlers.gift.db.has_pending_trade_for_animal", return_value=True
+    ):
+        await gift_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0]
+    assert "trade" in reply.lower() or "pending" in reply.lower()

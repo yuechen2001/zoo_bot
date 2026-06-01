@@ -243,3 +243,167 @@ async def test_upgrade_button_rejects_wrong_player():
 
     query.answer.assert_called_once()
     assert "enclosures" in query.answer.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_upgrade_button_max_level():
+    from handlers.enclosures import enclosure_upgrade_callback
+
+    query = MagicMock()
+    query.from_user.id = 1
+    query.data = "enc_upgrade_1_woodland"
+    query.answer = AsyncMock()
+    update = MagicMock()
+    update.callback_query = query
+    ctx = MagicMock()
+
+    with patch("handlers.enclosures.db.upgrade_enclosure", return_value="max_level"), patch(
+        "game.achievements.check_achievements"
+    ):
+        await enclosure_upgrade_callback(update, ctx)
+
+    query.answer.assert_called_once()
+    assert "max" in query.answer.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_upgrade_button_insufficient_coins():
+    from handlers.enclosures import enclosure_upgrade_callback
+
+    query = MagicMock()
+    query.from_user.id = 1
+    query.data = "enc_upgrade_1_woodland"
+    query.answer = AsyncMock()
+    update = MagicMock()
+    update.callback_query = query
+    ctx = MagicMock()
+
+    with patch(
+        "handlers.enclosures.db.upgrade_enclosure", return_value="insufficient_coins"
+    ), patch("handlers.enclosures.db.get_enclosure_level", return_value=1), patch(
+        "game.achievements.check_achievements"
+    ):
+        await enclosure_upgrade_callback(update, ctx)
+
+    query.answer.assert_called_once()
+    assert "coin" in query.answer.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_upgrade_button_success():
+    from handlers.enclosures import enclosure_upgrade_callback
+
+    query = MagicMock()
+    query.from_user.id = 1
+    query.data = "enc_upgrade_1_woodland"
+    query.answer = AsyncMock()
+    query.edit_message_text = AsyncMock()
+    update = MagicMock()
+    update.callback_query = query
+    ctx = MagicMock()
+
+    with patch("handlers.enclosures.db.upgrade_enclosure", return_value="ok"), patch(
+        "handlers.enclosures.db.get_user", return_value=_make_user_row(coins=5000)
+    ), patch("handlers.enclosures.db.get_enclosures", return_value={"woodland": 2}), patch(
+        "handlers.enclosures.db.get_animal_count_by_habitat", return_value=0
+    ), patch(
+        "handlers.enclosures.db.get_enclosure_level", return_value=2
+    ), patch(
+        "game.achievements.check_achievements"
+    ):
+        await enclosure_upgrade_callback(update, ctx)
+
+    query.edit_message_text.assert_called_once()
+    query.answer.assert_called_once()
+    assert (
+        "Lv 2" in query.answer.call_args[0][0] or "upgraded" in query.answer.call_args[0][0].lower()
+    )
+
+
+@pytest.mark.asyncio
+async def test_enclosures_command_triggers_starter_enclosures():
+    from handlers.enclosures import enclosures_command
+
+    update, ctx = _make_update_cmd()
+    enclosure_data = {
+        h: 1 for h in ["woodland", "savanna", "tropical", "aquatic", "tundra", "mythic"]
+    }
+    with patch("handlers.enclosures.db.get_user", return_value=_make_user_row()), patch(
+        "handlers.enclosures.db.get_enclosures", side_effect=[{}, enclosure_data]
+    ), patch("handlers.enclosures.db.give_starter_enclosures") as mock_starter, patch(
+        "handlers.enclosures.db.get_animal_count_by_habitat", return_value=0
+    ):
+        await enclosures_command(update, ctx)
+    mock_starter.assert_called_once_with(1)
+
+
+# ── enclosure_page_callback ───────────────────────────────────────────────────
+
+
+def _make_page_callback(from_user_id=1, owner_id=1, page=0):
+    query = MagicMock()
+    query.from_user.id = from_user_id
+    query.data = f"enc_page_{owner_id}_{page}"
+    query.answer = AsyncMock()
+    query.edit_message_text = AsyncMock()
+    update = MagicMock()
+    update.callback_query = query
+    return update, query, MagicMock()
+
+
+@pytest.mark.asyncio
+async def test_page_callback_wrong_user():
+    from handlers.enclosures import enclosure_page_callback
+
+    update, query, ctx = _make_page_callback(from_user_id=999, owner_id=1)
+    await enclosure_page_callback(update, ctx)
+    query.answer.assert_called_once()
+    assert "enclosures" in query.answer.call_args[0][0].lower()
+    query.edit_message_text.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_page_callback_no_user():
+    from handlers.enclosures import enclosure_page_callback
+
+    update, query, ctx = _make_page_callback(from_user_id=1, owner_id=1, page=0)
+    with patch("handlers.enclosures.db.get_user", return_value=None):
+        await enclosure_page_callback(update, ctx)
+    query.answer.assert_called_once()
+    assert "start" in query.answer.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_page_callback_renders_page():
+    from handlers.enclosures import enclosure_page_callback
+
+    update, query, ctx = _make_page_callback(from_user_id=1, owner_id=1, page=0)
+    enclosure_data = {
+        h: 1 for h in ["woodland", "savanna", "tropical", "aquatic", "tundra", "mythic"]
+    }
+    with patch("handlers.enclosures.db.get_user", return_value=_make_user_row(coins=500)), patch(
+        "handlers.enclosures.db.get_enclosures", return_value=enclosure_data
+    ), patch("handlers.enclosures.db.get_animal_count_by_habitat", return_value=0):
+        await enclosure_page_callback(update, ctx)
+    query.edit_message_text.assert_called_once()
+    text = query.edit_message_text.call_args[0][0]
+    assert "Enclosures" in text
+
+
+@pytest.mark.asyncio
+async def test_collect_button_no_user():
+    from handlers.enclosures import enclosure_collect_callback
+
+    query = MagicMock()
+    query.from_user.id = 1
+    query.data = "enc_collect_1"
+    query.answer = AsyncMock()
+    update = MagicMock()
+    update.callback_query = query
+    ctx = MagicMock()
+
+    with patch("handlers.enclosures.db.get_user", return_value=None):
+        await enclosure_collect_callback(update, ctx)
+
+    query.answer.assert_called_once()
+    assert "start" in query.answer.call_args[0][0].lower()

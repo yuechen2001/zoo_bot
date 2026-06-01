@@ -1,4 +1,12 @@
-from handlers.directory import render_directory
+import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
+from handlers.directory import render_directory, render_directory_page
+from handlers.directory import directory_command, directory_page_callback
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+from conftest import make_row
 
 
 def _sp(species_id, name, emoji, rarity, habitat):
@@ -97,3 +105,102 @@ def test_rarity_squares_present():
 def test_empty_species_list():
     text = render_directory([], set())
     assert "0/0 discovered" in text
+
+
+# ── render_directory_page ─────────────────────────────────────────────────────
+
+
+def test_render_directory_page_shows_page_header():
+    text, keys = render_directory_page(ALL_SPECIES, set(), 0)
+    assert "Animal Directory" in text
+    assert len(keys) > 0
+
+
+def test_render_directory_page_clamps_page_below_zero():
+    text, keys = render_directory_page(ALL_SPECIES, set(), -5)
+    assert "Animal Directory" in text
+
+
+def test_render_directory_page_clamps_page_above_max():
+    _, keys = render_directory_page(ALL_SPECIES, set(), 0)
+    text, _ = render_directory_page(ALL_SPECIES, set(), 9999)
+    assert "Animal Directory" in text
+
+
+def test_render_directory_page_empty_species_shows_no_species():
+    text, keys = render_directory_page([], set(), 0)
+    assert "No species found" in text
+    assert keys == []
+
+
+def test_render_directory_page_habitat_discovery_count():
+    text, _ = render_directory_page(WOODLAND, {1}, 0)
+    assert "1/3" in text
+
+
+# ── directory_command ─────────────────────────────────────────────────────────
+
+
+def _make_update_cmd():
+    update = MagicMock()
+    update.effective_user.id = 1
+    update.message.reply_text = AsyncMock()
+    ctx = MagicMock()
+    return update, ctx
+
+
+@pytest.mark.asyncio
+async def test_directory_command_unregistered_user():
+    update, ctx = _make_update_cmd()
+    with patch("handlers.directory.db.get_user", return_value=None):
+        await directory_command(update, ctx)
+    update.message.reply_text.assert_called_once_with("Use /start first!")
+
+
+@pytest.mark.asyncio
+async def test_directory_command_sends_page():
+    update, ctx = _make_update_cmd()
+    with patch("handlers.directory.db.get_user", return_value=make_row(user_id=1)), patch(
+        "handlers.directory.db.get_all_species", return_value=ALL_SPECIES
+    ), patch("handlers.directory.db.get_owned_species_ids", return_value={1}):
+        await directory_command(update, ctx)
+    update.message.reply_text.assert_called_once()
+    text = update.message.reply_text.call_args[0][0]
+    assert "Animal Directory" in text
+
+
+# ── directory_page_callback ───────────────────────────────────────────────────
+
+
+def _make_callback(user_id=1, owner_id=1, page=0):
+    query = MagicMock()
+    query.from_user.id = user_id
+    query.data = f"dir_page_{owner_id}_{page}"
+    query.answer = AsyncMock()
+    query.edit_message_text = AsyncMock()
+    update = MagicMock()
+    update.callback_query = query
+    return update, query, MagicMock()
+
+
+@pytest.mark.asyncio
+async def test_directory_page_callback_wrong_user():
+    update, query, ctx = _make_callback(user_id=999, owner_id=1, page=0)
+    await directory_page_callback(update, ctx)
+    # callback calls answer() once up-front, then again with show_alert for the wrong-user guard
+    assert query.answer.call_count == 2
+    last_call = query.answer.call_args_list[-1]
+    assert last_call[1].get("show_alert") is True
+    query.edit_message_text.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_directory_page_callback_shows_page():
+    update, query, ctx = _make_callback(user_id=1, owner_id=1, page=0)
+    with patch("handlers.directory.db.get_all_species", return_value=ALL_SPECIES), patch(
+        "handlers.directory.db.get_owned_species_ids", return_value=set()
+    ):
+        await directory_page_callback(update, ctx)
+    query.edit_message_text.assert_called_once()
+    text = query.edit_message_text.call_args[0][0]
+    assert "Animal Directory" in text

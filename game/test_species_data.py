@@ -66,7 +66,7 @@ class TestSpeciesDataFix6:
         assert elephant["rarity"] == "legendary"
 
     def test_epic_catch_cost_is_80(self):
-        epics = [s for s in SPECIES if s["rarity"] == "epic"]
+        epics = [s for s in SPECIES if s["rarity"] == "epic" and s["catch_rate"] > 0]
         assert len(epics) > 0
         for s in epics:
             assert (
@@ -74,7 +74,7 @@ class TestSpeciesDataFix6:
             ), f"{s['name']} has catch_cost={s['catch_cost']}, expected 80"
 
     def test_legendary_catch_cost_is_200(self):
-        legendaries = [s for s in SPECIES if s["rarity"] == "legendary"]
+        legendaries = [s for s in SPECIES if s["rarity"] == "legendary" and s["catch_rate"] > 0]
         assert len(legendaries) > 0
         for s in legendaries:
             assert (

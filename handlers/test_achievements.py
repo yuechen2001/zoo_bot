@@ -221,3 +221,121 @@ def test_species_30_check():
         assert check(1, {}) is True
     with patch("game.achievements.db.count_distinct_species", return_value=29):
         assert check(1, {}) is False
+
+
+# ── achievements_tab_callback ─────────────────────────────────────────────────
+
+
+def _make_tab_callback(from_user_id=1, owner_id=1, filter_type="earned"):
+    query = MagicMock()
+    query.from_user.id = from_user_id
+    query.data = f"ach_tab_{owner_id}_{filter_type}"
+    query.answer = AsyncMock()
+    query.edit_message_text = AsyncMock()
+    update = MagicMock()
+    update.callback_query = query
+    return update, query, MagicMock()
+
+
+@pytest.mark.asyncio
+async def test_tab_callback_wrong_user_blocked():
+    from handlers.achievements import achievements_tab_callback
+
+    update, query, ctx = _make_tab_callback(from_user_id=999, owner_id=1)
+    await achievements_tab_callback(update, ctx)
+    assert query.answer.call_args[1].get("show_alert") is True
+    query.edit_message_text.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_tab_callback_earned_filter():
+    from handlers.achievements import achievements_tab_callback
+
+    update, query, ctx = _make_tab_callback(from_user_id=1, owner_id=1, filter_type="earned")
+    first_key = next(iter(ACHIEVEMENTS))
+    with patch("handlers.achievements.db.get_achievement_keys", return_value={first_key}):
+        await achievements_tab_callback(update, ctx)
+    query.edit_message_text.assert_called_once()
+    text = query.edit_message_text.call_args[0][0]
+    assert "1/" in text
+
+
+@pytest.mark.asyncio
+async def test_tab_callback_locked_filter():
+    from handlers.achievements import achievements_tab_callback
+
+    update, query, ctx = _make_tab_callback(from_user_id=1, owner_id=1, filter_type="locked")
+    with patch("handlers.achievements.db.get_achievement_keys", return_value=set()):
+        await achievements_tab_callback(update, ctx)
+    query.edit_message_text.assert_called_once()
+    text = query.edit_message_text.call_args[0][0]
+    assert "🔒" in text
+
+
+@pytest.mark.asyncio
+async def test_tab_callback_all_filter():
+    from handlers.achievements import achievements_tab_callback
+
+    update, query, ctx = _make_tab_callback(from_user_id=1, owner_id=1, filter_type="all")
+    with patch("handlers.achievements.db.get_achievement_keys", return_value=set()):
+        await achievements_tab_callback(update, ctx)
+    query.edit_message_text.assert_called_once()
+
+
+# ── check_achievements send path ──────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_check_achievements_sends_when_newly_earned():
+    from game.achievements import check_achievements
+
+    ctx = MagicMock()
+    ctx.bot.send_message = AsyncMock()
+    user = _make_user(username="zoe", group_chat_id=-200)
+
+    with patch("game.achievements.db.get_user", return_value=user), patch(
+        "game.achievements.db.get_achievement_keys", return_value=set()
+    ), patch("game.achievements.db.award_achievement"), patch(
+        "game.achievements.ACHIEVEMENTS",
+        {
+            "new_ach": {
+                "trigger": "sell",
+                "check": lambda uid, u: True,
+                "name": "Seller",
+                "emoji": "💸",
+                "desc": "Sold something",
+            }
+        },
+    ):
+        await check_achievements(1, "sell", ctx)
+
+    ctx.bot.send_message.assert_called_once()
+    msg = ctx.bot.send_message.call_args[0][1]
+    assert "Seller" in msg
+
+
+@pytest.mark.asyncio
+async def test_check_achievements_no_group_no_send():
+    from game.achievements import check_achievements
+
+    ctx = MagicMock()
+    ctx.bot.send_message = AsyncMock()
+    user = _make_user(username="solo", group_chat_id=None)
+
+    with patch("game.achievements.db.get_user", return_value=user), patch(
+        "game.achievements.db.get_achievement_keys", return_value=set()
+    ), patch("game.achievements.db.award_achievement"), patch(
+        "game.achievements.ACHIEVEMENTS",
+        {
+            "solo_ach": {
+                "trigger": "catch",
+                "check": lambda uid, u: True,
+                "name": "Catcher",
+                "emoji": "🎣",
+                "desc": "Caught something",
+            }
+        },
+    ):
+        await check_achievements(1, "catch", ctx)
+
+    ctx.bot.send_message.assert_not_called()

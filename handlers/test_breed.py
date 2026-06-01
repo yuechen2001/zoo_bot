@@ -310,3 +310,159 @@ async def test_breed_cancel_dismisses():
     await breed_cancel_callback(update, ctx)
     query.answer.assert_called_once_with("Cancelled")
     query.edit_message_text.assert_called_once_with("Breed cancelled.")
+
+
+@pytest.mark.asyncio
+async def test_breed_no_args_shows_in_progress_when_pending():
+    update, ctx = _make_update(args=[])
+    pending = make_row(id=1, ready_at="2099-01-01T00:00:00")
+    with patch("handlers.breed.db.get_user", return_value=_make_user()), patch(
+        "handlers.breed.db.get_pending_breed", return_value=pending
+    ):
+        await breed_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0]
+    assert "already have a breeding" in reply.lower()
+
+
+@pytest.mark.asyncio
+async def test_breed_invalid_positions():
+    update, ctx = _make_update(args=["1", "99"])
+    with patch("handlers.breed.db.get_user", return_value=_make_user()), patch(
+        "handlers.breed.db.get_animal_by_position", return_value=None
+    ), patch("handlers.breed.db.get_animals", return_value=[_make_animal("a1")]):
+        await breed_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0]
+    assert "invalid" in reply.lower() or "animal" in reply.lower()
+
+
+@pytest.mark.asyncio
+async def test_breed_one_already_breeding():
+    update, ctx = _make_update(args=["1", "2"])
+    animal_a = _make_animal("a1", is_breeding=1)
+    animal_b = _make_animal("a2")
+    with patch("handlers.breed.db.get_user", return_value=_make_user()), patch(
+        "handlers.breed.db.get_animal_by_position", side_effect=[animal_a, animal_b]
+    ), patch("handlers.breed.db.get_pending_breed", return_value=None):
+        await breed_command(update, ctx)
+    reply = update.message.reply_text.call_args[0][0]
+    assert "already breeding" in reply.lower()
+
+
+# ── breed_p1_callback edge cases ──────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_breed_p1_animal_not_found():
+    update, query, ctx = _make_callback(data="breed_p1_5")
+    with patch("handlers.breed.db.get_pending_breed", return_value=None), patch(
+        "handlers.breed.db.get_animal_by_position", return_value=None
+    ):
+        await breed_p1_callback(update, ctx)
+    assert query.answer.call_args[1].get("show_alert") is True
+    query.edit_message_text.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_breed_p1_animal_is_breeding():
+    update, query, ctx = _make_callback(data="breed_p1_1")
+    animal = _make_animal("a1", is_breeding=1)
+    with patch("handlers.breed.db.get_pending_breed", return_value=None), patch(
+        "handlers.breed.db.get_animal_by_position", return_value=animal
+    ):
+        await breed_p1_callback(update, ctx)
+    assert query.answer.call_args[1].get("show_alert") is True
+    query.edit_message_text.assert_not_called()
+
+
+# ── breed_p2_callback edge cases ──────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_breed_p2_animals_not_found():
+    update, query, ctx = _make_callback(data="breed_p2_1_2")
+    with patch("handlers.breed.db.get_user", return_value=_make_user()), patch(
+        "handlers.breed.db.get_animal_by_position", return_value=None
+    ):
+        await breed_p2_callback(update, ctx)
+    assert query.answer.call_args[1].get("show_alert") is True
+    query.edit_message_text.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_breed_p2_one_is_breeding():
+    update, query, ctx = _make_callback(data="breed_p2_1_2")
+    animal_a = _make_animal("a1", is_breeding=1)
+    animal_b = _make_animal("a2")
+    with patch("handlers.breed.db.get_user", return_value=_make_user()), patch(
+        "handlers.breed.db.get_animal_by_position", side_effect=[animal_a, animal_b]
+    ):
+        await breed_p2_callback(update, ctx)
+    assert query.answer.call_args[1].get("show_alert") is True
+
+
+@pytest.mark.asyncio
+async def test_breed_p2_insufficient_coins():
+    update, query, ctx = _make_callback(data="breed_p2_1_2")
+    animal_a = _make_animal("a1", rarity="legendary")
+    animal_b = _make_animal("a2", rarity="legendary")
+    with patch("handlers.breed.db.get_user", return_value=_make_user(coins=5)), patch(
+        "handlers.breed.db.get_animal_by_position", side_effect=[animal_a, animal_b]
+    ), patch("handlers.breed.db.get_pending_breed", return_value=None):
+        await breed_p2_callback(update, ctx)
+    assert query.answer.call_args[1].get("show_alert") is True
+
+
+# ── breed_page_callback ───────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_breed_page_callback_already_breeding():
+    from handlers.breed import breed_page_callback
+
+    update, query, ctx = _make_callback(data="breed_page_1")
+    pending = make_row(id=1, ready_at="2099-01-01T00:00:00")
+    with patch("handlers.breed.db.get_pending_breed", return_value=pending):
+        await breed_page_callback(update, ctx)
+    assert query.answer.call_args[1].get("show_alert") is True
+    query.edit_message_text.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_breed_page_callback_shows_picker():
+    from handlers.breed import breed_page_callback
+
+    update, query, ctx = _make_callback(data="breed_page_0")
+    animals = [_make_animal("a1"), _make_animal("a2")]
+    with patch("handlers.breed.db.get_pending_breed", return_value=None), patch(
+        "handlers.breed.db.get_animals", return_value=animals
+    ):
+        await breed_page_callback(update, ctx)
+    query.edit_message_text.assert_called_once()
+
+
+# ── breed_p2_page_callback ────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_breed_p2_page_callback_animal_not_found():
+    from handlers.breed import breed_p2_page_callback
+
+    update, query, ctx = _make_callback(data="breed_p2_page_1_0")
+    with patch("handlers.breed.db.get_animal_by_position", return_value=None):
+        await breed_p2_page_callback(update, ctx)
+    assert query.answer.call_args[1].get("show_alert") is True
+    query.edit_message_text.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_breed_p2_page_callback_shows_picker():
+    from handlers.breed import breed_p2_page_callback
+
+    update, query, ctx = _make_callback(data="breed_p2_page_1_0")
+    animal_a = _make_animal("a1")
+    animals = [animal_a, _make_animal("a2")]
+    with patch("handlers.breed.db.get_animal_by_position", return_value=animal_a), patch(
+        "handlers.breed.db.get_animals", return_value=animals
+    ):
+        await breed_p2_page_callback(update, ctx)
+    query.edit_message_text.assert_called_once()
