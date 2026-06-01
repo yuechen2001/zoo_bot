@@ -93,8 +93,6 @@ async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 show_alert=True,
             )
             return
-        db.consume_purchase(purchase["id"])
-
     is_unfiltered = is_no_lure or is_legacy_basic
 
     rarity = roll_encounter()
@@ -118,11 +116,11 @@ async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     species = random.choice(candidates) if candidates else None
 
     if not species:
-        if is_no_lure:
-            await query.answer("No animals found — try again!", show_alert=True)
-        else:
-            await query.answer("No animals found — the lure was used up.", show_alert=True)
+        await query.answer("No animals found — try again!", show_alert=True)
         return
+
+    if is_habitat_lure:
+        db.consume_purchase(purchase["id"])
 
     h = HABITATS[species["habitat"]] if is_unfiltered else HABITATS[habitat]
     catch_rate_display = (

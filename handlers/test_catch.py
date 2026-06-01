@@ -175,7 +175,7 @@ async def test_catch_lure_callback_generates_encounter_and_stores_pending():
 
 
 @pytest.mark.asyncio
-async def test_catch_lure_callback_exhausts_lure_when_no_species_found():
+async def test_catch_lure_callback_does_not_consume_lure_when_no_species_found():
     query = MagicMock()
     query.from_user.id = 1
     query.data = "catch_lure_woodland"
@@ -210,11 +210,12 @@ async def test_catch_lure_callback_exhausts_lure_when_no_species_found():
         "handlers.catch.db.get_species_candidates", return_value=[]
     ), patch(
         "handlers.catch.db.record_purchase"
-    ) as mock_refund:
+    ):
         await catch_lure_callback(update, ctx)
 
-    mock_consume.assert_called_once()
-    mock_refund.assert_not_called()
+    mock_consume.assert_not_called()
+    query.answer.assert_called_once()
+    assert "try again" in query.answer.call_args[0][0].lower()
 
 
 @pytest.mark.asyncio
