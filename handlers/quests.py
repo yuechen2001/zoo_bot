@@ -1,9 +1,20 @@
-from telegram import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 import db
 from game.quests_data import ARCS, CHAPTERS, check_quest_advance
 from keyboards import quests_keyboard
+
+
+def _quests_keyboard_for(user_id: int, arc: int) -> InlineKeyboardMarkup:
+    progress_rows = db.get_quest_progress(user_id)
+    completed = {r["chapter_num"] for r in progress_rows if r["completed_at"]}
+    story_chapters = [
+        (ch_num, CHAPTERS[ch_num]["title"])
+        for ch_num, ch in CHAPTERS.items()
+        if ch["arc"] == arc and ch_num in completed
+    ]
+    return quests_keyboard(user_id, arc, story_chapters)
 
 
 async def quests_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -16,7 +27,7 @@ async def quests_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await check_quest_advance(tg_id, ctx)
     text = _render_quests(tg_id, arc=1)
     await update.message.reply_text(
-        text, parse_mode="Markdown", reply_markup=quests_keyboard(tg_id, 1)
+        text, parse_mode="Markdown", reply_markup=_quests_keyboard_for(tg_id, 1)
     )
 
 
@@ -37,8 +48,63 @@ async def quest_tab_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             text,
             parse_mode="Markdown",
-            reply_markup=quests_keyboard(user_id, arc_num),
+            reply_markup=_quests_keyboard_for(user_id, arc_num),
         )
+    except Exception:
+        pass
+
+
+async def quest_story_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    parts = query.data.split("_")  # quest_story_{user_id}_{chapter_num}
+    user_id = int(parts[2])
+    ch_num = int(parts[3])
+
+    if query.from_user.id != user_id:
+        await query.answer("Use /quests to see your own.", show_alert=True)
+        return
+
+    ch = CHAPTERS.get(ch_num)
+    if not ch:
+        await query.answer("Chapter not found.", show_alert=True)
+        return
+
+    reward_parts = [f"+{ch['reward_coins']}🪙"]
+    if ch["reward_species"]:
+        sp = db.get_species_by_name(ch["reward_species"])
+        if sp:
+            reward_parts.append(f"{sp['emoji']} {ch['reward_species']}")
+    if ch["reward_title"]:
+        from game.store_data import STORE_ITEMS
+
+        title_item = STORE_ITEMS.get(ch["reward_title"], {})
+        reward_parts.append(
+            f"{title_item.get('emoji', '')} {title_item.get('name', ch['reward_title'])} title"
+        )
+
+    task_lines = "\n".join(f"  ☑ {t['desc']}" for t in ch["tasks"])
+
+    text = (
+        f"📖 *Ch {ch_num}: {ch['title']}*\n\n"
+        f"_{ch['intro']}_\n\n"
+        f"_{ch['outro']}_\n\n"
+        f"*Tasks completed:*\n{task_lines}\n\n"
+        f"🏆 Reward received: {' + '.join(reward_parts)}"
+    )
+
+    back_kb = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    f"← Back to Arc {ch['arc']}", callback_data=f"quest_arc_{user_id}_{ch['arc']}"
+                )
+            ]
+        ]
+    )
+
+    await query.answer()
+    try:
+        await query.edit_message_text(text, parse_mode="Markdown", reply_markup=back_kb)
     except Exception:
         pass
 
@@ -51,7 +117,7 @@ def _render_quests(user_id: int, arc: int) -> str:
     arc_name = ARCS[arc]
     total_completed = sum(1 for r in progress_rows if r["completed_at"])
     lines = [
-        f"📖 *Zoo Expedition* — {total_completed}/12 chapters complete",
+        f"📖 *Zoo Expedition* — {total_completed}/{len(CHAPTERS)} chapters complete",
         f"\n*Arc {arc}: {arc_name}*",
         "━━━━━━━━━━━━━━━━━━━━",
     ]

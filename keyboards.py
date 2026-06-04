@@ -365,15 +365,39 @@ def trade_keyboard(trade_id: int, recipient_id: int):
     )
 
 
-def quests_keyboard(user_id: int, current_arc: int) -> InlineKeyboardMarkup:
-    arc_labels = {1: "Arc 1", 2: "Arc 2", 3: "Arc 3", 4: "Arc 4"}
-    arc_row = []
+def quests_keyboard(
+    user_id: int,
+    current_arc: int,
+    story_chapters: list[tuple[int, str]] = None,
+) -> InlineKeyboardMarkup:
+    arc_labels = {
+        1: "Arc 1",
+        2: "Arc 2",
+        3: "Arc 3",
+        4: "Arc 4",
+        5: "Arc 5",
+        6: "Arc 6",
+        7: "Arc 7",
+    }
+    arc_row_1, arc_row_2 = [], []
     for arc_num, label in arc_labels.items():
-        if arc_num == current_arc:
-            arc_row.append(InlineKeyboardButton(f"▸ {label} ◂", callback_data="zoo_noop"))
-        else:
-            arc_row.append(
-                InlineKeyboardButton(label, callback_data=f"quest_arc_{user_id}_{arc_num}")
-            )
+        btn = (
+            InlineKeyboardButton(f"▸ {label} ◂", callback_data="zoo_noop")
+            if arc_num == current_arc
+            else InlineKeyboardButton(label, callback_data=f"quest_arc_{user_id}_{arc_num}")
+        )
+        (arc_row_1 if arc_num <= 4 else arc_row_2).append(btn)
+
+    rows = [arc_row_1, arc_row_2]
+    for ch_num, title in story_chapters or []:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    f"📖 Ch {ch_num}: {title}", callback_data=f"quest_story_{user_id}_{ch_num}"
+                )
+            ]
+        )
+
     refresh = InlineKeyboardButton("🔄 Refresh", callback_data=f"quest_arc_{user_id}_{current_arc}")
-    return InlineKeyboardMarkup([arc_row, [refresh]])
+    rows.append([refresh])
+    return InlineKeyboardMarkup(rows)

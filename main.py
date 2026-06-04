@@ -81,6 +81,7 @@ from handlers import (
     inventory_callback,
     quests_command,
     quest_tab_callback,
+    quest_story_callback,
 )
 from handlers.gift import gift_command
 from handlers.store import store_command, store_callback, store_tab_callback
@@ -206,6 +207,8 @@ async def handle_callback(update, ctx):
         await achievements_tab_callback(update, ctx)
     elif data.startswith("quest_arc_"):
         await quest_tab_callback(update, ctx)
+    elif data.startswith("quest_story_"):
+        await quest_story_callback(update, ctx)
     elif data.startswith("help_tab_"):
         await help_tab_callback(update, ctx)
     elif data == "zoo_noop":
