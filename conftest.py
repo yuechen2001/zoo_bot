@@ -110,6 +110,16 @@ def conn():
             resolved      INTEGER NOT NULL DEFAULT 0,
             answered_by   INTEGER
         );
+        CREATE TABLE animal_escapes (
+            escape_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+            animal_id     TEXT NOT NULL,
+            user_id       INTEGER NOT NULL,
+            group_chat_id INTEGER NOT NULL,
+            escaped_at    TEXT NOT NULL,
+            expires_at    TEXT NOT NULL,
+            message_id    INTEGER,
+            resolved      INTEGER NOT NULL DEFAULT 0
+        );
     """
     )
     for s in SPECIES:

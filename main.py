@@ -16,7 +16,7 @@ from config import (
 )
 import db as db_module
 from db import init_db
-from game.constants import GROUP_TRIVIA_INTERVAL_HOURS
+from game.constants import GROUP_TRIVIA_INTERVAL_HOURS, ESCAPE_MIN_HOURS, ESCAPE_MAX_HOURS
 from scheduler import (
     prompt_tick,
     hunger_tick,
@@ -27,6 +27,8 @@ from scheduler import (
     cleanup_expired_wild_events,
     cleanup_expired_group_trivias,
     group_trivia_tick,
+    escape_tick,
+    cleanup_expired_escapes,
 )
 from handlers import (
     achievements_command,
@@ -90,6 +92,7 @@ from handlers import (
 )
 from handlers.gift import gift_command
 from handlers.visit import visit_command, visit_feed_callback
+from handlers.escape import escape_callback
 from handlers.store import store_command, store_callback, store_tab_callback
 from handlers.footmassage import footmassage_command
 from handlers.wild_event import wild_event_callback
@@ -224,6 +227,8 @@ async def handle_callback(update, ctx):
         await help_tab_callback(update, ctx)
     elif data.startswith("visit_feed_"):
         await visit_feed_callback(update, ctx)
+    elif data.startswith("escape_"):
+        await escape_callback(update, ctx)
     elif data == "zoo_noop":
         await update.callback_query.answer()
     else:
@@ -356,6 +361,28 @@ def main():
         wild_event_tick,
         wild_delay,
         name="wild_event_tick",
+    )
+
+    app.job_queue.run_repeating(
+        cleanup_expired_escapes,
+        interval=300,
+        first=30,
+        job_kwargs={"misfire_grace_time": 60},
+    )
+
+    # Escape events: resume from DB-stored next-fire time, else random fresh delay
+    next_escape_raw = db_module.get_setting("next_escape_at")
+    if next_escape_raw:
+        now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        next_escape = datetime.datetime.fromisoformat(next_escape_raw)
+        escape_delay = max(10.0, (next_escape - now).total_seconds())
+    else:
+        escape_delay = _random.randint(ESCAPE_MIN_HOURS, ESCAPE_MAX_HOURS) * 3600
+
+    app.job_queue.run_once(
+        escape_tick,
+        escape_delay,
+        name="escape_tick",
     )
 
     logger.info(

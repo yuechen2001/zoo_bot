@@ -15,6 +15,7 @@ from keyboards import mood_keyboard, breed_collect_keyboard
 from game.species_data import ENCLOSURE_LEVELS, HABITATS, RARITY_LABELS
 from game.aging import get_stage, INCOME_MULTIPLIER
 from game.constants import GROUP_TRIVIA_WINDOW_MINUTES, GROUP_TRIVIA_INTERVAL_HOURS
+from game.constants import ESCAPE_MIN_HOURS, ESCAPE_MAX_HOURS, ESCAPE_WINDOW_HOURS
 from game.constants import WILD_EVENT_RARITY_WEIGHTS
 from utils import format_mention
 
@@ -458,6 +459,83 @@ async def cleanup_expired_group_trivias(ctx):
         except Exception:
             pass
         db.resolve_group_trivia(trivia["id"])
+
+
+async def escape_tick(ctx):
+    """Post an animal escape event to each active group, then reschedule at a random 8–16h interval."""
+    from handlers.escape import escape_keyboard
+
+    t0 = datetime.datetime.now(datetime.timezone.utc)
+    logger.info("escape_tick: start")
+
+    groups = db.get_active_group_chats()
+    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    now_str = now.isoformat()
+    expires_str = (now + datetime.timedelta(hours=ESCAPE_WINDOW_HOURS)).isoformat()
+
+    for group_chat_id in groups:
+        users = db.get_users_in_group(group_chat_id)
+        candidates = []
+        for user in users:
+            animals = [
+                a
+                for a in db.get_animals(user["user_id"])
+                if not a["is_breeding"] and get_stage(a["caught_at"]) != "elder"
+            ]
+            for a in animals:
+                candidates.append((user, a))
+        if not candidates:
+            continue
+        user, animal = random.choice(candidates)
+        name = animal["nickname"] or animal["species_name"]
+        try:
+            escape_id = db.create_escape(
+                animal["animal_id"], user["user_id"], group_chat_id, now_str, expires_str
+            )
+            mention = format_mention(user["username"], user["user_id"])
+            msg = await ctx.bot.send_message(
+                group_chat_id,
+                f"🚨 *Animal Escape!*\n\n"
+                f"{animal['emoji']} *{name}* ({mention}) has escaped their enclosure!\n\n"
+                f"Quick — you have {ESCAPE_WINDOW_HOURS}h to recapture them!\n"
+                f"🎣 Lure (90%) · 🏃 Chase (35%) · 🕊️ Let go (30% refund)",
+                parse_mode="Markdown",
+                reply_markup=escape_keyboard(escape_id),
+            )
+            db.update_escape_message(escape_id, msg.message_id)
+        except Exception:
+            logger.exception("Failed to send escape event to %s", group_chat_id)
+
+    delay = random.randint(ESCAPE_MIN_HOURS, ESCAPE_MAX_HOURS) * 3600
+    next_at = (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        + datetime.timedelta(seconds=delay)
+    ).isoformat()
+    db.set_setting("next_escape_at", next_at)
+    logger.info(
+        "escape_tick: done in %.2fs, next in %ds",
+        (datetime.datetime.now(datetime.timezone.utc) - t0).total_seconds(),
+        delay,
+    )
+    ctx.job_queue.run_once(escape_tick, delay, name="escape_tick")
+
+
+async def cleanup_expired_escapes(ctx):
+    """Remove animals from expired, unresolved escape events and edit their messages."""
+    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
+    expired = db.get_expired_escapes(now)
+    for escape in expired:
+        try:
+            await ctx.bot.edit_message_text(
+                chat_id=escape["group_chat_id"],
+                message_id=escape["message_id"],
+                text="😢 *Animal Gone!*\n\nThe escape window closed — the animal disappeared for good.",
+                parse_mode="Markdown",
+            )
+        except Exception:
+            pass
+        db.delete_animal(escape["animal_id"])
+        db.resolve_escape(escape["escape_id"], 2)
 
 
 async def group_trivia_tick(ctx):

@@ -1532,3 +1532,46 @@ def get_expired_group_trivias(now: str) -> list:
         return conn.execute(
             "SELECT * FROM group_trivia WHERE expires_at < ? AND resolved = 0", (now,)
         ).fetchall()
+
+
+# ── Animal Escapes ─────────────────────────────────────────────────────────────
+
+
+def create_escape(
+    animal_id: str, user_id: int, group_chat_id: int, escaped_at: str, expires_at: str
+) -> int:
+    with get_conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO animal_escapes (animal_id, user_id, group_chat_id, escaped_at, expires_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (animal_id, user_id, group_chat_id, escaped_at, expires_at),
+        )
+        return cur.lastrowid
+
+
+def update_escape_message(escape_id: int, message_id: int) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE animal_escapes SET message_id = ? WHERE escape_id = ?", (message_id, escape_id)
+        )
+
+
+def get_escape(escape_id: int):
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT * FROM animal_escapes WHERE escape_id = ?", (escape_id,)
+        ).fetchone()
+
+
+def resolve_escape(escape_id: int, status: int) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE animal_escapes SET resolved = ? WHERE escape_id = ?", (status, escape_id)
+        )
+
+
+def get_expired_escapes(now: str) -> list:
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT * FROM animal_escapes WHERE expires_at < ? AND resolved = 0", (now,)
+        ).fetchall()
