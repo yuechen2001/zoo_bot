@@ -609,3 +609,250 @@ async def test_catch_lure_callback_catch_net_gives_legendary():
         await catch_lure_callback(update, ctx)
 
     assert rarity_used[0] == "legendary"
+
+
+# ── enc_catch_bonus ───────────────────────────────────────────────────────────
+
+
+def _make_lure_callback_setup(habitat="woodland", enc_level=1, species=None):
+    """Build the shared setup for catch_lure_callback tests."""
+    query = MagicMock()
+    query.from_user.id = 1
+    query.data = f"catch_lure_{habitat}"
+    query.answer = AsyncMock()
+    msg = MagicMock()
+    msg.message_id = 77
+    query.edit_message_text = AsyncMock(return_value=msg)
+    update = MagicMock()
+    update.callback_query = query
+    ctx = MagicMock()
+    ctx.user_data = {}
+
+    lure_purchase = MagicMock()
+    lure_purchase.__getitem__ = lambda self, key: 42 if key == "id" else None
+
+    if species is None:
+        species = {
+            "species_id": 5,
+            "name": "Fox",
+            "emoji": "🦊",
+            "rarity": "rare",
+            "habitat": habitat,
+            "catch_rate": 0.6,
+            "catch_cost": 60,
+        }
+
+    patches = dict(
+        get_user={
+            "coins": 200,
+            "catch_net_active": 0,
+            "rare_magnet_active": 0,
+            "epic_magnet_active": 0,
+        },
+        enc_level=enc_level,
+        species=species,
+        purchase=lure_purchase,
+    )
+    return update, query, ctx, patches
+
+
+@pytest.mark.asyncio
+async def test_enc_catch_bonus_stored_in_pending_for_level_6():
+    from game.species_data import ENCLOSURE_LEVELS
+
+    update, query, ctx, p = _make_lure_callback_setup(enc_level=6)
+
+    with patch("handlers.catch.db.get_user", return_value=p["get_user"]), patch(
+        "handlers.catch.db.get_oldest_purchase", return_value=p["purchase"]
+    ), patch("handlers.catch.db.consume_purchase"), patch(
+        "handlers.catch.db.get_enclosure_level", return_value=6
+    ), patch(
+        "handlers.catch.db.get_animal_count_by_habitat", return_value=0
+    ), patch(
+        "handlers.catch.roll_encounter", return_value="rare"
+    ), patch(
+        "handlers.catch.db.get_species_candidates", return_value=[p["species"]]
+    ), patch(
+        "handlers.catch.catch_keyboard", return_value=MagicMock()
+    ):
+        await catch_lure_callback(update, ctx)
+
+    pending = ctx.user_data.get("pending_catch")
+    assert pending is not None
+    assert pending["enc_catch_bonus"] == pytest.approx(ENCLOSURE_LEVELS[6]["catch_rate_bonus"])
+    assert pending["enc_catch_bonus"] == pytest.approx(0.05)
+
+
+@pytest.mark.asyncio
+async def test_enc_catch_bonus_is_zero_for_level_1():
+    update, query, ctx, p = _make_lure_callback_setup(enc_level=1)
+
+    with patch("handlers.catch.db.get_user", return_value=p["get_user"]), patch(
+        "handlers.catch.db.get_oldest_purchase", return_value=p["purchase"]
+    ), patch("handlers.catch.db.consume_purchase"), patch(
+        "handlers.catch.db.get_enclosure_level", return_value=1
+    ), patch(
+        "handlers.catch.db.get_animal_count_by_habitat", return_value=0
+    ), patch(
+        "handlers.catch.roll_encounter", return_value="rare"
+    ), patch(
+        "handlers.catch.db.get_species_candidates", return_value=[p["species"]]
+    ), patch(
+        "handlers.catch.catch_keyboard", return_value=MagicMock()
+    ):
+        await catch_lure_callback(update, ctx)
+
+    pending = ctx.user_data.get("pending_catch")
+    assert pending is not None
+    assert pending["enc_catch_bonus"] == pytest.approx(0.0)
+
+
+@pytest.mark.asyncio
+async def test_enc_catch_bonus_zero_for_no_lure():
+    """No-lure catch must never have a catch bonus (enc_catch_bonus=0.0)."""
+    query = MagicMock()
+    query.from_user.id = 1
+    query.data = "catch_lure_none"
+    query.answer = AsyncMock()
+    msg = MagicMock()
+    msg.message_id = 55
+    query.edit_message_text = AsyncMock(return_value=msg)
+    update = MagicMock()
+    update.callback_query = query
+    ctx = MagicMock()
+    ctx.user_data = {}
+
+    species = {
+        "species_id": 7,
+        "name": "Duck",
+        "emoji": "🦆",
+        "rarity": "common",
+        "habitat": "aquatic",
+        "catch_rate": 0.9,
+        "catch_cost": 20,
+    }
+
+    with patch(
+        "handlers.catch.db.get_user",
+        return_value={
+            "coins": 100,
+            "catch_net_active": 0,
+            "rare_magnet_active": 0,
+            "epic_magnet_active": 0,
+        },
+    ), patch("handlers.catch.db.add_coins"), patch(
+        "handlers.catch.roll_encounter", return_value="common"
+    ), patch(
+        "handlers.catch.db.get_species_candidates", return_value=[species]
+    ), patch(
+        "handlers.catch.catch_keyboard", return_value=MagicMock()
+    ):
+        await catch_lure_callback(update, ctx)
+
+    pending = ctx.user_data.get("pending_catch")
+    assert pending is not None
+    assert pending["enc_catch_bonus"] == pytest.approx(0.0)
+
+
+@pytest.mark.asyncio
+async def test_catch_rate_display_includes_enc_bonus():
+    """With level 6 enclosure: rare (0.6) × 1.5 lure + 0.05 bonus = 95%, not 90%."""
+    update, query, ctx, p = _make_lure_callback_setup(enc_level=6)
+
+    with patch("handlers.catch.db.get_user", return_value=p["get_user"]), patch(
+        "handlers.catch.db.get_oldest_purchase", return_value=p["purchase"]
+    ), patch("handlers.catch.db.consume_purchase"), patch(
+        "handlers.catch.db.get_enclosure_level", return_value=6
+    ), patch(
+        "handlers.catch.db.get_animal_count_by_habitat", return_value=0
+    ), patch(
+        "handlers.catch.roll_encounter", return_value="rare"
+    ), patch(
+        "handlers.catch.db.get_species_candidates", return_value=[p["species"]]
+    ), patch(
+        "handlers.catch.catch_keyboard", return_value=MagicMock()
+    ):
+        await catch_lure_callback(update, ctx)
+
+    text = query.edit_message_text.call_args[0][0]
+    assert "95%" in text
+    assert "90%" not in text
+
+
+@pytest.mark.asyncio
+async def test_catch_callback_applies_enc_catch_bonus_additively():
+    captured = []
+
+    def capture_roll(rate):
+        captured.append(rate)
+        return True
+
+    pending = {**_make_pending(species_id=1, lure_multiplier=1.0), "enc_catch_bonus": 0.05}
+    update, query, ctx = _make_catch_callback(data="catch_attempt_1", pending=pending)
+
+    with patch(
+        "handlers.catch.db.get_user",
+        return_value={
+            "coins": 500,
+            "lucky_catch_active": 0,
+            "catch_net_active": 0,
+        },
+    ), patch("handlers.catch.db.get_species_habitat", return_value="woodland"), patch(
+        "handlers.catch.db.get_animal_count_by_habitat", return_value=0
+    ), patch(
+        "handlers.catch.db.get_enclosure_level", return_value=6
+    ), patch(
+        "handlers.catch.db.add_coins"
+    ), patch(
+        "handlers.catch.db.add_animal"
+    ), patch(
+        "handlers.catch.roll_catch", side_effect=capture_roll
+    ), patch(
+        "handlers.catch.check_achievements", new_callable=AsyncMock
+    ):
+        await catch_callback(update, ctx)
+
+    # catch_rate = 0.9 * 1.0 + 0.05 = 0.95
+    assert len(captured) == 1
+    assert captured[0] == pytest.approx(0.95)
+
+
+@pytest.mark.asyncio
+async def test_catch_callback_enc_catch_bonus_defaults_to_zero():
+    """Old-style pending dicts without enc_catch_bonus must work unchanged."""
+    captured = []
+
+    def capture_roll(rate):
+        captured.append(rate)
+        return True
+
+    pending = _make_pending(species_id=1, lure_multiplier=1.0)
+    assert "enc_catch_bonus" not in pending
+
+    update, query, ctx = _make_catch_callback(data="catch_attempt_1", pending=pending)
+
+    with patch(
+        "handlers.catch.db.get_user",
+        return_value={
+            "coins": 500,
+            "lucky_catch_active": 0,
+            "catch_net_active": 0,
+        },
+    ), patch("handlers.catch.db.get_species_habitat", return_value="woodland"), patch(
+        "handlers.catch.db.get_animal_count_by_habitat", return_value=0
+    ), patch(
+        "handlers.catch.db.get_enclosure_level", return_value=1
+    ), patch(
+        "handlers.catch.db.add_coins"
+    ), patch(
+        "handlers.catch.db.add_animal"
+    ), patch(
+        "handlers.catch.roll_catch", side_effect=capture_roll
+    ), patch(
+        "handlers.catch.check_achievements", new_callable=AsyncMock
+    ):
+        await catch_callback(update, ctx)
+
+    # catch_rate = 0.9 * 1.0 + 0.0 = 0.9
+    assert len(captured) == 1
+    assert captured[0] == pytest.approx(0.9)

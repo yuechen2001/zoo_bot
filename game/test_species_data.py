@@ -1,4 +1,12 @@
-from game.species_data import SPECIES, RARITY_ORDER, ENCOUNTER_WEIGHTS, get_breed_params
+import pytest
+from game.species_data import (
+    SPECIES,
+    RARITY_ORDER,
+    ENCOUNTER_WEIGHTS,
+    ENCLOSURE_LEVELS,
+    MAX_ENCLOSURE_LEVEL,
+    get_breed_params,
+)
 
 
 class TestGetBreedParams:
@@ -94,3 +102,49 @@ class TestSpeciesDataFix6:
         for s in SPECIES:
             missing = required - s.keys()
             assert not missing, f"{s['name']} is missing fields: {missing}"
+
+
+class TestEnclosureLevels:
+    def test_all_levels_present(self):
+        assert set(ENCLOSURE_LEVELS.keys()) == {1, 2, 3, 4, 5, 6, 7, 8}
+
+    def test_max_enclosure_level_is_8(self):
+        assert MAX_ENCLOSURE_LEVEL == 8
+
+    def test_all_levels_have_required_keys(self):
+        required = {
+            "capacity",
+            "coins_per_animal_hr",
+            "breed_bonus",
+            "catch_rate_bonus",
+            "upgrade_cost",
+        }
+        for level, stats in ENCLOSURE_LEVELS.items():
+            missing = required - stats.keys()
+            assert not missing, f"Level {level} missing keys: {missing}"
+
+    def test_levels_1_to_5_have_zero_catch_rate_bonus(self):
+        for level in range(1, 6):
+            assert (
+                ENCLOSURE_LEVELS[level]["catch_rate_bonus"] == 0.0
+            ), f"Level {level} should have catch_rate_bonus 0.0"
+
+    def test_levels_6_to_8_have_positive_catch_rate_bonus(self):
+        for level in range(6, 9):
+            assert (
+                ENCLOSURE_LEVELS[level]["catch_rate_bonus"] > 0.0
+            ), f"Level {level} should have positive catch_rate_bonus"
+
+    def test_catch_rate_bonus_increases_with_level(self):
+        bonuses = [ENCLOSURE_LEVELS[lv]["catch_rate_bonus"] for lv in range(6, 9)]
+        assert bonuses == sorted(bonuses)
+        assert bonuses[0] == pytest.approx(0.05)
+        assert bonuses[1] == pytest.approx(0.10)
+        assert bonuses[2] == pytest.approx(0.15)
+
+    def test_capacity_increases_with_level(self):
+        caps = [ENCLOSURE_LEVELS[lv]["capacity"] for lv in range(1, 9)]
+        assert caps == sorted(caps)
+
+    def test_level_1_upgrade_cost_is_zero(self):
+        assert ENCLOSURE_LEVELS[1]["upgrade_cost"] == 0

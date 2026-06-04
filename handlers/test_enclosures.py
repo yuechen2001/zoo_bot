@@ -390,6 +390,68 @@ async def test_page_callback_renders_page():
     assert "Enclosures" in text
 
 
+# ── _render_enclosures catch rate bonus display ───────────────────────────────
+
+
+def _all_habitats_at(level: int) -> dict:
+    from game.species_data import HABITATS
+
+    return {h: level for h in HABITATS}
+
+
+def test_render_enclosures_no_catch_bonus_for_level_5():
+    """Levels 1–5 must not show a catch rate line."""
+    from handlers.enclosures import _render_enclosures
+
+    enclosures = {**_all_habitats_at(1), "woodland": 5}
+    with patch("handlers.enclosures.db.get_enclosures", return_value=enclosures), patch(
+        "handlers.enclosures.db.get_animal_count_by_habitat", return_value=0
+    ):
+        text, _ = _render_enclosures(user_id=1, coins=5000, page=0)
+
+    assert "catch rate" not in text.lower()
+    assert "🎯" not in text
+
+
+def test_render_enclosures_shows_catch_bonus_for_level_6():
+    """Level 6 enclosure shows +5% catch rate line."""
+    from handlers.enclosures import _render_enclosures
+
+    enclosures = {**_all_habitats_at(1), "woodland": 6}
+    with patch("handlers.enclosures.db.get_enclosures", return_value=enclosures), patch(
+        "handlers.enclosures.db.get_animal_count_by_habitat", return_value=0
+    ):
+        text, _ = _render_enclosures(user_id=1, coins=50000, page=0)
+
+    assert "🎯" in text
+    assert "+5% catch rate (lure)" in text
+
+
+def test_render_enclosures_catch_bonus_level_7():
+    from handlers.enclosures import _render_enclosures
+
+    enclosures = {**_all_habitats_at(1), "woodland": 7}
+    with patch("handlers.enclosures.db.get_enclosures", return_value=enclosures), patch(
+        "handlers.enclosures.db.get_animal_count_by_habitat", return_value=0
+    ):
+        text, _ = _render_enclosures(user_id=1, coins=100000, page=0)
+
+    assert "+10% catch rate (lure)" in text
+
+
+def test_render_enclosures_catch_bonus_level_8():
+    from handlers.enclosures import _render_enclosures
+
+    enclosures = {**_all_habitats_at(1), "woodland": 8}
+    with patch("handlers.enclosures.db.get_enclosures", return_value=enclosures), patch(
+        "handlers.enclosures.db.get_animal_count_by_habitat", return_value=0
+    ):
+        text, _ = _render_enclosures(user_id=1, coins=100000, page=0)
+
+    assert "+15% catch rate (lure)" in text
+    assert "✨ Max level!" in text
+
+
 @pytest.mark.asyncio
 async def test_collect_button_no_user():
     from handlers.enclosures import enclosure_collect_callback

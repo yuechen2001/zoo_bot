@@ -223,6 +223,113 @@ def test_species_30_check():
         assert check(1, {}) is False
 
 
+def test_enclosure_level_6_check():
+    check = _get_check("enclosure_level_6")
+    with patch("game.achievements.db.get_max_enclosure_level", return_value=6):
+        assert check(1, {}) is True
+    with patch("game.achievements.db.get_max_enclosure_level", return_value=5):
+        assert check(1, {}) is False
+
+
+def test_enclosure_level_7_check():
+    check = _get_check("enclosure_level_7")
+    with patch("game.achievements.db.get_max_enclosure_level", return_value=7):
+        assert check(1, {}) is True
+    with patch("game.achievements.db.get_max_enclosure_level", return_value=6):
+        assert check(1, {}) is False
+    with patch("game.achievements.db.get_max_enclosure_level", return_value=5):
+        assert check(1, {}) is False
+
+
+# ── Achievement schema validation ─────────────────────────────────────────────
+
+
+class TestAchievementSchema:
+    def test_all_have_required_keys(self):
+        required = {"emoji", "name", "desc", "trigger", "check"}
+        for key, ach in ACHIEVEMENTS.items():
+            missing = required - ach.keys()
+            assert not missing, f"Achievement '{key}' missing fields: {missing}"
+
+    def test_no_duplicate_names(self):
+        names = [ach["name"] for ach in ACHIEVEMENTS.values()]
+        assert len(names) == len(set(names)), "Duplicate achievement names found"
+
+    def test_all_triggers_are_known(self):
+        known = {
+            "checkin",
+            "catch",
+            "breed",
+            "trade",
+            "sell",
+            "feed",
+            "trivia",
+            "daily",
+            "wild_catch",
+            "store",
+            "gift",
+            "enclosure",
+        }
+        for key, ach in ACHIEVEMENTS.items():
+            assert (
+                ach["trigger"] in known
+            ), f"Achievement '{key}' has unknown trigger '{ach['trigger']}'"
+
+
+# ── check_achievements edge cases ────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_check_achievements_skips_already_earned():
+    ctx = MagicMock()
+    ctx.bot.send_message = AsyncMock()
+    user = _make_user(username="tester", group_chat_id=-100)
+
+    with patch("game.achievements.db.get_user", return_value=user), patch(
+        "game.achievements.db.get_achievement_keys", return_value={"test_ach"}
+    ), patch("game.achievements.db.award_achievement") as mock_award, patch(
+        "game.achievements.ACHIEVEMENTS",
+        {
+            "test_ach": {
+                "trigger": "checkin",
+                "check": lambda uid, u: True,
+                "name": "Test",
+                "emoji": "🏆",
+                "desc": "Already earned",
+            }
+        },
+    ):
+        await check_achievements(1, "checkin", ctx)
+
+    mock_award.assert_not_called()
+    ctx.bot.send_message.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_check_achievements_skips_wrong_trigger():
+    ctx = MagicMock()
+    ctx.bot.send_message = AsyncMock()
+    user = _make_user(username="tester", group_chat_id=None)
+
+    with patch("game.achievements.db.get_user", return_value=user), patch(
+        "game.achievements.db.get_achievement_keys", return_value=set()
+    ), patch("game.achievements.db.award_achievement") as mock_award, patch(
+        "game.achievements.ACHIEVEMENTS",
+        {
+            "catch_ach": {
+                "trigger": "catch",
+                "check": lambda uid, u: True,
+                "name": "Catcher",
+                "emoji": "🎯",
+                "desc": "Caught something",
+            }
+        },
+    ):
+        await check_achievements(1, "checkin", ctx)  # fires "checkin", not "catch"
+
+    mock_award.assert_not_called()
+
+
 # ── achievements_tab_callback ─────────────────────────────────────────────────
 
 
