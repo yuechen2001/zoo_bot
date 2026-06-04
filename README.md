@@ -17,7 +17,8 @@ A Telegram bot for couples. Build your own virtual zoo by catching and breeding 
 - **Achievements** — 14 milestones across catching, breeding, and streaks
 - **Tiered daily rewards** — claim coins daily; consecutive days unlock higher tiers (50 → 75 → 100 → 150 🪙)
 - **Trivia** — answer animal trivia for bonus coins
-- **Store** — consumables (lures, feed, boosts), cosmetic titles
+- **Store** — consumables (lures, feed, boosts, instant hatch, income boost, quest task skip), cosmetic titles
+- **Quests** — 21-chapter storyline across 7 arcs; earn exclusive animals and titles; replay completed chapters
 - **Gamble & slots** — risk your coins for more
 - **Trading** — swap animals with your partner
 - **Investments** — park coins for a 25% return after 24h
@@ -92,12 +93,13 @@ python main.py
 | `/breed collect` | Claim your finished offspring |
 | `/breed status` | Check time remaining on active breed |
 | `/name <number> <name>` | Give an animal a nickname |
-| `/sell` | Sell an animal for coins (tap to pick from list) |
+| `/sell` | Sell an animal for coins (tap to pick, or `/sell <number>` to jump straight to confirm) |
 | `/gift <number> @user` | Give an animal to another player |
 | `/trade @user <yours> <theirs>` | Offer an animal swap |
 | `/enclosures` | View and upgrade your habitat enclosures — tap 💰 Collect income to claim passive income |
 | `/store` | Browse consumables and cosmetic titles |
 | `/inventory` | Your bag — use items and equip titles |
+| `/quests` | Track the Zoo Expedition storyline (21 chapters, 7 arcs) |
 | `/achievements` | View your achievements |
 | `/daily` | Claim daily coins (50→75→100→150 on consecutive days) |
 | `/trivia` | Animal trivia — +40 correct, +5 wrong, 4h cooldown |
@@ -169,18 +171,27 @@ Use `/store` to browse and buy items. Use `/inventory` to activate consumables a
 | 🍖 Mega Feed | 30 🪙 | Restore one animal's hunger to 100 |
 | ⚡ Breed Boost | 80 🪙 | Cut active breed time by 2h |
 | 🚀 Breed Accelerator | 100 🪙 | Halve remaining breed time |
+| 🐣 Instant Hatch | 500 🪙 | Complete your active breeding immediately |
+| 💰 Income Boost | 250 🪙 | Double enclosure passive income for 4h |
+| 📜 Quest Task Skip | 1,500 🪙 | Skip one task in your active chapter (max 1 skip per chapter) |
 | 🎯 Lucky Token | 80 🪙 | 2× catch rate on next /catch |
 | ✨ Mood Booster | 60 🪙 | Double coins on next mood check-in |
-| 🪤 Catch Net | 600 🪙 | Guarantee a legendary encounter and successful catch |
+| 🛡️ Streak Shield | 150 🪙 | Absorb one streak-breaking miss |
 | 🧲 Rare Magnet | 100 🪙 | Guarantee a rare-or-higher encounter on next /catch |
+| 💜 Epic Magnet | 300 🪙 | Guarantee an epic-or-higher encounter on next /catch |
+| 🪤 Catch Net | 600 🪙 | Guarantee a legendary encounter and successful catch |
 
 **Cosmetic titles** (shown in `/zoo`):
 
-| Item | Price |
-|---|---|
-| 🎖 Zookeeper | 200 🪙 |
-| 🌿 Animal Whisperer | 500 🪙 |
-| 👑 Zoo Legend | 1,000 🪙 |
+| Item | Price | How to get |
+|---|---|---|
+| 🎖 Zookeeper | 200 🪙 | Purchase from /store |
+| 🌿 Animal Whisperer | 500 🪙 | Purchase from /store |
+| 🔬 The Naturalist | 300 🪙 | Purchase from /store |
+| 🏛️ Zoo Director | 750 🪙 | Purchase from /store |
+| 👑 Zoo Legend | 1,000 🪙 | Purchase from /store |
+| 🗺️ Expedition Leader | Free | Complete Arc 4 of the Zoo Expedition |
+| ♾️ Eternal Keeper | Free | Complete all 7 arcs of the Zoo Expedition |
 
 ---
 
