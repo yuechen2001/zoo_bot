@@ -14,6 +14,7 @@ A Telegram bot for couples. Build your own virtual zoo by catching and breeding 
 - **Habitat enclosures** — 8 typed enclosures (Woodland, Savanna, Tropical, Aquatic, Tundra, Mythic, Spectral, Desert); upgrade for higher capacity, passive income, and breeding bonuses
 - **Breeding** — pair two animals and wait for an offspring; same-habitat pairs get a time reduction; elders cannot breed
 - **Animal aging** — animals progress through three life stages: 🐣 Juvenile (0–3 days, −20% income), 🐾 Adult (3–30 days), 👴 Elder (30+ days, +60% income, retired from breeding)
+- **Traits & Genetics** — every animal has three hidden stats (0–100) shown as ★ ratings via /inspect: Speed (shorter breed time), Genetics (rarer offspring), Temperament (more enclosure income); bred offspring inherit a weighted average of both parents + noise
 - **Shinies** — 1.5% chance on any catch or breed to produce a ⭐ shiny variant
 - **Hunger** — animals decay over time, feed them before they run away
 - **Foot massage** — halve hunger decay for 1h (25 🪙, 4h cooldown)
@@ -103,6 +104,7 @@ python main.py
 | `/gift <number> @user` | Give an animal to another player |
 | `/trade @user <yours> <theirs>` | Offer an animal swap |
 | `/visit @username` | Browse another player's zoo; feed one animal per 24h for a coin bonus |
+| `/inspect <number>` | View an animal's hidden trait stats (Speed, Genetics, Temperament) as star ratings |
 | `/enclosures` | View and upgrade your habitat enclosures — tap 💰 Collect income to claim passive income |
 | `/store` | Browse consumables and cosmetic titles |
 | `/inventory` | Your bag — use items and equip titles |
