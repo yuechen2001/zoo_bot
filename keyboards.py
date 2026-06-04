@@ -350,6 +350,19 @@ def lure_keyboard(lure_counts: dict[str, int]) -> InlineKeyboardMarkup:
 _GAMBLE_PRESETS = [10, 25, 50, 100]
 
 
+def trivia_wager_keyboard(tg_id: int, user_coins: int) -> InlineKeyboardMarkup:
+    from game.constants import TRIVIA_WAGER_OPTIONS
+
+    btns = [
+        InlineKeyboardButton(
+            f"{amt} 🪙" if user_coins >= amt else f"💸 {amt}",
+            callback_data=f"trivia_wager_{tg_id}_{amt}" if user_coins >= amt else "zoo_noop",
+        )
+        for amt in TRIVIA_WAGER_OPTIONS
+    ]
+    return InlineKeyboardMarkup([btns])
+
+
 def slots_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [[InlineKeyboardButton(f"🎰 Spin ({SPIN_COST} 🪙)", callback_data="slots_spin")]]

@@ -14,6 +14,7 @@ from config import (
 from keyboards import mood_keyboard, breed_collect_keyboard
 from game.species_data import ENCLOSURE_LEVELS, HABITATS, RARITY_LABELS
 from game.aging import get_stage, INCOME_MULTIPLIER
+from game.constants import GROUP_TRIVIA_WINDOW_MINUTES, GROUP_TRIVIA_INTERVAL_HOURS
 from game.constants import WILD_EVENT_RARITY_WEIGHTS
 from utils import format_mention
 
@@ -437,3 +438,61 @@ async def cleanup_expired_wild_events(ctx):
         "cleanup_expired_wild_events: done in %.2fs",
         (datetime.datetime.now(datetime.timezone.utc) - t0).total_seconds(),
     )
+
+
+async def cleanup_expired_group_trivias(ctx):
+    """Edit expired group trivia messages to show the answer."""
+    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
+    expired = db.get_expired_group_trivias(now)
+    for trivia in expired:
+        try:
+            await ctx.bot.edit_message_text(
+                chat_id=trivia["group_chat_id"],
+                message_id=trivia["message_id"],
+                text=(
+                    f"🧠 *Group Trivia — Time's up!*\n\n"
+                    f"The correct answer was *{trivia['correct_answer']}*."
+                ),
+                parse_mode="Markdown",
+            )
+        except Exception:
+            pass
+        db.resolve_group_trivia(trivia["id"])
+
+
+async def group_trivia_tick(ctx):
+    """Post a group trivia question to each active group, then reschedule."""
+    from game.trivia_data import QUESTIONS
+    from handlers.trivia import group_trivia_keyboard
+
+    t0 = datetime.datetime.now(datetime.timezone.utc)
+    logger.info("group_trivia_tick: start")
+    groups = db.get_active_group_chats()
+    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    now_str = now.isoformat()
+    expires_str = (now + datetime.timedelta(minutes=GROUP_TRIVIA_WINDOW_MINUTES)).isoformat()
+
+    for group_chat_id in groups:
+        q = random.choice(QUESTIONS)
+        opts = "\n".join(q["options"])
+        trivia_id = db.create_group_trivia(group_chat_id, q["answer"], now_str, expires_str)
+        try:
+            msg = await ctx.bot.send_message(
+                group_chat_id,
+                f"🧠 *Group Trivia!* _{GROUP_TRIVIA_WINDOW_MINUTES} min window_\n\n"
+                f"{q['q']}\n\n{opts}\n\n"
+                f"✅ +{100} 🪙  |  💑 Couple bonus: +30 each  |  ❌ -{10} 🪙",
+                parse_mode="Markdown",
+                reply_markup=group_trivia_keyboard(trivia_id),
+            )
+            db.update_group_trivia_message(trivia_id, msg.message_id)
+        except Exception:
+            logger.exception("Failed to send group trivia to %s", group_chat_id)
+
+    delay = GROUP_TRIVIA_INTERVAL_HOURS * 3600
+    logger.info(
+        "group_trivia_tick: done in %.2fs, next in %ds",
+        (datetime.datetime.now(datetime.timezone.utc) - t0).total_seconds(),
+        delay,
+    )
+    ctx.job_queue.run_once(group_trivia_tick, delay, name="group_trivia_tick")

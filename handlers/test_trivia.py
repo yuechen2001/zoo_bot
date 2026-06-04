@@ -1,13 +1,8 @@
 import datetime
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from handlers.trivia import (
-    trivia_command,
-    trivia_callback,
-    TRIVIA_COOLDOWN_MINUTES,
-    COINS_CORRECT,
-    COINS_WRONG,
-)
+from handlers.trivia import trivia_command, trivia_callback
+from game.constants import TRIVIA_COOLDOWN_MINUTES
 
 
 @pytest.fixture(autouse=True)
@@ -81,12 +76,12 @@ async def test_trivia_cooldown_blocks_early_repeat():
 
 
 @pytest.mark.asyncio
-async def test_trivia_starts_after_cooldown():
+async def test_trivia_starts_after_cooldown_shows_wager_picker():
     old = (
         datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         - datetime.timedelta(minutes=TRIVIA_COOLDOWN_MINUTES + 1)
     ).isoformat()
-    cm, inner = _make_conn_mock(last_asked=old)
+    cm, _ = _make_conn_mock(last_asked=old)
 
     update = MagicMock()
     update.effective_chat.type = "private"
@@ -98,20 +93,12 @@ async def test_trivia_starts_after_cooldown():
 
     with patch("handlers.trivia.db.get_user", return_value={"coins": 100}), patch(
         "handlers.trivia.db.get_conn", return_value=cm
-    ), patch(
-        "handlers.trivia.random.choice",
-        return_value={
-            "q": "What animal is fastest?",
-            "options": ["A) Cat", "B) Cheetah", "C) Horse", "D) Dog"],
-            "answer": "B",
-        },
-    ):
+    ), patch("handlers.trivia.db.get_last_trivia_at", return_value=old):
         await trivia_command(update, ctx)
 
     update.message.reply_text.assert_called_once()
     reply = update.message.reply_text.call_args[0][0]
-    assert "Trivia" in reply or "trivia" in reply.lower()
-    assert ctx.user_data.get("trivia") is not None
+    assert "wager" in reply.lower() or "Trivia" in reply
 
 
 # ── trivia_callback ────────────────────────────────────────────────────────────
@@ -145,7 +132,7 @@ async def test_trivia_callback_no_active_trivia():
 
 
 @pytest.mark.asyncio
-async def test_trivia_callback_correct_answer_gives_coins():
+async def test_trivia_callback_correct_answer_awards_wager():
     query = _make_trivia_query(user_id=1, option="B")
     update = MagicMock()
     update.callback_query = query
@@ -160,19 +147,21 @@ async def test_trivia_callback_correct_answer_gives_coins():
             "answer": "B",
             "at": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat(),
             "answered": False,
+            "wager": 25,
         }
     }
 
-    with patch("handlers.trivia.db.get_conn", return_value=cm):
+    with patch("handlers.trivia.db.get_conn", return_value=cm), patch(
+        "handlers.trivia.db.add_coins"
+    ) as mock_add:
         await trivia_callback(update, ctx)
 
-    query.answer.assert_called_once()
-    assert str(COINS_CORRECT) in str(query.answer.call_args)
+    mock_add.assert_called_once_with(1, 25)
     assert ctx.user_data["trivia"]["answered"] is True
 
 
 @pytest.mark.asyncio
-async def test_trivia_callback_wrong_answer_gives_consolation_coins():
+async def test_trivia_callback_wrong_answer_deducts_wager():
     query = _make_trivia_query(user_id=1, option="A")  # wrong answer (correct is B)
     update = MagicMock()
     update.callback_query = query
@@ -187,14 +176,16 @@ async def test_trivia_callback_wrong_answer_gives_consolation_coins():
             "answer": "B",
             "at": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat(),
             "answered": False,
+            "wager": 25,
         }
     }
 
-    with patch("handlers.trivia.db.get_conn", return_value=cm):
+    with patch("handlers.trivia.db.get_conn", return_value=cm), patch(
+        "handlers.trivia.db.add_coins"
+    ) as mock_add:
         await trivia_callback(update, ctx)
 
-    query.answer.assert_called_once()
-    assert str(COINS_WRONG) in str(query.answer.call_args)
+    mock_add.assert_called_once_with(1, -25)
 
 
 @pytest.mark.asyncio
@@ -209,6 +200,7 @@ async def test_trivia_callback_rejects_double_answer():
             "answer": "B",
             "at": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat(),
             "answered": True,  # already answered
+            "wager": 10,
         }
     }
 
@@ -234,6 +226,7 @@ async def test_trivia_callback_window_expired():
             "answer": "B",
             "at": old_time,
             "answered": False,
+            "wager": 10,
         }
     }
 

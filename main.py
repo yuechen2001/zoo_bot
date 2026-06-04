@@ -16,6 +16,7 @@ from config import (
 )
 import db as db_module
 from db import init_db
+from game.constants import GROUP_TRIVIA_INTERVAL_HOURS
 from scheduler import (
     prompt_tick,
     hunger_tick,
@@ -24,6 +25,8 @@ from scheduler import (
     enclosure_income,
     wild_event_tick,
     cleanup_expired_wild_events,
+    cleanup_expired_group_trivias,
+    group_trivia_tick,
 )
 from handlers import (
     achievements_command,
@@ -55,6 +58,8 @@ from handlers import (
     help_tab_callback,
     trivia_command,
     trivia_callback,
+    trivia_wager_callback,
+    group_trivia_callback,
     gamble_command,
     gamble_bet_callback,
     daily_command,
@@ -179,8 +184,12 @@ async def handle_callback(update, ctx):
         await invest_max_callback(update, ctx)
     elif data == "invest_collect":
         await invest_collect_callback(update, ctx)
+    elif data.startswith("trivia_wager_"):
+        await trivia_wager_callback(update, ctx)
     elif data.startswith("trivia_"):
         await trivia_callback(update, ctx)
+    elif data.startswith("gtrivia_"):
+        await group_trivia_callback(update, ctx)
     elif data.startswith("trade_"):
         await trade_callback(update, ctx)
     elif data.startswith("enc_page_"):
@@ -318,6 +327,20 @@ def main():
         interval=600,
         first=60,
         job_kwargs={"misfire_grace_time": 60},
+    )
+
+    app.job_queue.run_repeating(
+        cleanup_expired_group_trivias,
+        interval=60,
+        first=15,
+        job_kwargs={"misfire_grace_time": 30},
+    )
+
+    # Group trivia: fire every 4h
+    app.job_queue.run_once(
+        group_trivia_tick,
+        GROUP_TRIVIA_INTERVAL_HOURS * 3600,
+        name="group_trivia_tick",
     )
 
     # Wild event: resume from DB-stored next-fire time, else random fresh delay

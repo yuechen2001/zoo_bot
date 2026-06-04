@@ -1483,3 +1483,52 @@ def record_visit_feed(visitor_id: int, host_id: int, now: str) -> None:
             "INSERT INTO visit_feeds (visitor_id, host_id, fed_at) VALUES (?, ?, ?)",
             (visitor_id, host_id, now),
         )
+
+
+# ── Group Trivia ───────────────────────────────────────────────────────────────
+
+
+def create_group_trivia(
+    group_chat_id: int,
+    correct_answer: str,
+    fired_at: str,
+    expires_at: str,
+    message_id: int | None = None,
+) -> int:
+    with get_conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO group_trivia (group_chat_id, correct_answer, fired_at, expires_at, message_id) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (group_chat_id, correct_answer, fired_at, expires_at, message_id),
+        )
+        return cur.lastrowid
+
+
+def update_group_trivia_message(trivia_id: int, message_id: int) -> None:
+    with get_conn() as conn:
+        conn.execute("UPDATE group_trivia SET message_id = ? WHERE id = ?", (message_id, trivia_id))
+
+
+def get_group_trivia(trivia_id: int):
+    with get_conn() as conn:
+        return conn.execute("SELECT * FROM group_trivia WHERE id = ?", (trivia_id,)).fetchone()
+
+
+def record_group_trivia_correct(trivia_id: int, user_id: int) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE group_trivia SET answered_by = ? WHERE id = ? AND answered_by IS NULL",
+            (user_id, trivia_id),
+        )
+
+
+def resolve_group_trivia(trivia_id: int) -> None:
+    with get_conn() as conn:
+        conn.execute("UPDATE group_trivia SET resolved = 1 WHERE id = ?", (trivia_id,))
+
+
+def get_expired_group_trivias(now: str) -> list:
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT * FROM group_trivia WHERE expires_at < ? AND resolved = 0", (now,)
+        ).fetchall()

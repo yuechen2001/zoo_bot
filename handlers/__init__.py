@@ -24,7 +24,7 @@ from .mood import (
     help_command,
     help_tab_callback,
 )
-from .trivia import trivia_command, trivia_callback
+from .trivia import trivia_command, trivia_callback, trivia_wager_callback, group_trivia_callback
 from .gamble import gamble_command, gamble_bet_callback
 from .daily import daily_command
 from .slots import slots_command, slots_spin_callback
@@ -83,6 +83,8 @@ __all__ = [
     "autofeed_command",
     "trivia_command",
     "trivia_callback",
+    "trivia_wager_callback",
+    "group_trivia_callback",
     "gamble_command",
     "gamble_bet_callback",
     "daily_command",
