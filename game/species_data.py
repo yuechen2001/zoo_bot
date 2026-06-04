@@ -1034,7 +1034,7 @@ SPECIES = [
         "hunger_decay": 2,
         "breed_time_hrs": 48,
     },
-    # Quest-exclusive — catch_rate 0.0 keeps them out of the wild catch pool
+    # Quest-exclusive — not obtainable via /catch
     {
         "name": "Capybara",
         "emoji": "🦫",
@@ -1044,6 +1044,7 @@ SPECIES = [
         "catch_cost": 0,
         "hunger_decay": 7,
         "breed_time_hrs": 10,
+        "is_special": 1,
     },
     {
         "name": "Axolotl",
@@ -1054,6 +1055,7 @@ SPECIES = [
         "catch_cost": 0,
         "hunger_decay": 15,
         "breed_time_hrs": 36,
+        "is_special": 1,
     },
     {
         "name": "Quetzal",
@@ -1064,6 +1066,7 @@ SPECIES = [
         "catch_cost": 0,
         "hunger_decay": 15,
         "breed_time_hrs": 48,
+        "is_special": 1,
     },
 ]
 

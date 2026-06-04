@@ -27,21 +27,22 @@ def _seed_species(conn):
         ).fetchone()
         if existing:
             conn.execute(
-                "UPDATE species SET catch_rate=?, catch_cost=?, hunger_decay=?, breed_time_hrs=?, habitat=? WHERE species_id=?",
+                "UPDATE species SET catch_rate=?, catch_cost=?, hunger_decay=?, breed_time_hrs=?, habitat=?, is_special=? WHERE species_id=?",
                 (
                     s["catch_rate"],
                     s["catch_cost"],
                     s["hunger_decay"],
                     s["breed_time_hrs"],
                     s["habitat"],
+                    s.get("is_special", 0),
                     existing["species_id"],
                 ),
             )
         else:
             conn.execute(
-                "INSERT INTO species (name, emoji, rarity, catch_rate, catch_cost, hunger_decay, breed_time_hrs, habitat) "
-                "VALUES (:name, :emoji, :rarity, :catch_rate, :catch_cost, :hunger_decay, :breed_time_hrs, :habitat)",
-                s,
+                "INSERT INTO species (name, emoji, rarity, catch_rate, catch_cost, hunger_decay, breed_time_hrs, habitat, is_special) "
+                "VALUES (:name, :emoji, :rarity, :catch_rate, :catch_cost, :hunger_decay, :breed_time_hrs, :habitat, :is_special)",
+                {**s, "is_special": s.get("is_special", 0)},
             )
 
 
@@ -935,9 +936,12 @@ def get_species_candidates(rarity: str, habitat: str | None = None) -> list:
     with get_conn() as conn:
         if habitat:
             return conn.execute(
-                "SELECT * FROM species WHERE rarity = ? AND habitat = ?", (rarity, habitat)
+                "SELECT * FROM species WHERE rarity = ? AND habitat = ? AND is_special = 0",
+                (rarity, habitat),
             ).fetchall()
-        return conn.execute("SELECT * FROM species WHERE rarity = ?", (rarity,)).fetchall()
+        return conn.execute(
+            "SELECT * FROM species WHERE rarity = ? AND is_special = 0", (rarity,)
+        ).fetchall()
 
 
 # ── Zoo helpers ───────────────────────────────────────────────────────────────
