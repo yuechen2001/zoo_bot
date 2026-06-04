@@ -1087,6 +1087,17 @@ SPECIES = [
     },
     # Quest-exclusive — not obtainable via /catch
     {
+        "name": "Red Panda",
+        "emoji": "🐾",
+        "rarity": "epic",
+        "habitat": "woodland",
+        "catch_rate": 0.0,
+        "catch_cost": 0,
+        "hunger_decay": 8,
+        "breed_time_hrs": 24,
+        "is_special": 1,
+    },
+    {
         "name": "Capybara",
         "emoji": "🦫",
         "rarity": "rare",
