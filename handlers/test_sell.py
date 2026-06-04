@@ -122,7 +122,9 @@ async def test_sell_yes_executes_sell():
     animal = _make_animal(catch_cost=20, hunger=100)
     with patch("handlers.sell.db.get_animal", return_value=animal), patch(
         "handlers.sell.db.has_pending_trade_for_animal", return_value=False
-    ), patch("handlers.sell.db.sell_animal") as mock_sell:
+    ), patch("handlers.sell.db.sell_animal") as mock_sell, patch(
+        "handlers.sell.db.get_animals", return_value=[]
+    ):
         await sell_yes_callback(update, ctx)
     mock_sell.assert_called_once_with(1, "a1", 10)
     query.edit_message_text.assert_called_once()
