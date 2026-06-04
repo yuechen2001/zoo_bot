@@ -22,13 +22,14 @@ def init_db():
 def _seed_species(conn):
     for s in SPECIES:
         existing = conn.execute(
-            "SELECT species_id FROM species WHERE name = ? AND emoji = ?",
-            (s["name"], s["emoji"]),
+            "SELECT species_id FROM species WHERE name = ?",
+            (s["name"],),
         ).fetchone()
         if existing:
             conn.execute(
-                "UPDATE species SET catch_rate=?, catch_cost=?, hunger_decay=?, breed_time_hrs=?, habitat=?, is_special=? WHERE species_id=?",
+                "UPDATE species SET emoji=?, catch_rate=?, catch_cost=?, hunger_decay=?, breed_time_hrs=?, habitat=?, is_special=? WHERE species_id=?",
                 (
+                    s["emoji"],
                     s["catch_rate"],
                     s["catch_cost"],
                     s["hunger_decay"],
