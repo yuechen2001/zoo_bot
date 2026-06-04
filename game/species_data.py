@@ -9,16 +9,67 @@ HABITATS = {
     "desert": {"name": "Desert", "emoji": "🏜️"},
 }
 
-# capacity, passive coins earned per animal per hour, breed time reduction, coin cost to upgrade
+# capacity, passive coins earned per animal per hour, breed time reduction, catch rate bonus (habitat lure only), coin cost to upgrade
 ENCLOSURE_LEVELS = {
-    1: {"capacity": 3, "coins_per_animal_hr": 0, "breed_bonus": 0.00, "upgrade_cost": 0},
-    2: {"capacity": 6, "coins_per_animal_hr": 3, "breed_bonus": 0.05, "upgrade_cost": 300},
-    3: {"capacity": 10, "coins_per_animal_hr": 6, "breed_bonus": 0.15, "upgrade_cost": 800},
-    4: {"capacity": 15, "coins_per_animal_hr": 12, "breed_bonus": 0.25, "upgrade_cost": 2000},
-    5: {"capacity": 21, "coins_per_animal_hr": 21, "breed_bonus": 0.40, "upgrade_cost": 5000},
+    1: {
+        "capacity": 3,
+        "coins_per_animal_hr": 0,
+        "breed_bonus": 0.00,
+        "catch_rate_bonus": 0.00,
+        "upgrade_cost": 0,
+    },
+    2: {
+        "capacity": 6,
+        "coins_per_animal_hr": 3,
+        "breed_bonus": 0.05,
+        "catch_rate_bonus": 0.00,
+        "upgrade_cost": 300,
+    },
+    3: {
+        "capacity": 10,
+        "coins_per_animal_hr": 6,
+        "breed_bonus": 0.15,
+        "catch_rate_bonus": 0.00,
+        "upgrade_cost": 800,
+    },
+    4: {
+        "capacity": 15,
+        "coins_per_animal_hr": 12,
+        "breed_bonus": 0.25,
+        "catch_rate_bonus": 0.00,
+        "upgrade_cost": 2000,
+    },
+    5: {
+        "capacity": 21,
+        "coins_per_animal_hr": 21,
+        "breed_bonus": 0.40,
+        "catch_rate_bonus": 0.00,
+        "upgrade_cost": 5000,
+    },
+    6: {
+        "capacity": 28,
+        "coins_per_animal_hr": 35,
+        "breed_bonus": 0.55,
+        "catch_rate_bonus": 0.05,
+        "upgrade_cost": 12000,
+    },
+    7: {
+        "capacity": 36,
+        "coins_per_animal_hr": 55,
+        "breed_bonus": 0.70,
+        "catch_rate_bonus": 0.10,
+        "upgrade_cost": 30000,
+    },
+    8: {
+        "capacity": 45,
+        "coins_per_animal_hr": 80,
+        "breed_bonus": 0.85,
+        "catch_rate_bonus": 0.15,
+        "upgrade_cost": 75000,
+    },
 }
 
-MAX_ENCLOSURE_LEVEL = 5
+MAX_ENCLOSURE_LEVEL = 8
 
 SPECIES = [
     # Common — encounter 60%, catch 90%, cost 20, decay 3/tick

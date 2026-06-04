@@ -64,6 +64,7 @@ async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     is_habitat_lure = not is_no_lure
 
     lure_multiplier = LURE_MULTIPLIER if is_habitat_lure else 1.0
+    enc_catch_bonus = 0.0
 
     if is_no_lure:
         if user["coins"] < NO_LURE_COST:
@@ -79,6 +80,7 @@ async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         # Pre-check enclosure capacity before consuming
         enc_level = db.get_enclosure_level(tg_id, habitat)
         capacity = ENCLOSURE_LEVELS[enc_level]["capacity"]
+        enc_catch_bonus = ENCLOSURE_LEVELS[enc_level]["catch_rate_bonus"]
         used = db.get_animal_count_by_habitat(tg_id, habitat)
         if used >= capacity:
             h = HABITATS[habitat]
@@ -120,7 +122,7 @@ async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     catch_rate_display = (
         "100% 🪤"
         if user["catch_net_active"]
-        else f"{min(100, int(species['catch_rate'] * lure_multiplier * 100))}%"
+        else f"{min(100, int((species['catch_rate'] * lure_multiplier + enc_catch_bonus) * 100))}%"
     )
 
     msg = await query.edit_message_text(
@@ -142,6 +144,7 @@ async def catch_lure_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "at": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat(),
         "message_id": msg.message_id,
         "lure_multiplier": lure_multiplier,
+        "enc_catch_bonus": enc_catch_bonus,
     }
 
 
@@ -212,6 +215,7 @@ async def catch_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     db.add_coins(tg_id, -cost)
 
     catch_rate = pending["catch_rate"] * pending.get("lure_multiplier", 1.0)
+    catch_rate += pending.get("enc_catch_bonus", 0.0)
     catch_rate = min(1.0, catch_rate)
     if user["lucky_catch_active"]:
         catch_rate = min(1.0, catch_rate * 2)

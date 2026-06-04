@@ -236,6 +236,20 @@ ACHIEVEMENTS = {
         "trigger": "enclosure",
         "check": lambda uid, u: True,
     },
+    "enclosure_level_6": {
+        "emoji": "🏰",
+        "name": "Renovator",
+        "desc": "Upgrade any enclosure to level 6",
+        "trigger": "enclosure",
+        "check": lambda uid, u: db.get_max_enclosure_level(uid) >= 6,
+    },
+    "enclosure_level_7": {
+        "emoji": "🗼",
+        "name": "Grand Builder",
+        "desc": "Upgrade any enclosure to level 7",
+        "trigger": "enclosure",
+        "check": lambda uid, u: db.get_max_enclosure_level(uid) >= 7,
+    },
     "max_enclosure": {
         "emoji": "🏛",
         "name": "Master Architect",

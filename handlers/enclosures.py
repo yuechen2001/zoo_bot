@@ -29,6 +29,7 @@ def _render_enclosures(
         capacity = stats["capacity"]
         income = stats["coins_per_animal_hr"]
         bonus = stats["breed_bonus"]
+        catch_bonus = stats["catch_rate_bonus"]
 
         income_str = f"💰 {income * used}/hr" if income > 0 else "💰 0/hr"
         bonus_str = f"🧬 -{int(bonus * 100)}% breed time" if bonus > 0 else "🧬 no breed bonus"
@@ -37,6 +38,8 @@ def _render_enclosures(
             f"{h_info['emoji']} *{h_info['name']}* \\[Lv {level}\\]  {used}/{capacity} animals"
         )
         lines.append(f"   {income_str}  •  {bonus_str}")
+        if catch_bonus > 0:
+            lines.append(f"   🎯 +{int(catch_bonus * 100)}% catch rate (lure)")
 
         if level < MAX_ENCLOSURE_LEVEL:
             next_cost = ENCLOSURE_LEVELS[level + 1]["upgrade_cost"]

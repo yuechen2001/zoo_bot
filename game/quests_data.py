@@ -354,7 +354,7 @@ CHAPTERS: dict[int, dict] = {
         ),
         "tasks": [
             {
-                "desc": "Have an enclosure at level 5 (maximum)",
+                "desc": "Have an enclosure at level 5+",
                 "check": lambda uid, _: db.get_max_enclosure_level(uid) >= 5,
             },
             {
