@@ -58,16 +58,17 @@ def conn():
             massage_active_until    TEXT
         );
         CREATE TABLE animals (
-            animal_id   TEXT PRIMARY KEY,
-            user_id     INTEGER,
-            species_id  INTEGER,
-            nickname    TEXT,
-            hunger      INTEGER NOT NULL DEFAULT 100,
-            happiness   INTEGER NOT NULL DEFAULT 100,
-            level       INTEGER NOT NULL DEFAULT 1,
-            xp          INTEGER NOT NULL DEFAULT 0,
-            is_breeding INTEGER NOT NULL DEFAULT 0,
-            is_shiny    INTEGER NOT NULL DEFAULT 0
+            animal_id       TEXT PRIMARY KEY,
+            user_id         INTEGER,
+            species_id      INTEGER,
+            nickname        TEXT,
+            hunger          INTEGER NOT NULL DEFAULT 100,
+            is_breeding     INTEGER NOT NULL DEFAULT 0,
+            is_shiny        INTEGER NOT NULL DEFAULT 0,
+            caught_at       TEXT DEFAULT (datetime('now')),
+            stat_speed      INTEGER NOT NULL DEFAULT 50,
+            stat_rarity     INTEGER NOT NULL DEFAULT 50,
+            stat_temperament INTEGER NOT NULL DEFAULT 50
         );
         CREATE TABLE breeding_queue (
             id                   INTEGER PRIMARY KEY AUTOINCREMENT,

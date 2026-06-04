@@ -71,6 +71,14 @@ ESCAPE_WINDOW_HOURS = 2
 ESCAPE_MIN_HOURS = 8
 ESCAPE_MAX_HOURS = 16
 
+# Animal genetics stats
+STAT_CAUGHT_MIN = 35  # minimum stat value rolled on catch
+STAT_CAUGHT_MAX = 75  # maximum stat value rolled on catch
+STAT_INHERIT_NOISE = 15  # ±noise added to parent average when breeding
+STAT_SPEED_DIVISOR = 400  # breed time factor: time × (1 - speed/DIVISOR)
+STAT_TEMPERAMENT_BASE = 0.75  # min income multiplier (at stat=0)
+STAT_TEMPERAMENT_DIVISOR = 400  # income = TEMPERAMENT_BASE + stat/DIVISOR
+
 # Pagination
 ANIMAL_PAGE_SIZE = 8
 ENC_PAGE_SIZE = 3

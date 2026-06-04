@@ -19,13 +19,24 @@ _RARITY_WEIGHTS: dict[tuple[str, str], tuple] = {
 }
 
 
-def resolve_offspring(rarity_a: str, rarity_b: str, get_candidates) -> int:
+def resolve_offspring(
+    rarity_a: str,
+    rarity_b: str,
+    get_candidates,
+    stat_rarity_a: int = 50,
+    stat_rarity_b: int = 50,
+) -> int:
     """Return a species_id for the offspring using weighted rarity distribution.
 
     get_candidates(rarity) must return a list of species rows for that rarity.
+    Higher stat_rarity on parents biases offspring toward rarer tiers (up to 2× weight at 100).
     """
     a, b = sorted([rarity_a, rarity_b], key=lambda r: RARITY_ORDER.index(r))
-    weights = _RARITY_WEIGHTS[(a, b)]
+    base = list(_RARITY_WEIGHTS[(a, b)])
+    avg_rarity_stat = (stat_rarity_a + stat_rarity_b) / 2.0
+    bias = avg_rarity_stat / 100.0  # 0.0–1.0
+    # Upward bias: multiply epic+legendary weights by (1 + bias); common/rare stay flat
+    weights = [base[0], base[1], base[2] * (1 + bias), base[3] * (1 + bias)]
     offspring_rarity = random.choices(RARITY_ORDER, weights=weights, k=1)[0]
     rows = get_candidates(offspring_rarity)
     return random.choice(rows)["species_id"] if rows else 1
@@ -37,16 +48,26 @@ def _hunger_adjusted_hours(base_hours: float, hunger_a: int, hunger_b: int) -> f
     return base_hours * (2.0 - avg_hunger / 100.0)
 
 
+def _speed_factor(speed_a: int, speed_b: int) -> float:
+    """Breed time multiplier from parent speed stats. Up to 25% faster at stat=100 each."""
+    from game.constants import STAT_SPEED_DIVISOR
+
+    return (1.0 - speed_a / STAT_SPEED_DIVISOR) * (1.0 - speed_b / STAT_SPEED_DIVISOR)
+
+
 def calc_breed_ready_at(
     rarity_a: str,
     rarity_b: str,
     hunger_a: int = 100,
     hunger_b: int = 100,
     habitat_bonus: float = 0.0,
+    speed_a: int = 0,
+    speed_b: int = 0,
 ) -> str:
     params = get_breed_params(rarity_a, rarity_b)
     hours = _hunger_adjusted_hours(params["hours"], hunger_a, hunger_b)
     hours *= max(0.0, 1.0 - habitat_bonus)
+    hours *= _speed_factor(speed_a, speed_b)
     ready = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) + datetime.timedelta(
         hours=hours
     )
@@ -63,10 +84,13 @@ def breed_duration_str(
     hunger_a: int = 100,
     hunger_b: int = 100,
     habitat_bonus: float = 0.0,
+    speed_a: int = 0,
+    speed_b: int = 0,
 ) -> str:
     params = get_breed_params(rarity_a, rarity_b)
     hours = _hunger_adjusted_hours(params["hours"], hunger_a, hunger_b)
     hours *= max(0.0, 1.0 - habitat_bonus)
+    hours *= _speed_factor(speed_a, speed_b)
     if hours < 1:
         minutes = round(hours * 60)
         return f"{minutes}m"

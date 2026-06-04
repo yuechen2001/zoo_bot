@@ -93,6 +93,7 @@ from handlers import (
 from handlers.gift import gift_command
 from handlers.visit import visit_command, visit_feed_callback
 from handlers.escape import escape_callback
+from handlers.inspect import inspect_command
 from handlers.store import store_command, store_callback, store_tab_callback
 from handlers.footmassage import footmassage_command
 from handlers.wild_event import wild_event_callback
@@ -140,6 +141,7 @@ async def post_init(application):
             BotCommand("store", "Browse the item store"),
             BotCommand("inventory", "Your bag — use items and equip titles"),
             BotCommand("quests", "Track your Zoo Expedition storyline"),
+            BotCommand("inspect", "View an animal's hidden trait stats"),
             BotCommand("help", "Show all commands"),
         ]
     )
@@ -289,6 +291,7 @@ def main():
     app.add_handler(CommandHandler("inventory", inventory_command))
     app.add_handler(CommandHandler("footmassage", footmassage_command))
     app.add_handler(CommandHandler("quests", quests_command))
+    app.add_handler(CommandHandler("inspect", inspect_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, name_text_handler))
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_error_handler(error_handler)

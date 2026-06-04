@@ -7,7 +7,7 @@ import db
 from game.achievements import check_achievements
 from game.species_data import ENCLOSURE_LEVELS
 from utils import format_mention
-from game.constants import LURE_MULTIPLIER
+from game.constants import LURE_MULTIPLIER, STAT_CAUGHT_MIN, STAT_CAUGHT_MAX
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +91,12 @@ async def wild_event_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     shiny = random.random() < 0.015
     if shiny:
         db.set_animal_shiny(animal_id)
+    db.set_animal_stats(
+        animal_id,
+        random.randint(STAT_CAUGHT_MIN, STAT_CAUGHT_MAX),
+        random.randint(STAT_CAUGHT_MIN, STAT_CAUGHT_MAX),
+        random.randint(STAT_CAUGHT_MIN, STAT_CAUGHT_MAX),
+    )
     shiny_str = "⭐ " if shiny else ""
 
     mention = format_mention(query.from_user.username, tg_id)

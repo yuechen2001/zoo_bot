@@ -10,7 +10,7 @@ from keyboards import catch_keyboard, lure_keyboard, no_lure_keyboard
 from game.species_data import RARITY_LABELS, HABITATS, ENCLOSURE_LEVELS
 from config import CATCH_EXPIRY_MINUTES
 from game.achievements import check_achievements
-from game.constants import LURE_MULTIPLIER, NO_LURE_COST
+from game.constants import LURE_MULTIPLIER, NO_LURE_COST, STAT_CAUGHT_MIN, STAT_CAUGHT_MAX
 
 
 async def catch_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -233,6 +233,12 @@ async def catch_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         shiny = random.random() < 0.015
         if shiny:
             db.set_animal_shiny(animal_id)
+        db.set_animal_stats(
+            animal_id,
+            random.randint(STAT_CAUGHT_MIN, STAT_CAUGHT_MAX),
+            random.randint(STAT_CAUGHT_MIN, STAT_CAUGHT_MAX),
+            random.randint(STAT_CAUGHT_MIN, STAT_CAUGHT_MAX),
+        )
         shiny_str = "⭐ " if shiny else ""
         await query.answer("Caught!")
         await query.edit_message_text(

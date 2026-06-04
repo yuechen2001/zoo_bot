@@ -57,6 +57,8 @@ async def test_catch_shiny_roll_sets_flag_when_under_threshold():
     ), patch(
         "handlers.catch.db.set_animal_shiny"
     ) as mock_shiny, patch(
+        "handlers.catch.db.set_animal_stats"
+    ), patch(
         "handlers.catch.roll_catch", return_value=True
     ), patch(
         "handlers.catch.random.random", return_value=0.010
@@ -89,6 +91,8 @@ async def test_catch_shiny_roll_skips_flag_when_over_threshold():
     ), patch(
         "handlers.catch.db.set_animal_shiny"
     ) as mock_shiny, patch(
+        "handlers.catch.db.set_animal_stats"
+    ), patch(
         "handlers.catch.roll_catch", return_value=True
     ), patch(
         "handlers.catch.random.random", return_value=0.020
@@ -176,6 +180,8 @@ async def test_wild_event_shiny_sets_flag_when_under_threshold():
     ), patch(
         "handlers.wild_event.db.set_animal_shiny"
     ) as mock_shiny, patch(
+        "handlers.wild_event.db.set_animal_stats"
+    ), patch(
         "handlers.wild_event.random.random", return_value=0.010
     ), patch(  # first call: catch roll (0.010 < 0.9 → success); second: shiny (< 0.015)
         "handlers.wild_event.check_achievements", new_callable=AsyncMock
@@ -217,6 +223,8 @@ async def test_wild_event_shiny_skips_flag_when_over_threshold():
     ), patch(
         "handlers.wild_event.db.set_animal_shiny"
     ) as mock_shiny, patch(
+        "handlers.wild_event.db.set_animal_stats"
+    ), patch(
         "handlers.wild_event.random.random", return_value=0.020
     ), patch(  # catch succeeds (0.020 < 0.9); shiny roll: 0.020 >= 0.015 → no shiny
         "handlers.wild_event.check_achievements", new_callable=AsyncMock

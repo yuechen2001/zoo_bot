@@ -1212,6 +1212,14 @@ def set_animal_shiny(animal_id: str) -> None:
         conn.execute("UPDATE animals SET is_shiny = 1 WHERE animal_id = ?", (animal_id,))
 
 
+def set_animal_stats(animal_id: str, speed: int, rarity: int, temperament: int) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE animals SET stat_speed = ?, stat_rarity = ?, stat_temperament = ? WHERE animal_id = ?",
+            (speed, rarity, temperament, animal_id),
+        )
+
+
 def user_owns_rarity(user_id: int, rarity: str) -> bool:
     with get_conn() as conn:
         return (

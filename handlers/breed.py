@@ -13,7 +13,14 @@ from game.breed_engine import (
     breed_duration_str,
 )
 from game.species_data import ENCLOSURE_LEVELS, HABITATS
+from game.constants import STAT_INHERIT_NOISE
 from keyboards import animal_picker_keyboard
+
+
+def _offspring_stat(stat_a: int, stat_b: int) -> int:
+    avg = (stat_a + stat_b) / 2.0
+    noise = random.randint(-STAT_INHERIT_NOISE, STAT_INHERIT_NOISE)
+    return max(0, min(100, round(avg + noise)))
 
 
 async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -105,6 +112,10 @@ async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 def _breed_start(tg_id, animal_a, animal_b, cost) -> str:
     """Execute breed in DB and return the confirmation message text."""
     rarity_a, rarity_b = animal_a["rarity"], animal_b["rarity"]
+    speed_a = animal_a["stat_speed"] if "stat_speed" in animal_a.keys() else 50
+    speed_b = animal_b["stat_speed"] if "stat_speed" in animal_b.keys() else 50
+    rarity_stat_a = animal_a["stat_rarity"] if "stat_rarity" in animal_a.keys() else 50
+    rarity_stat_b = animal_b["stat_rarity"] if "stat_rarity" in animal_b.keys() else 50
 
     habitat_bonus = 0.0
     habitat_a, habitat_b = animal_a["habitat"], animal_b["habitat"]
@@ -113,14 +124,16 @@ def _breed_start(tg_id, animal_a, animal_b, cost) -> str:
         habitat_bonus = ENCLOSURE_LEVELS[enc_level]["breed_bonus"]
 
     duration = breed_duration_str(
-        rarity_a, rarity_b, animal_a["hunger"], animal_b["hunger"], habitat_bonus
+        rarity_a, rarity_b, animal_a["hunger"], animal_b["hunger"], habitat_bonus, speed_a, speed_b
     )
     name_a = animal_a["nickname"] or animal_a["species_name"]
     name_b = animal_b["nickname"] or animal_b["species_name"]
 
-    offspring_species_id = resolve_offspring(rarity_a, rarity_b, db.get_species_candidates)
+    offspring_species_id = resolve_offspring(
+        rarity_a, rarity_b, db.get_species_candidates, rarity_stat_a, rarity_stat_b
+    )
     ready_at = calc_breed_ready_at(
-        rarity_a, rarity_b, animal_a["hunger"], animal_b["hunger"], habitat_bonus
+        rarity_a, rarity_b, animal_a["hunger"], animal_b["hunger"], habitat_bonus, speed_a, speed_b
     )
     db.start_breed(
         tg_id, animal_a["animal_id"], animal_b["animal_id"], offspring_species_id, ready_at, cost
@@ -191,6 +204,26 @@ async def _collect_breed(update, tg_id, ctx=None):
     shiny = random.random() < 0.015
     if shiny:
         db.set_animal_shiny(animal_id)
+
+    parent_a = db.get_animal(pending["parent_a"])
+    parent_b = db.get_animal(pending["parent_b"])
+    if parent_a and parent_b:
+        db.set_animal_stats(
+            animal_id,
+            _offspring_stat(
+                parent_a["stat_speed"] if "stat_speed" in parent_a.keys() else 50,
+                parent_b["stat_speed"] if "stat_speed" in parent_b.keys() else 50,
+            ),
+            _offspring_stat(
+                parent_a["stat_rarity"] if "stat_rarity" in parent_a.keys() else 50,
+                parent_b["stat_rarity"] if "stat_rarity" in parent_b.keys() else 50,
+            ),
+            _offspring_stat(
+                parent_a["stat_temperament"] if "stat_temperament" in parent_a.keys() else 50,
+                parent_b["stat_temperament"] if "stat_temperament" in parent_b.keys() else 50,
+            ),
+        )
+
     shiny_str = "⭐ " if shiny else ""
 
     await update.message.reply_text(

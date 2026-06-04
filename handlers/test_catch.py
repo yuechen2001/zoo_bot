@@ -808,6 +808,8 @@ async def test_catch_callback_applies_enc_catch_bonus_additively():
     ), patch(
         "handlers.catch.db.set_animal_shiny"
     ), patch(
+        "handlers.catch.db.set_animal_stats"
+    ), patch(
         "handlers.catch.roll_catch", side_effect=capture_roll
     ), patch(
         "handlers.catch.check_achievements", new_callable=AsyncMock
@@ -850,6 +852,8 @@ async def test_catch_callback_enc_catch_bonus_defaults_to_zero():
         "handlers.catch.db.add_animal"
     ), patch(
         "handlers.catch.db.set_animal_shiny"
+    ), patch(
+        "handlers.catch.db.set_animal_stats"
     ), patch(
         "handlers.catch.roll_catch", side_effect=capture_roll
     ), patch(

@@ -15,6 +15,7 @@ from keyboards import mood_keyboard, breed_collect_keyboard
 from game.species_data import ENCLOSURE_LEVELS, HABITATS, RARITY_LABELS
 from game.aging import get_stage, INCOME_MULTIPLIER
 from game.constants import GROUP_TRIVIA_WINDOW_MINUTES, GROUP_TRIVIA_INTERVAL_HOURS
+from game.constants import STAT_TEMPERAMENT_BASE, STAT_TEMPERAMENT_DIVISOR
 from game.constants import ESCAPE_MIN_HOURS, ESCAPE_MAX_HOURS, ESCAPE_WINDOW_HOURS
 from game.constants import WILD_EVENT_RARITY_WEIGHTS
 from utils import format_mention
@@ -264,7 +265,13 @@ async def _tick_enclosure_income(ctx):
                 continue
             habitat_animals = [a for a in all_animals if a["habitat"] == habitat]
             animal_contribution = sum(
-                INCOME_MULTIPLIER[get_stage(a["caught_at"])] for a in habitat_animals
+                INCOME_MULTIPLIER[get_stage(a["caught_at"])]
+                * (
+                    STAT_TEMPERAMENT_BASE
+                    + (a["stat_temperament"] if "stat_temperament" in a.keys() else 50)
+                    / STAT_TEMPERAMENT_DIVISOR
+                )
+                for a in habitat_animals
             )
             total_coins += rate * animal_contribution * multiplier
         if total_coins > 0:
