@@ -1,3 +1,4 @@
+import asyncio
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 import db
@@ -34,13 +35,15 @@ def _sell_confirm_text(animal) -> str:
 
 
 async def _clear_sell_message(ctx: ContextTypes.DEFAULT_TYPE, tg_id: int) -> None:
-    prev = ctx.user_data.get("sell_msg")
+    prev = ctx.user_data.pop("sell_msg", None)
     if prev:
-        try:
-            await ctx.bot.delete_message(chat_id=prev["chat_id"], message_id=prev["msg_id"])
-        except Exception:
-            pass
-        ctx.user_data.pop("sell_msg", None)
+        asyncio.create_task(
+            ctx.bot.delete_message(chat_id=prev["chat_id"], message_id=prev["msg_id"])
+        )
+        if prev.get("cmd_id"):
+            asyncio.create_task(
+                ctx.bot.delete_message(chat_id=prev["chat_id"], message_id=prev["cmd_id"])
+            )
 
 
 async def sell_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -78,14 +81,22 @@ async def sell_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             reply_markup=_sell_confirm_keyboard(animal),
             parse_mode="Markdown",
         )
-        ctx.user_data["sell_msg"] = {"chat_id": msg.chat_id, "msg_id": msg.message_id}
+        ctx.user_data["sell_msg"] = {
+            "chat_id": msg.chat_id,
+            "msg_id": msg.message_id,
+            "cmd_id": update.message.message_id,
+        }
         return
 
     kb = animal_picker_keyboard(
         animals, "sell_pick", "sell_cancel", page=0, page_callback_prefix="sell_page"
     )
     msg = await update.message.reply_text("Which animal do you want to sell?", reply_markup=kb)
-    ctx.user_data["sell_msg"] = {"chat_id": msg.chat_id, "msg_id": msg.message_id}
+    ctx.user_data["sell_msg"] = {
+        "chat_id": msg.chat_id,
+        "msg_id": msg.message_id,
+        "cmd_id": update.message.message_id,
+    }
 
 
 async def sell_pick_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

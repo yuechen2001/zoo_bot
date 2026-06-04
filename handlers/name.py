@@ -2,6 +2,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 import db
 from keyboards import animal_picker_keyboard
+from utils import replace_command_ui
 
 
 async def name_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -11,10 +12,12 @@ async def name_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if not ctx.args or len(ctx.args) < 2 or not ctx.args[0].isdigit():
         animals = db.get_animals(tg_id)
         if not animals:
-            await update.message.reply_text("You have no animals to name.")
+            msg = await update.message.reply_text("You have no animals to name.")
+            await replace_command_ui(ctx, "name_ui", update, msg)
             return
         kb = animal_picker_keyboard(animals, "name_pick", "name_cancel")
-        await update.message.reply_text("Which animal do you want to name?", reply_markup=kb)
+        msg = await update.message.reply_text("Which animal do you want to name?", reply_markup=kb)
+        await replace_command_ui(ctx, "name_ui", update, msg)
         return
 
     position = int(ctx.args[0])
@@ -23,15 +26,19 @@ async def name_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     if not animal:
         count = len(db.get_animals(tg_id))
-        await update.message.reply_text(f"No animal at #{position}. You have {count} animal(s).")
+        msg = await update.message.reply_text(
+            f"No animal at #{position}. You have {count} animal(s)."
+        )
+        await replace_command_ui(ctx, "name_ui", update, msg)
         return
 
     db.set_animal_nickname(animal["animal_id"], nickname)
 
-    await update.message.reply_text(
+    msg = await update.message.reply_text(
         f"{animal['emoji']} Animal #{position} is now called *{nickname}*!",
         parse_mode="Markdown",
     )
+    await replace_command_ui(ctx, "name_ui", update, msg)
 
 
 async def name_pick_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

@@ -9,6 +9,7 @@ from game.constants import (
     VISIT_FEED_BONUS,
     VISIT_FEED_COOLDOWN_HOURS,
 )
+from utils import replace_command_ui
 
 
 def _render_visit_zoo(username: str, animals: list) -> str:
@@ -61,18 +62,21 @@ async def visit_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     if not ctx.args:
-        await update.message.reply_text("Usage: /visit @username")
+        msg = await update.message.reply_text("Usage: /visit @username")
+        await replace_command_ui(ctx, "visit_ui", update, msg)
         return
 
     raw = ctx.args[0].lstrip("@")
     host = db.get_user_by_username(raw)
     if not host:
-        await update.message.reply_text(f"User @{raw} not found or hasn't started yet.")
+        msg = await update.message.reply_text(f"User @{raw} not found or hasn't started yet.")
+        await replace_command_ui(ctx, "visit_ui", update, msg)
         return
 
     host_id = host["user_id"]
     if host_id == tg_id:
-        await update.message.reply_text("You can't visit your own zoo — use /zoo for that.")
+        msg = await update.message.reply_text("You can't visit your own zoo — use /zoo for that.")
+        await replace_command_ui(ctx, "visit_ui", update, msg)
         return
 
     animals = db.get_animals(host_id)
@@ -90,11 +94,12 @@ async def visit_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if not animals:
         can_feed = False
 
-    await update.message.reply_text(
+    msg = await update.message.reply_text(
         text,
         parse_mode="Markdown",
         reply_markup=_visit_keyboard(host_id, can_feed),
     )
+    await replace_command_ui(ctx, "visit_ui", update, msg)
 
 
 async def visit_feed_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

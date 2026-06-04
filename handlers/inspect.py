@@ -1,6 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
+from utils import replace_command_ui
 
 
 def _stars(stat: int) -> str:
@@ -17,16 +18,20 @@ async def inspect_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     if not ctx.args or not ctx.args[0].isdigit():
-        await update.message.reply_text(
+        msg = await update.message.reply_text(
             "Usage: `/inspect <position>` — e.g. `/inspect 3`", parse_mode="Markdown"
         )
+        await replace_command_ui(ctx, "inspect_ui", update, msg)
         return
 
     pos = int(ctx.args[0])
     animal = db.get_animal_by_position(tg_id, pos)
     if not animal:
         count = len(db.get_animals(tg_id))
-        await update.message.reply_text(f"No animal at position {pos}. You have {count} animal(s).")
+        msg = await update.message.reply_text(
+            f"No animal at position {pos}. You have {count} animal(s)."
+        )
+        await replace_command_ui(ctx, "inspect_ui", update, msg)
         return
 
     name = animal["nickname"] or animal["species_name"]
@@ -34,10 +39,11 @@ async def inspect_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     rarity_stat = animal["stat_rarity"] if "stat_rarity" in animal.keys() else 50
     temperament = animal["stat_temperament"] if "stat_temperament" in animal.keys() else 50
 
-    await update.message.reply_text(
+    msg = await update.message.reply_text(
         f"🔬 *Inspect: {animal['emoji']} {name} #{pos}*\n\n"
         f"⚡ Speed:        {_stars(speed)}  _(shorter breed time)_\n"
         f"🌟 Genetics:     {_stars(rarity_stat)}  _(rarer offspring)_\n"
         f"🍖 Temperament:  {_stars(temperament)}  _(more enclosure income)_",
         parse_mode="Markdown",
     )
+    await replace_command_ui(ctx, "inspect_ui", update, msg)

@@ -4,6 +4,7 @@ from telegram.ext import ContextTypes
 import db
 from game.achievements import triggers
 from game.constants import DAILY_COOLDOWN_HOURS, DAILY_STREAK_EXPIRY_HOURS, DAILY_TIERS
+from utils import replace_command_ui
 
 
 def _daily_coins(streak: int) -> int:
@@ -38,10 +39,11 @@ async def daily_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         if remaining_s > 0:
             remaining_h = int(remaining_s // 3600)
             remaining_m = int((remaining_s % 3600) // 60)
-            await update.message.reply_text(
+            msg = await update.message.reply_text(
                 f"⏳ Daily reward available in *{remaining_h}h {remaining_m}m*.",
                 parse_mode="Markdown",
             )
+            await replace_command_ui(ctx, "daily_ui", update, msg)
             return
 
         # Determine new streak
@@ -64,9 +66,10 @@ async def daily_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         else "\n_You're at the max tier! 🏆_"
     )
 
-    await update.message.reply_text(
+    msg = await update.message.reply_text(
         f"🎁 *Daily reward — Day {new_streak}!*\n\n"
         f"+{coins} 🪙 (you have {user['coins']} 🪙)"
         f"{next_line}",
         parse_mode="Markdown",
     )
+    await replace_command_ui(ctx, "daily_ui", update, msg)

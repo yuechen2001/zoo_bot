@@ -2,6 +2,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 import db
 from game.species_data import HABITATS, RARITY_ORDER, RARITY_SQUARE
+from utils import replace_command_ui
 
 
 def _build_habitat_index(all_species: list) -> dict[str, list]:
@@ -81,7 +82,8 @@ async def directory_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     owned_ids = db.get_owned_species_ids(tg_id)
     text, habitat_keys = render_directory_page(all_species, owned_ids, 0)
     keyboard = directory_page_keyboard(tg_id, 0, habitat_keys) if len(habitat_keys) > 1 else None
-    await update.message.reply_text(text, parse_mode="Markdown", reply_markup=keyboard)
+    msg = await update.message.reply_text(text, parse_mode="Markdown", reply_markup=keyboard)
+    await replace_command_ui(ctx, "directory_ui", update, msg)
 
 
 async def directory_page_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

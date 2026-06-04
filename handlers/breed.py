@@ -15,6 +15,7 @@ from game.breed_engine import (
 from game.species_data import ENCLOSURE_LEVELS, HABITATS
 from game.constants import STAT_INHERIT_NOISE
 from keyboards import animal_picker_keyboard
+from utils import replace_command_ui
 
 
 def _offspring_stat(stat_a: int, stat_b: int) -> int:
@@ -33,27 +34,29 @@ async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     # /breed collect
     if ctx.args and ctx.args[0].lower() == "collect":
-        await _collect_breed(update, tg_id, ctx)
+        await _collect_breed(update, tg_id, ctx, _cmd_update=update)
         return
 
     # /breed <a> <b>
     if not ctx.args or len(ctx.args) < 2 or not ctx.args[0].isdigit() or not ctx.args[1].isdigit():
         pending = db.get_pending_breed(tg_id)
         if pending:
-            await update.message.reply_text(
+            msg = await update.message.reply_text(
                 "You already have a breeding in progress! Use `/breed collect` when it's ready.",
                 parse_mode="Markdown",
             )
+            await replace_command_ui(ctx, "breed_ui", update, msg)
             return
         animals = db.get_animals(tg_id)
         breeding_ids = {a["animal_id"] for a in animals if a["is_breeding"]}
         available = [a for a in animals if a["animal_id"] not in breeding_ids]
         if len(available) < 2:
-            await update.message.reply_text(
+            msg = await update.message.reply_text(
                 "You need at least 2 available animals to breed.\n\n"
                 "Use `/breed collect` to claim any in-progress offspring.",
                 parse_mode="Markdown",
             )
+            await replace_command_ui(ctx, "breed_ui", update, msg)
             return
         kb = animal_picker_keyboard(
             animals,
@@ -63,12 +66,14 @@ async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             page=0,
             page_callback_prefix="breed_page",
         )
-        await update.message.reply_text("Choose the first parent:", reply_markup=kb)
+        msg = await update.message.reply_text("Choose the first parent:", reply_markup=kb)
+        await replace_command_ui(ctx, "breed_ui", update, msg)
         return
 
     pos_a, pos_b = int(ctx.args[0]), int(ctx.args[1])
     if pos_a == pos_b:
-        await update.message.reply_text("Pick two different animals!")
+        msg = await update.message.reply_text("Pick two different animals!")
+        await replace_command_ui(ctx, "breed_ui", update, msg)
         return
 
     animal_a = db.get_animal_by_position(tg_id, pos_a)
@@ -76,37 +81,43 @@ async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     if not animal_a or not animal_b:
         count = len(db.get_animals(tg_id))
-        await update.message.reply_text(f"Invalid positions. You have {count} animal(s).")
+        msg = await update.message.reply_text(f"Invalid positions. You have {count} animal(s).")
+        await replace_command_ui(ctx, "breed_ui", update, msg)
         return
 
     if animal_a["is_breeding"] or animal_b["is_breeding"]:
-        await update.message.reply_text("One of those animals is already breeding!")
+        msg = await update.message.reply_text("One of those animals is already breeding!")
+        await replace_command_ui(ctx, "breed_ui", update, msg)
         return
 
     if get_stage(animal_a["caught_at"]) == "elder" or get_stage(animal_b["caught_at"]) == "elder":
-        await update.message.reply_text(
+        msg = await update.message.reply_text(
             "👴 Elders are retired and can't breed. Choose younger animals."
         )
+        await replace_command_ui(ctx, "breed_ui", update, msg)
         return
 
     pending = db.get_pending_breed(tg_id)
     if pending:
-        await update.message.reply_text(
+        msg = await update.message.reply_text(
             "You already have a breeding in progress! Use `/breed collect` when it's ready.",
             parse_mode="Markdown",
         )
+        await replace_command_ui(ctx, "breed_ui", update, msg)
         return
 
     cost = calc_breed_cost(animal_a["rarity"], animal_b["rarity"])
     if user["coins"] < cost:
-        await update.message.reply_text(
+        msg = await update.message.reply_text(
             f"Not enough coins! Breeding costs {cost} 🪙 (you have {user['coins']})."
         )
+        await replace_command_ui(ctx, "breed_ui", update, msg)
         return
 
-    await update.message.reply_text(
+    msg = await update.message.reply_text(
         _breed_start(tg_id, animal_a, animal_b, cost), parse_mode="Markdown"
     )
+    await replace_command_ui(ctx, "breed_ui", update, msg)
 
 
 def _breed_start(tg_id, animal_a, animal_b, cost) -> str:
@@ -155,14 +166,16 @@ def _breed_start(tg_id, animal_a, animal_b, cost) -> str:
     )
 
 
-async def _collect_breed(update, tg_id, ctx=None):
+async def _collect_breed(update, tg_id, ctx=None, _cmd_update=None):
     pending = db.get_pending_breed(tg_id)
 
     if not pending:
-        await update.message.reply_text(
+        msg = await update.message.reply_text(
             "No breeding in progress.\n\n" "Use `/breed 1 3` to breed animal #1 with animal #3.",
             parse_mode="Markdown",
         )
+        if _cmd_update and ctx:
+            await replace_command_ui(ctx, "breed_ui", _cmd_update, msg)
         return
 
     ready_at = datetime.datetime.fromisoformat(pending["ready_at"])
@@ -171,9 +184,11 @@ async def _collect_breed(update, tg_id, ctx=None):
         hours, rem = divmod(int(remaining.total_seconds()), 3600)
         minutes = rem // 60
         time_str = f"{hours}h {minutes}m" if hours else f"{minutes}m"
-        await update.message.reply_text(
+        msg = await update.message.reply_text(
             f"⏳ Not ready yet! Come back in *{time_str}*.", parse_mode="Markdown"
         )
+        if _cmd_update and ctx:
+            await replace_command_ui(ctx, "breed_ui", _cmd_update, msg)
         return
 
     # Check enclosure capacity before adding offspring
@@ -184,12 +199,14 @@ async def _collect_breed(update, tg_id, ctx=None):
     current = db.get_animal_count_by_habitat(tg_id, habitat)
     if current >= capacity:
         h_info = HABITATS.get(habitat, {"name": habitat.title(), "emoji": "🏕"})
-        await update.message.reply_text(
+        msg = await update.message.reply_text(
             f"❌ Your *{h_info['emoji']} {h_info['name']}* enclosure is full "
             f"({current}/{capacity})!\n\n"
             f"Sell or gift an animal to make room, then use `/breed collect` again.",
             parse_mode="Markdown",
         )
+        if _cmd_update and ctx:
+            await replace_command_ui(ctx, "breed_ui", _cmd_update, msg)
         return
 
     animal_id = str(uuid.uuid4())
@@ -226,12 +243,14 @@ async def _collect_breed(update, tg_id, ctx=None):
 
     shiny_str = "⭐ " if shiny else ""
 
-    await update.message.reply_text(
+    msg = await update.message.reply_text(
         f"🥚✨ Your egg has hatched!\n\n"
         f"A *{offspring_species['emoji']} {shiny_str}{offspring_species['name']}* joined your zoo!\n"
         f"Use `/name <number> <name>` to give it a nickname.",
         parse_mode="Markdown",
     )
+    if _cmd_update and ctx:
+        await replace_command_ui(ctx, "breed_ui", _cmd_update, msg)
     if ctx:
         await check_achievements(tg_id, "breed", ctx)
 

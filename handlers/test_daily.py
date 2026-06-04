@@ -33,7 +33,7 @@ async def test_daily_rejects_unknown_user():
     with patch("handlers.daily.db.get_user", return_value=None), patch(
         "handlers.daily.db.get_conn", return_value=_make_conn_mock()
     ):
-        await daily_command(update, MagicMock())
+        await daily_command(update, MagicMock(user_data={}))
 
     update.message.reply_text.assert_called_once_with("Use /start first!")
 
@@ -53,7 +53,7 @@ async def test_daily_cooldown_blocks_early_claim():
     with patch("handlers.daily.db.get_user", return_value=_make_user()), patch(
         "handlers.daily.db.get_conn", return_value=cm
     ):
-        await daily_command(update, MagicMock())
+        await daily_command(update, MagicMock(user_data={}))
 
     reply = update.message.reply_text.call_args[0][0]
     assert "⏳" in reply and "available" in reply
@@ -71,7 +71,7 @@ async def test_daily_grants_coins_on_first_claim():
     with patch(
         "handlers.daily.db.get_user", side_effect=[_make_user(), _make_user(coins=100 + coins)]
     ), patch("handlers.daily.db.get_conn", return_value=cm):
-        await daily_command(update, MagicMock())
+        await daily_command(update, MagicMock(user_data={}))
 
     reply = update.message.reply_text.call_args[0][0]
     assert str(coins) in reply
@@ -95,7 +95,7 @@ async def test_daily_grants_coins_after_cooldown_expires():
         "handlers.daily.db.get_user",
         side_effect=[_make_user(coins=200), _make_user(coins=200 + coins)],
     ), patch("handlers.daily.db.get_conn", return_value=cm):
-        await daily_command(update, MagicMock())
+        await daily_command(update, MagicMock(user_data={}))
 
     reply = update.message.reply_text.call_args[0][0]
     assert str(coins) in reply
@@ -118,7 +118,7 @@ async def test_daily_streak_increments_on_consecutive_claim():
         "handlers.daily.db.get_user",
         side_effect=[_make_user(daily_streak=2), _make_user(coins=150, daily_streak=3)],
     ), patch("handlers.daily.db.get_conn", return_value=cm):
-        await daily_command(update, MagicMock())
+        await daily_command(update, MagicMock(user_data={}))
 
     reply = update.message.reply_text.call_args[0][0]
     assert "Day 3" in reply
@@ -141,7 +141,7 @@ async def test_daily_streak_resets_after_missed_day():
         "handlers.daily.db.get_user",
         side_effect=[_make_user(daily_streak=5), _make_user(coins=150, daily_streak=1)],
     ), patch("handlers.daily.db.get_conn", return_value=cm):
-        await daily_command(update, MagicMock())
+        await daily_command(update, MagicMock(user_data={}))
 
     reply = update.message.reply_text.call_args[0][0]
     assert "Day 1" in reply

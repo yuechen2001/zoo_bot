@@ -26,7 +26,7 @@ def _make_user(**kwargs):
 async def test_achievements_unregistered_user():
     update = _make_update()
     with patch("handlers.achievements.db.get_user", return_value=None):
-        await achievements_command(update, MagicMock())
+        await achievements_command(update, MagicMock(user_data={}))
     reply = update.message.reply_text.call_args[0][0]
     assert "start" in reply.lower()
 
@@ -37,7 +37,7 @@ async def test_achievements_none_earned():
     with patch("handlers.achievements.db.get_user", return_value=_make_user()), patch(
         "handlers.achievements.db.get_achievement_keys", return_value=set()
     ):
-        await achievements_command(update, MagicMock())
+        await achievements_command(update, MagicMock(user_data={}))
     reply = update.message.reply_text.call_args[0][0]
     assert "0/" in reply
     assert "None yet" in reply
@@ -52,7 +52,7 @@ async def test_achievements_some_earned():
     with patch("handlers.achievements.db.get_user", return_value=_make_user()), patch(
         "handlers.achievements.db.get_achievement_keys", return_value={first_key}
     ):
-        await achievements_command(update, MagicMock())
+        await achievements_command(update, MagicMock(user_data={}))
     reply = update.message.reply_text.call_args[0][0]
     assert "1/" in reply
 
@@ -63,7 +63,7 @@ async def test_achievements_shows_locked_entries():
     with patch("handlers.achievements.db.get_user", return_value=_make_user()), patch(
         "handlers.achievements.db.get_achievement_keys", return_value=set()
     ):
-        await achievements_command(update, MagicMock())
+        await achievements_command(update, MagicMock(user_data={}))
     reply = update.message.reply_text.call_args[0][0]
     assert "🔒" in reply
 

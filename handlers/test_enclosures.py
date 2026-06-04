@@ -114,7 +114,7 @@ def _make_update_cmd(args=None):
     update = MagicMock()
     update.effective_user.id = 1
     update.message.reply_text = AsyncMock()
-    ctx = MagicMock()
+    ctx = MagicMock(user_data={})
     ctx.args = args or []
     return update, ctx
 

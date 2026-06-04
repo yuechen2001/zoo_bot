@@ -5,6 +5,7 @@ from game.achievements import triggers
 from game.species_data import HABITATS, ENCLOSURE_LEVELS, MAX_ENCLOSURE_LEVEL
 from game.constants import ENC_PAGE_SIZE
 from keyboards import enclosure_upgrade_keyboard
+from utils import replace_command_ui
 
 _HABITAT_KEYS = list(HABITATS.keys())
 _TOTAL_ENC_PAGES = max(1, (len(_HABITAT_KEYS) + ENC_PAGE_SIZE - 1) // ENC_PAGE_SIZE)
@@ -70,7 +71,8 @@ async def enclosures_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     text, upgradeable = _render_enclosures(tg_id, user["coins"], page=0)
     keyboard = enclosure_upgrade_keyboard(upgradeable, tg_id, page=0, total_pages=_TOTAL_ENC_PAGES)
-    await update.message.reply_text(text, parse_mode="Markdown", reply_markup=keyboard)
+    msg = await update.message.reply_text(text, parse_mode="Markdown", reply_markup=keyboard)
+    await replace_command_ui(ctx, "enclosures_ui", update, msg)
 
 
 @triggers("enclosure")

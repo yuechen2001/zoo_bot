@@ -2,6 +2,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 import db
 from game.achievements import ACHIEVEMENTS
+from utils import replace_command_ui
 
 
 def render_achievements(earned_keys: set, filter_type: str = "all") -> str:
@@ -52,9 +53,10 @@ async def achievements_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     earned_keys = db.get_achievement_keys(tg_id)
     text = render_achievements(earned_keys, "all")
-    await update.message.reply_text(
+    msg = await update.message.reply_text(
         text, parse_mode="Markdown", reply_markup=achievements_keyboard(tg_id, "all")
     )
+    await replace_command_ui(ctx, "achievements_ui", update, msg)
 
 
 async def achievements_tab_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

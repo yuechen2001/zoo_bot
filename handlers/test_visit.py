@@ -65,7 +65,7 @@ async def test_visit_requires_username_arg():
     update.effective_user.id = 1
     update.message.reply_text = AsyncMock()
 
-    ctx = MagicMock()
+    ctx = MagicMock(user_data={})
     ctx.args = []
 
     with patch("handlers.visit.db.get_user", return_value=_make_user()):
@@ -81,7 +81,7 @@ async def test_visit_rejects_unknown_host():
     update.effective_user.id = 1
     update.message.reply_text = AsyncMock()
 
-    ctx = MagicMock()
+    ctx = MagicMock(user_data={})
     ctx.args = ["@nobody"]
 
     with patch("handlers.visit.db.get_user", return_value=_make_user()), patch(
@@ -99,7 +99,7 @@ async def test_visit_rejects_self():
     update.effective_user.id = 1
     update.message.reply_text = AsyncMock()
 
-    ctx = MagicMock()
+    ctx = MagicMock(user_data={})
     ctx.args = ["alice"]
 
     with patch("handlers.visit.db.get_user", return_value=_make_user(user_id=1)), patch(
@@ -117,7 +117,7 @@ async def test_visit_shows_feed_button_when_eligible():
     update.effective_user.id = 1
     update.message.reply_text = AsyncMock()
 
-    ctx = MagicMock()
+    ctx = MagicMock(user_data={})
     ctx.args = ["bob"]
 
     host = _make_user(user_id=2)
@@ -142,7 +142,7 @@ async def test_visit_hides_feed_button_within_cooldown():
     update.effective_user.id = 1
     update.message.reply_text = AsyncMock()
 
-    ctx = MagicMock()
+    ctx = MagicMock(user_data={})
     ctx.args = ["bob"]
 
     host = _make_user(user_id=2)
@@ -167,7 +167,7 @@ async def test_visit_hides_feed_button_when_zoo_empty():
     update.effective_user.id = 1
     update.message.reply_text = AsyncMock()
 
-    ctx = MagicMock()
+    ctx = MagicMock(user_data={})
     ctx.args = ["bob"]
 
     host = _make_user(user_id=2)

@@ -64,7 +64,7 @@ async def test_trivia_cooldown_blocks_early_repeat():
     update.effective_user.id = 1
     update.message.reply_text = AsyncMock()
 
-    ctx = MagicMock()
+    ctx = MagicMock(user_data={})
 
     with patch("handlers.trivia.db.get_user", return_value={"coins": 100}), patch(
         "handlers.trivia.db.get_conn", return_value=cm

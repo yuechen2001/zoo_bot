@@ -154,7 +154,7 @@ async def test_quests_command_sends_arc_1_by_default():
     update = MagicMock()
     update.effective_user.id = 1
     update.message.reply_text = AsyncMock()
-    ctx = MagicMock()
+    ctx = MagicMock(user_data={})
     user = {"group_chat_id": None, "streak_windows": 0, "feeds_given": 0, "coins": 0}
 
     with (

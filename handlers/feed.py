@@ -3,6 +3,7 @@ from telegram.ext import ContextTypes
 import db
 from game.achievements import check_achievements
 from game.constants import FEED_COST_BY_RARITY, FEED_HUNGER
+from utils import replace_command_ui
 
 
 async def feed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -15,7 +16,10 @@ async def feed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     positions = [int(a) for a in (ctx.args or []) if a.isdigit()]
     if not positions:
-        await update.message.reply_text("Usage: /feed <number> [number ...]\nExample: /feed 1 3 5")
+        msg = await update.message.reply_text(
+            "Usage: /feed <number> [number ...]\nExample: /feed 1 3 5"
+        )
+        await replace_command_ui(ctx, "feed_ui", update, msg)
         return
 
     lines = []
@@ -48,6 +52,7 @@ async def feed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             f"🍖 {animal['emoji']} *{name}*: hunger {animal['hunger']}→{new_hunger} (-{feed_cost} 🪙)"
         )
 
-    await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
+    msg = await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
+    await replace_command_ui(ctx, "feed_ui", update, msg)
     if any("🍖" in line for line in lines):
         await check_achievements(tg_id, "feed", ctx)

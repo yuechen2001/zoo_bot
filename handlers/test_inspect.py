@@ -35,7 +35,7 @@ def _make_update(user_id=1, args=None):
     update = MagicMock()
     update.effective_user.id = user_id
     update.message.reply_text = AsyncMock()
-    ctx = MagicMock()
+    ctx = MagicMock(user_data={})
     ctx.args = args or []
     return update, ctx
 

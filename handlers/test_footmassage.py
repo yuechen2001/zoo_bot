@@ -9,7 +9,7 @@ def _make_update():
     update = MagicMock()
     update.effective_user.id = 1
     update.message.reply_text = AsyncMock()
-    return update, MagicMock()
+    return update, MagicMock(user_data={})
 
 
 def _make_user(**kw):

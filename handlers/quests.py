@@ -4,6 +4,7 @@ from telegram.ext import ContextTypes
 import db
 from game.quests_data import ARCS, CHAPTERS, check_quest_advance
 from keyboards import quests_keyboard
+from utils import replace_command_ui
 
 
 def _quests_keyboard_for(user_id: int, arc: int) -> InlineKeyboardMarkup:
@@ -26,9 +27,10 @@ async def quests_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     await check_quest_advance(tg_id, ctx)
     text = _render_quests(tg_id, arc=1)
-    await update.message.reply_text(
+    msg = await update.message.reply_text(
         text, parse_mode="Markdown", reply_markup=_quests_keyboard_for(tg_id, 1)
     )
+    await replace_command_ui(ctx, "quests_ui", update, msg)
 
 
 async def quest_tab_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

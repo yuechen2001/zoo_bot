@@ -43,7 +43,7 @@ async def test_feed_no_args_shows_usage():
     update.effective_user.id = 1
     update.message.reply_text = AsyncMock()
 
-    ctx = MagicMock()
+    ctx = MagicMock(user_data={})
     ctx.args = []
 
     with patch("handlers.feed.db.get_user", return_value={"coins": 100}):
@@ -61,7 +61,7 @@ async def test_feed_happy_path_single_animal():
     update.effective_user.id = 1
     update.message.reply_text = AsyncMock()
 
-    ctx = MagicMock()
+    ctx = MagicMock(user_data={})
     ctx.args = ["1"]
 
     with patch("handlers.feed.db.get_user", return_value={"coins": 100}), patch(
@@ -84,7 +84,7 @@ async def test_feed_skips_breeding_animal():
     update.effective_user.id = 1
     update.message.reply_text = AsyncMock()
 
-    ctx = MagicMock()
+    ctx = MagicMock(user_data={})
     ctx.args = ["1"]
 
     with patch("handlers.feed.db.get_user", return_value={"coins": 100}), patch(
@@ -105,7 +105,7 @@ async def test_feed_stops_when_coins_run_out():
     update.effective_user.id = 1
     update.message.reply_text = AsyncMock()
 
-    ctx = MagicMock()
+    ctx = MagicMock(user_data={})
     ctx.args = ["1", "2"]
 
     # initial check → has user; loop iter #1 → 10 coins (enough); loop iter #2 → 0 coins (break)
@@ -130,7 +130,7 @@ async def test_feed_missing_position_shows_not_found():
     update.effective_user.id = 1
     update.message.reply_text = AsyncMock()
 
-    ctx = MagicMock()
+    ctx = MagicMock(user_data={})
     ctx.args = ["99"]
 
     with patch("handlers.feed.db.get_user", return_value={"coins": 100}), patch(
@@ -150,7 +150,7 @@ async def test_feed_hunger_capped_at_100():
     update.effective_user.id = 1
     update.message.reply_text = AsyncMock()
 
-    ctx = MagicMock()
+    ctx = MagicMock(user_data={})
     ctx.args = ["1"]
 
     with patch("handlers.feed.db.get_user", return_value={"coins": 100}), patch(
@@ -172,7 +172,7 @@ async def test_feed_blocked_when_already_full():
     update.effective_user.id = 1
     update.message.reply_text = AsyncMock()
 
-    ctx = MagicMock()
+    ctx = MagicMock(user_data={})
     ctx.args = ["1"]
 
     with patch("handlers.feed.db.get_user", return_value={"coins": 100}), patch(

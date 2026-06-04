@@ -12,6 +12,7 @@ from game.constants import (
     GROUP_TRIVIA_WRONG_PENALTY,
 )
 from keyboards import trivia_wager_keyboard
+from utils import replace_command_ui
 
 
 def _trivia_keyboard(tg_id: int):
@@ -55,17 +56,19 @@ async def trivia_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         ).total_seconds()
         remaining_s = TRIVIA_COOLDOWN_MINUTES * 60 - elapsed
         if remaining_s > 0:
-            await update.message.reply_text(
+            msg = await update.message.reply_text(
                 f"⏳ Next trivia available in *{int(remaining_s // 60)} min*.",
                 parse_mode="Markdown",
             )
+            await replace_command_ui(ctx, "trivia_ui", update, msg)
             return
 
-    await update.message.reply_text(
+    msg = await update.message.reply_text(
         "🧠 *Animal Trivia — Place your wager!*\n\nHow many coins do you want to risk?",
         parse_mode="Markdown",
         reply_markup=trivia_wager_keyboard(tg_id, user["coins"]),
     )
+    await replace_command_ui(ctx, "trivia_ui", update, msg)
 
 
 async def trivia_wager_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
