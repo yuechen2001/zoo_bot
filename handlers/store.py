@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 import db
 from game.achievements import triggers
-from game.store_data import STORE_ITEMS, ITEMS, LURES, COSMETICS
+from game.store_data import STORE_ITEMS, ITEMS, LURES, PURCHASABLE_COSMETICS
 from keyboards import store_tab_keyboard, store_welcome_keyboard
 from utils import replace_command_ui
 
@@ -56,7 +56,7 @@ def _store_section_text(section: str, tg_id: int, page: int = 0) -> str:
             "🏪 <b>Zoo Store — Titles</b>\n",
             "<i>Shown next to your zoo name. Equip from /inventory.</i>\n",
         ]
-        for key, item in COSMETICS.items():
+        for key, item in PURCHASABLE_COSMETICS.items():
             lines.append(
                 f"  {item['emoji']} <b>{item['name']}</b> — {item['price']} 🪙\n  {item['desc']}"
             )
@@ -90,7 +90,7 @@ def _store_text(tg_id: int) -> str:
             line += f"  <i>(×{n} in bag)</i>"
         lines.append(line)
     lines.append("\n<b>Titles</b> (shown in your /zoo):")
-    for key, item in COSMETICS.items():
+    for key, item in PURCHASABLE_COSMETICS.items():
         lines.append(
             f"  {item['emoji']} <b>{item['name']}</b> — {item['price']} 🪙\n  {item['desc']}"
         )
@@ -163,6 +163,11 @@ async def store_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     item = STORE_ITEMS.get(key)
     if not item:
         await query.answer("Unknown item.", show_alert=True)
+        return
+    if item.get("is_special"):
+        await query.answer(
+            "This item can't be purchased — it's awarded through gameplay.", show_alert=True
+        )
         return
 
     if user["coins"] < item["price"]:

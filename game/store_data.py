@@ -182,6 +182,7 @@ STORE_ITEMS: dict[str, dict] = {
         "emoji": "🗺️",
         "price": 0,
         "category": "cosmetic",
+        "is_special": True,
         "desc": "Awarded for completing the Zoo Expedition storyline",
     },
     "title_eternal": {
@@ -189,6 +190,7 @@ STORE_ITEMS: dict[str, dict] = {
         "emoji": "♾️",
         "price": 0,
         "category": "cosmetic",
+        "is_special": True,
         "desc": "Awarded for mastering the infinite zoo",
     },
 }
@@ -198,3 +200,4 @@ ITEMS = {
     k: v for k, v in STORE_ITEMS.items() if v["category"] == "item" and not k.startswith("lure_")
 }
 COSMETICS = {k: v for k, v in STORE_ITEMS.items() if v["category"] == "cosmetic"}
+PURCHASABLE_COSMETICS = {k: v for k, v in COSMETICS.items() if not v.get("is_special", False)}
