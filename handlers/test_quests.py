@@ -11,15 +11,15 @@ from game.constants import QUEST_CHAPTER_COUNT
 
 
 def test_quest_chapter_count():
-    assert QUEST_CHAPTER_COUNT == 12
+    assert QUEST_CHAPTER_COUNT == 21
 
 
-def test_chapters_dict_has_12_entries():
-    assert len(CHAPTERS) == 12
+def test_chapters_dict_has_21_entries():
+    assert len(CHAPTERS) == 21
 
 
-def test_arcs_dict_has_4_entries():
-    assert len(ARCS) == 4
+def test_arcs_dict_has_7_entries():
+    assert len(ARCS) == 7
 
 
 def test_every_chapter_has_required_fields():
@@ -52,11 +52,15 @@ def test_species_rewards_are_on_arc_endings():
     species_rewards = {
         num: ch["reward_species"] for num, ch in CHAPTERS.items() if ch["reward_species"]
     }
-    assert set(species_rewards.keys()) == {3, 6, 9, 12}
+    assert set(species_rewards.keys()) == {3, 6, 9, 12, 15, 18, 21}
 
 
 def test_chapter_12_has_title_reward():
     assert CHAPTERS[12]["reward_title"] == "title_expedition"
+
+
+def test_chapter_21_has_title_reward():
+    assert CHAPTERS[21]["reward_title"] == "title_eternal"
 
 
 def test_reward_coins_increase_over_arcs():
@@ -64,7 +68,7 @@ def test_reward_coins_increase_over_arcs():
     for ch in CHAPTERS.values():
         arc_coins.setdefault(ch["arc"], []).append(ch["reward_coins"])
     arc_averages = {arc: sum(coins) / len(coins) for arc, coins in arc_coins.items()}
-    for arc in range(1, 4):
+    for arc in range(1, 7):
         assert (
             arc_averages[arc] < arc_averages[arc + 1]
         ), f"Arc {arc} avg coins not less than Arc {arc + 1}"
@@ -155,6 +159,7 @@ async def test_quests_command_sends_arc_1_by_default():
 
     with (
         patch("handlers.quests.db.get_user", return_value=user),
+        patch("handlers.quests.db.get_quest_progress", return_value=[]),
         patch("handlers.quests.check_quest_advance", new_callable=AsyncMock),
         patch("handlers.quests._render_quests", return_value="rendered"),
         patch("handlers.quests.quests_keyboard", return_value=MagicMock()),
@@ -195,6 +200,7 @@ async def test_quest_tab_callback_renders_correct_arc():
 
     with (
         patch("handlers.quests.check_quest_advance", new_callable=AsyncMock),
+        patch("handlers.quests.db.get_quest_progress", return_value=[]),
         patch("handlers.quests._render_quests", return_value="arc3_render") as mock_render,
         patch("handlers.quests.quests_keyboard", return_value=MagicMock()),
     ):

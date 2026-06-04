@@ -5,6 +5,9 @@ ARCS = {
     2: "The Expedition Prep",
     3: "The Expedition",
     4: "The Legacy",
+    5: "The Phenomenon",
+    6: "The Ancient Order",
+    7: "The Infinite Zoo",
 }
 
 # Re-export so handlers can import from one place
@@ -365,5 +368,267 @@ CHAPTERS: dict[int, dict] = {
         "reward_coins": 1000,
         "reward_species": "Quetzal",
         "reward_title": "title_expedition",
+    },
+    # ── Arc 5: The Phenomenon ─────────────────────────────────────────────────
+    13: {
+        "arc": 5,
+        "title": "The Correspondent",
+        "intro": (
+            "A wildlife journalist has arrived at the gates. "
+            "Word of your legendary zoo has spread globally and she wants the full story for her documentary."
+        ),
+        "outro": (
+            "The article goes viral overnight. "
+            "Conservation grants flood in from three continents. "
+            "The zoo has never been busier."
+        ),
+        "tasks": [
+            {
+                "desc": "Maintain a mood streak of 21 days",
+                "check": lambda uid, u: u["streak_windows"] >= 21,
+            },
+            {
+                "desc": "Own 35 distinct species",
+                "check": lambda uid, _: db.count_distinct_species(uid) >= 35,
+            },
+            {
+                "desc": "Have an enclosure at level 6+",
+                "check": lambda uid, _: db.get_max_enclosure_level(uid) >= 6,
+            },
+        ],
+        "reward_coins": 1000,
+        "reward_species": None,
+        "reward_title": None,
+    },
+    14: {
+        "arc": 5,
+        "title": "The Summit",
+        "intro": (
+            "You've been invited to speak at the Global Wildlife Summit. "
+            "Show them what a truly world-class zoo looks like."
+        ),
+        "outro": (
+            "Standing ovation. "
+            "Three PhD students request internships. "
+            "A research grant arrives in the mail."
+        ),
+        "tasks": [
+            {
+                "desc": "Own 40 distinct species",
+                "check": lambda uid, _: db.count_distinct_species(uid) >= 40,
+            },
+            {
+                "desc": "Have animals in all 8 habitats",
+                "check": lambda uid, _: db.count_habitats_occupied(uid) >= 8,
+            },
+            {
+                "desc": "Collect 5 bred offspring",
+                "check": lambda uid, _: db.count_collected_breeds(uid) >= 5,
+            },
+        ],
+        "reward_coins": 1200,
+        "reward_species": None,
+        "reward_title": None,
+    },
+    15: {
+        "arc": 5,
+        "title": "The Rarest Find",
+        "intro": (
+            "A cryptid report from the Siberian taiga — locals have spotted a ghost-striped cat "
+            "no one has documented in a decade. One last expedition."
+        ),
+        "outro": (
+            "The tiger steps from the treeline. "
+            "Cameras catch every stripe. "
+            "Some discoveries are worth a lifetime."
+        ),
+        "tasks": [
+            {
+                "desc": "Own 45 distinct species",
+                "check": lambda uid, _: db.count_distinct_species(uid) >= 45,
+            },
+            {
+                "desc": "Have an enclosure at level 7+",
+                "check": lambda uid, _: db.get_max_enclosure_level(uid) >= 7,
+            },
+            {
+                "desc": "Maintain a mood streak of 28 days",
+                "check": lambda uid, u: u["streak_windows"] >= 28,
+            },
+        ],
+        "reward_coins": 1500,
+        "reward_species": "Amur Tiger",
+        "reward_title": None,
+    },
+    # ── Arc 6: The Ancient Order ──────────────────────────────────────────────
+    16: {
+        "arc": 6,
+        "title": "The Archive",
+        "intro": (
+            "A sealed crate arrives from a private collection — field notes from a "
+            "19th-century conservationist who catalogued 60 species before vanishing."
+        ),
+        "outro": (
+            "The notes are real. The locations check out. "
+            "You are not the first person to have done this."
+        ),
+        "tasks": [
+            {
+                "desc": "Maintain a mood streak of 35 days",
+                "check": lambda uid, u: u["streak_windows"] >= 35,
+            },
+            {
+                "desc": "Own 50 distinct species",
+                "check": lambda uid, _: db.count_distinct_species(uid) >= 50,
+            },
+            {
+                "desc": "Collect 15 bred offspring",
+                "check": lambda uid, _: db.count_collected_breeds(uid) >= 15,
+            },
+        ],
+        "reward_coins": 1500,
+        "reward_species": None,
+        "reward_title": None,
+    },
+    17: {
+        "arc": 6,
+        "title": "The Pilgrimage",
+        "intro": (
+            "The notes describe a site — a highland plateau where ancient species still roam. "
+            "The pilgrimage begins."
+        ),
+        "outro": (
+            "The plateau exists. The air tastes different up here. " "Something old is watching."
+        ),
+        "tasks": [
+            {
+                "desc": "Own 55 distinct species",
+                "check": lambda uid, _: db.count_distinct_species(uid) >= 55,
+            },
+            {
+                "desc": "Have an enclosure at level 7+",
+                "check": lambda uid, _: db.get_max_enclosure_level(uid) >= 7,
+            },
+            {
+                "desc": "Answer 10 trivia questions",
+                "check": lambda uid, _: db.count_trivia_answered(uid) >= 10,
+            },
+        ],
+        "reward_coins": 1800,
+        "reward_species": None,
+        "reward_title": None,
+    },
+    18: {
+        "arc": 6,
+        "title": "The Covenant",
+        "intro": (
+            "At the centre of the plateau, a herd of impossible cattle. "
+            "The ancient order's covenant: protect them and they will protect the zoo."
+        ),
+        "outro": (
+            "The Aurochs bow their heads. The covenant is made. "
+            "The zoo is now part of something far older than itself."
+        ),
+        "tasks": [
+            {
+                "desc": "Own 60 distinct species",
+                "check": lambda uid, _: db.count_distinct_species(uid) >= 60,
+            },
+            {
+                "desc": "Have an enclosure at level 8",
+                "check": lambda uid, _: db.get_max_enclosure_level(uid) >= 8,
+            },
+            {
+                "desc": "Maintain a mood streak of 45 days",
+                "check": lambda uid, u: u["streak_windows"] >= 45,
+            },
+        ],
+        "reward_coins": 2000,
+        "reward_species": "Aurochs",
+        "reward_title": None,
+    },
+    # ── Arc 7: The Infinite Zoo ───────────────────────────────────────────────
+    19: {
+        "arc": 7,
+        "title": "Beyond the Horizon",
+        "intro": (
+            "The conservation board sends an unusual message — "
+            "there are species beyond any catalogue. The horizon keeps moving."
+        ),
+        "outro": (
+            "A new shipment arrives. A creature from no known genus. " "The horizon moved again."
+        ),
+        "tasks": [
+            {
+                "desc": "Own 65 distinct species",
+                "check": lambda uid, _: db.count_distinct_species(uid) >= 65,
+            },
+            {
+                "desc": "Maintain a mood streak of 50 days",
+                "check": lambda uid, u: u["streak_windows"] >= 50,
+            },
+            {
+                "desc": "Own 80 animals total",
+                "check": lambda uid, _: db.count_animals(uid) >= 80,
+            },
+        ],
+        "reward_coins": 2000,
+        "reward_species": None,
+        "reward_title": None,
+    },
+    20: {
+        "arc": 7,
+        "title": "The Timeless Collection",
+        "intro": (
+            "Museums call. Historians visit. "
+            "The question becomes: how do you hold infinity in one place?"
+        ),
+        "outro": ("You don't hold it. You tend it. " "That's the difference."),
+        "tasks": [
+            {
+                "desc": "Own 70 distinct species",
+                "check": lambda uid, _: db.count_distinct_species(uid) >= 70,
+            },
+            {
+                "desc": "Collect 25 bred offspring",
+                "check": lambda uid, _: db.count_collected_breeds(uid) >= 25,
+            },
+            {
+                "desc": "Have an enclosure at level 8",
+                "check": lambda uid, _: db.get_max_enclosure_level(uid) >= 8,
+            },
+        ],
+        "reward_coins": 2500,
+        "reward_species": None,
+        "reward_title": None,
+    },
+    21: {
+        "arc": 7,
+        "title": "The Eternal Keeper",
+        "intro": (
+            "The last report. Somewhere above the mythic enclosure, "
+            "a comet-shaped light has been appearing at dusk."
+        ),
+        "outro": (
+            "It lands on your shoulder. Cold and warm at once. "
+            "The zoo is complete — and somehow, it's just beginning."
+        ),
+        "tasks": [
+            {
+                "desc": "Own 75 distinct species",
+                "check": lambda uid, _: db.count_distinct_species(uid) >= 75,
+            },
+            {
+                "desc": "Maintain a mood streak of 60 days",
+                "check": lambda uid, u: u["streak_windows"] >= 60,
+            },
+            {
+                "desc": "Own 100 animals total",
+                "check": lambda uid, _: db.count_animals(uid) >= 100,
+            },
+        ],
+        "reward_coins": 3000,
+        "reward_species": "Comet Spirit",
+        "reward_title": "title_eternal",
     },
 }

@@ -46,7 +46,7 @@ BREED_BOOST_HOURS = 2  # hours subtracted by Breed Boost item
 WILD_EVENT_RARITY_WEIGHTS = [20, 40, 30, 10]
 
 # Quests
-QUEST_CHAPTER_COUNT = 12
+QUEST_CHAPTER_COUNT = 21
 
 # Pagination
 ANIMAL_PAGE_SIZE = 8

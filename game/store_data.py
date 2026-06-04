@@ -149,6 +149,13 @@ STORE_ITEMS: dict[str, dict] = {
         "category": "cosmetic",
         "desc": "Awarded for completing the Zoo Expedition storyline",
     },
+    "title_eternal": {
+        "name": "Eternal Keeper",
+        "emoji": "♾️",
+        "price": 0,
+        "category": "cosmetic",
+        "desc": "Awarded for mastering the infinite zoo",
+    },
 }
 
 LURES = {k: v for k, v in STORE_ITEMS.items() if k.startswith("lure_")}
