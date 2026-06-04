@@ -215,7 +215,9 @@ async def handle_callback(update, ctx):
         await store_tab_callback(update, ctx)
     elif data.startswith("store_buy_"):
         await store_callback(update, ctx)
-    elif data.startswith("inv_use_") or data.startswith("inv_equip_"):
+    elif (
+        data.startswith("inv_tab_") or data.startswith("inv_use_") or data.startswith("inv_equip_")
+    ):
         await inventory_callback(update, ctx)
     elif data.startswith("dir_page_"):
         await directory_page_callback(update, ctx)

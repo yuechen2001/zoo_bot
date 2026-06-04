@@ -2,7 +2,7 @@ import datetime
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 import db
-from game.constants import BREED_BOOST_HOURS, INCOME_BOOST_HOURS
+from game.constants import BREED_BOOST_HOURS, INCOME_BOOST_HOURS, STORE_ITEMS_PAGE_SIZE
 from game.store_data import ITEMS, LURES, COSMETICS
 from utils import replace_command_ui
 
@@ -30,7 +30,42 @@ _ACTIVE_FLAGS = {
 }
 
 
-def _render(tg_id: int, user) -> tuple[str, InlineKeyboardMarkup | None]:
+def _tab_keyboard(
+    active: str, items_count: int, lures_count: int, titles_count: int, page: int = 0
+) -> InlineKeyboardMarkup:
+    def _label(section: str, count: int, display: str) -> str:
+        prefix = "▶ " if section == active else ""
+        return f"{prefix}{display} ({count})"
+
+    nav = [
+        InlineKeyboardButton(
+            _label("items", items_count, "📦 Items"), callback_data="inv_tab_items_0"
+        ),
+        InlineKeyboardButton(
+            _label("lures", lures_count, "🎣 Lures"), callback_data="inv_tab_lures"
+        ),
+        InlineKeyboardButton(
+            _label("titles", titles_count, "🎭 Titles"), callback_data="inv_tab_titles"
+        ),
+    ]
+    rows = [nav]
+
+    if active == "items" and items_count > STORE_ITEMS_PAGE_SIZE:
+        total_pages = (items_count + STORE_ITEMS_PAGE_SIZE - 1) // STORE_ITEMS_PAGE_SIZE
+        pager = []
+        if page > 0:
+            pager.append(InlineKeyboardButton("◀", callback_data=f"inv_tab_items_{page - 1}"))
+        pager.append(
+            InlineKeyboardButton(f"{page + 1}/{total_pages}", callback_data="inv_tab_items_0")
+        )
+        if page < total_pages - 1:
+            pager.append(InlineKeyboardButton("▶", callback_data=f"inv_tab_items_{page + 1}"))
+        rows.append(pager)
+
+    return InlineKeyboardMarkup(rows)
+
+
+def _render_overview(tg_id: int) -> tuple[str, InlineKeyboardMarkup]:
     counts = db.get_item_counts(tg_id)
     owned_titles = db.get_owned_title_keys(tg_id)
 
@@ -38,33 +73,90 @@ def _render(tg_id: int, user) -> tuple[str, InlineKeyboardMarkup | None]:
     lures_in_bag = [(k, LURES[k], counts[k]) for k in LURES if counts.get(k, 0) > 0]
 
     if not items_in_bag and not lures_in_bag and not owned_titles:
-        return "🎒 *Inventory*\n\n_Your bag is empty. Visit /store to buy items._", None
+        return (
+            "🎒 *Inventory*\n\n_Your bag is empty. Visit /store to buy items._",
+            InlineKeyboardMarkup([]),
+        )
 
     lines = ["🎒 *Inventory*\n"]
-    buttons = []
-
     if items_in_bag:
-        lines.append("*Consumables:*")
-        for key, item, n in items_in_bag:
+        total = sum(n for _, _, n in items_in_bag)
+        lines.append(f"📦 *Consumables:* {len(items_in_bag)} type(s), {total} total")
+    if lures_in_bag:
+        total = sum(n for _, _, n in lures_in_bag)
+        lines.append(f"🎣 *Lures:* {total} total")
+    if owned_titles:
+        lines.append(f"🎭 *Titles:* {len(owned_titles)} owned")
+    lines.append("\n_Tap a tab to view details and use items._")
+
+    kb = _tab_keyboard("overview", len(items_in_bag), len(lures_in_bag), len(owned_titles))
+    return "\n".join(lines), kb
+
+
+def _render_items_tab(tg_id: int, user, page: int = 0) -> tuple[str, InlineKeyboardMarkup]:
+    counts = db.get_item_counts(tg_id)
+    items_in_bag = [(k, ITEMS[k], counts[k]) for k in ITEMS if counts.get(k, 0) > 0]
+    owned_titles = db.get_owned_title_keys(tg_id)
+    lure_types = sum(1 for k in LURES if counts.get(k, 0) > 0)
+
+    total_pages = max(1, (len(items_in_bag) + STORE_ITEMS_PAGE_SIZE - 1) // STORE_ITEMS_PAGE_SIZE)
+    page = max(0, min(page, total_pages - 1))
+    page_items = items_in_bag[page * STORE_ITEMS_PAGE_SIZE : (page + 1) * STORE_ITEMS_PAGE_SIZE]
+
+    if not items_in_bag:
+        lines = ["🎒 *Consumables*\n\n_None in bag. Visit /store to buy items._"]
+    else:
+        lines = [f"🎒 *Consumables* ({page + 1}/{total_pages})\n"]
+        for key, item, n in page_items:
             count_str = f" ×{n}" if n > 1 else ""
             flag = _ACTIVE_FLAGS.get(key)
             active = " _(active)_" if flag and user[flag] else ""
             lines.append(f"  {item['emoji']} *{item['name']}*{count_str}{active}")
             if key == "mega_feed":
                 lines.append("    _→_ `/inventory use mega_feed <animal #>`")
-            elif key in _NO_ARG_USABLE:
-                label = f"{item['emoji']} Use {item['name']}" + (f" ×{n}" if n > 1 else "")
-                buttons.append([InlineKeyboardButton(label, callback_data=f"inv_use_{key}")])
 
-    if lures_in_bag:
-        lines.append("\n*Lures* _(selected when you /catch):_")
+    buttons = []
+    for key, item, n in page_items:
+        if key in _NO_ARG_USABLE:
+            label = f"{item['emoji']} Use {item['name']}" + (f" ×{n}" if n > 1 else "")
+            buttons.append([InlineKeyboardButton(label, callback_data=f"inv_use_{key}")])
+
+    kb = _tab_keyboard("items", len(items_in_bag), lure_types, len(owned_titles), page)
+    return "\n".join(lines), InlineKeyboardMarkup(list(kb.inline_keyboard) + buttons)
+
+
+def _render_lures_tab(tg_id: int) -> tuple[str, InlineKeyboardMarkup]:
+    counts = db.get_item_counts(tg_id)
+    items_count = sum(1 for k in ITEMS if counts.get(k, 0) > 0)
+    owned_titles = db.get_owned_title_keys(tg_id)
+    lures_in_bag = [(k, LURES[k], counts[k]) for k in LURES if counts.get(k, 0) > 0]
+    lure_types = len(lures_in_bag)
+
+    if not lures_in_bag:
+        lines = ["🎒 *Lures*\n\n_None in bag. Buy from /store._"]
+    else:
+        lines = ["🎒 *Lures* _(selected when you /catch):_\n"]
         for key, item, n in lures_in_bag:
             count_str = f" ×{n}" if n > 1 else ""
             lines.append(f"  {item['emoji']} *{item['name']}*{count_str}")
 
-    if owned_titles:
-        lines.append("\n*Titles:*")
+    kb = _tab_keyboard("lures", items_count, lure_types, len(owned_titles))
+    return "\n".join(lines), kb
+
+
+def _render_titles_tab(tg_id: int, user) -> tuple[str, InlineKeyboardMarkup]:
+    counts = db.get_item_counts(tg_id)
+    items_count = sum(1 for k in ITEMS if counts.get(k, 0) > 0)
+    lure_types = sum(1 for k in LURES if counts.get(k, 0) > 0)
+    owned_titles = db.get_owned_title_keys(tg_id)
+
+    if not owned_titles:
+        lines = ["🎒 *Titles*\n\n_None owned. Buy from /store._"]
+        buttons = []
+    else:
         active_title = user["active_title"]
+        lines = ["🎒 *Titles:*\n"]
+        buttons = []
         for key in owned_titles:
             item = COSMETICS.get(key)
             if not item:
@@ -81,8 +173,13 @@ def _render(tg_id: int, user) -> tuple[str, InlineKeyboardMarkup | None]:
                     ]
                 )
 
-    kb = InlineKeyboardMarkup(buttons) if buttons else None
-    return "\n".join(lines), kb
+    kb = _tab_keyboard("titles", items_count, lure_types, len(owned_titles))
+    return "\n".join(lines), InlineKeyboardMarkup(list(kb.inline_keyboard) + buttons)
+
+
+# Legacy single-render kept for tests that call _render directly.
+def _render(tg_id: int, user) -> tuple[str, InlineKeyboardMarkup | None]:
+    return _render_overview(tg_id)
 
 
 async def inventory_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -94,7 +191,7 @@ async def inventory_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     args = ctx.args or []
     if not args:
-        text, kb = _render(tg_id, user)
+        text, kb = _render_overview(tg_id)
         msg = await update.message.reply_text(text, parse_mode="Markdown", reply_markup=kb)
         await replace_command_ui(ctx, "inventory_ui", update, msg)
         return
@@ -138,7 +235,7 @@ async def inventory_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await _equip_title(update, tg_id, args[1].lower())
 
     else:
-        text, kb = _render(tg_id, user)
+        text, kb = _render_overview(tg_id)
         await update.message.reply_text(text, parse_mode="Markdown", reply_markup=kb)
 
 
@@ -151,17 +248,37 @@ async def inventory_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await query.answer("Use /start first!", show_alert=True)
         return
 
-    if query.data.startswith("inv_equip_"):
-        key = query.data.removeprefix("inv_equip_")
+    data = query.data
+
+    if data.startswith("inv_tab_"):
+        tab = data.removeprefix("inv_tab_")
+        if tab.startswith("items_"):
+            page = int(tab.removeprefix("items_")) if tab.removeprefix("items_").isdigit() else 0
+            text, kb = _render_items_tab(tg_id, user, page)
+        elif tab == "lures":
+            text, kb = _render_lures_tab(tg_id)
+        elif tab == "titles":
+            text, kb = _render_titles_tab(tg_id, user)
+        else:
+            text, kb = _render_overview(tg_id)
+        await query.answer()
+        try:
+            await query.edit_message_text(text, parse_mode="Markdown", reply_markup=kb)
+        except Exception:
+            pass
+        return
+
+    if data.startswith("inv_equip_"):
+        key = data.removeprefix("inv_equip_")
         msg = _equip_title_apply(tg_id, key)
         await query.answer(msg, show_alert=True)
     else:
-        key = query.data.removeprefix("inv_use_")
+        key = data.removeprefix("inv_use_")
         msg = _apply(tg_id, key)
         await query.answer(msg, show_alert=True)
 
     user = db.get_user(tg_id)
-    text, kb = _render(tg_id, user)
+    text, kb = _render_items_tab(tg_id, user)
     try:
         await query.edit_message_text(text, parse_mode="Markdown", reply_markup=kb)
     except Exception:

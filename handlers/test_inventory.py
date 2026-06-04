@@ -79,6 +79,7 @@ async def test_inventory_no_user():
 
 @pytest.mark.asyncio
 async def test_inventory_shows_items_in_bag():
+    """Overview shows consumable counts; items tab shows names."""
     update, ctx = _make_update()
     counts = {"lucky_token": 2, "mega_feed": 1}
     with patch("handlers.inventory.db.get_user", return_value=_make_user()), patch(
@@ -86,21 +87,25 @@ async def test_inventory_shows_items_in_bag():
     ), patch("handlers.inventory.db.get_owned_title_keys", return_value=[]):
         await inventory_command(update, ctx)
     reply = update.message.reply_text.call_args[0][0]
-    assert "Lucky Token" in reply
-    assert "Mega Feed" in reply
-    assert "×2" in reply
+    assert "Consumables" in reply
+    assert "2 type" in reply
 
 
 @pytest.mark.asyncio
-async def test_inventory_mega_feed_hint_references_inventory():
-    update, ctx = _make_update()
-    counts = {"mega_feed": 1}
-    with patch("handlers.inventory.db.get_user", return_value=_make_user()), patch(
-        "handlers.inventory.db.get_item_counts", return_value=counts
-    ), patch("handlers.inventory.db.get_owned_title_keys", return_value=[]):
-        await inventory_command(update, ctx)
-    reply = update.message.reply_text.call_args[0][0]
-    assert "/inventory use mega_feed" in reply
+async def test_inventory_items_tab_shows_item_names():
+    """Items tab renders item names, counts, and mega_feed hint."""
+    from handlers.inventory import _render_items_tab
+
+    counts = {"lucky_token": 2, "mega_feed": 1}
+    user = _make_user()
+    with patch("handlers.inventory.db.get_item_counts", return_value=counts), patch(
+        "handlers.inventory.db.get_owned_title_keys", return_value=[]
+    ):
+        text, _ = _render_items_tab(1, user)
+    assert "Lucky Token" in text
+    assert "Mega Feed" in text
+    assert "×2" in text
+    assert "/inventory use mega_feed" in text
 
 
 # ── /inventory use <item> ─────────────────────────────────────────────────────
