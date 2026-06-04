@@ -94,6 +94,12 @@ def conn():
             value      TEXT NOT NULL,
             updated_at TEXT DEFAULT (datetime('now'))
         );
+        CREATE TABLE visit_feeds (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            visitor_id  INTEGER NOT NULL,
+            host_id     INTEGER NOT NULL,
+            fed_at      TEXT NOT NULL
+        );
     """
     )
     for s in SPECIES:

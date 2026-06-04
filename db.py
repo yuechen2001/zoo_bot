@@ -1463,3 +1463,23 @@ def has_any_investment(user_id: int) -> bool:
             ).fetchone()[0]
             > 0
         )
+
+
+# ── Zoo Visiting ───────────────────────────────────────────────────────────────
+
+
+def get_last_visit_feed(visitor_id: int, host_id: int):
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT fed_at FROM visit_feeds WHERE visitor_id = ? AND host_id = ? "
+            "ORDER BY fed_at DESC LIMIT 1",
+            (visitor_id, host_id),
+        ).fetchone()
+
+
+def record_visit_feed(visitor_id: int, host_id: int, now: str) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO visit_feeds (visitor_id, host_id, fed_at) VALUES (?, ?, ?)",
+            (visitor_id, host_id, now),
+        )

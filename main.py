@@ -84,6 +84,7 @@ from handlers import (
     quest_story_callback,
 )
 from handlers.gift import gift_command
+from handlers.visit import visit_command, visit_feed_callback
 from handlers.store import store_command, store_callback, store_tab_callback
 from handlers.footmassage import footmassage_command
 from handlers.wild_event import wild_event_callback
@@ -127,6 +128,7 @@ async def post_init(application):
             BotCommand("directory", "Browse all animals & see which you own"),
             BotCommand("autofeed", "Auto-feed animals below a hunger threshold each tick"),
             BotCommand("gift", "Give an animal to another player"),
+            BotCommand("visit", "Visit another player's zoo and feed one animal"),
             BotCommand("store", "Browse the item store"),
             BotCommand("inventory", "Your bag — use items and equip titles"),
             BotCommand("quests", "Track your Zoo Expedition storyline"),
@@ -211,6 +213,8 @@ async def handle_callback(update, ctx):
         await quest_story_callback(update, ctx)
     elif data.startswith("help_tab_"):
         await help_tab_callback(update, ctx)
+    elif data.startswith("visit_feed_"):
+        await visit_feed_callback(update, ctx)
     elif data == "zoo_noop":
         await update.callback_query.answer()
     else:
@@ -266,6 +270,7 @@ def main():
     app.add_handler(CommandHandler("directory", directory_command))
     app.add_handler(CommandHandler("autofeed", autofeed_command))
     app.add_handler(CommandHandler("gift", gift_command))
+    app.add_handler(CommandHandler("visit", visit_command))
     app.add_handler(CommandHandler("store", store_command))
     app.add_handler(CommandHandler("inventory", inventory_command))
     app.add_handler(CommandHandler("footmassage", footmassage_command))

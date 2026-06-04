@@ -51,6 +51,7 @@ from .enclosures import (
 from .directory import directory_command, directory_page_callback
 from .inventory import inventory_command, inventory_callback
 from .quests import quests_command, quest_tab_callback, quest_story_callback
+from .visit import visit_command, visit_feed_callback
 
 __all__ = [
     "start_command",
@@ -111,4 +112,6 @@ __all__ = [
     "quests_command",
     "quest_tab_callback",
     "quest_story_callback",
+    "visit_command",
+    "visit_feed_callback",
 ]
