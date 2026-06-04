@@ -63,6 +63,27 @@ STORE_ITEMS: dict[str, dict] = {
         "category": "item",
         "desc": "Halve remaining breed time on your active breed — activate from /inventory",
     },
+    "instant_hatch": {
+        "name": "Instant Hatch",
+        "emoji": "🐣",
+        "price": 500,
+        "category": "item",
+        "desc": "Instantly complete your active breeding — use from /inventory",
+    },
+    "income_boost": {
+        "name": "Income Boost",
+        "emoji": "💰",
+        "price": 250,
+        "category": "item",
+        "desc": "Double your enclosure passive income for 4 hours — activate from /inventory",
+    },
+    "quest_task_skip": {
+        "name": "Quest Task Skip",
+        "emoji": "📜",
+        "price": 1500,
+        "category": "item",
+        "desc": "Skip one task in your current active quest chapter — at least one task must still be completed naturally",
+    },
     # ── Lures ─────────────────────────────────────────────────────────────────
     "lure_woodland": {
         "name": "Woodland Lure",
@@ -141,6 +162,20 @@ STORE_ITEMS: dict[str, dict] = {
         "price": 1000,
         "category": "cosmetic",
         "desc": "Display the title 'Zoo Legend' in your zoo",
+    },
+    "title_naturalist": {
+        "name": "The Naturalist",
+        "emoji": "🔬",
+        "price": 300,
+        "category": "cosmetic",
+        "desc": "Display the title 'The Naturalist' in your zoo",
+    },
+    "title_director": {
+        "name": "Zoo Director",
+        "emoji": "🏛️",
+        "price": 750,
+        "category": "cosmetic",
+        "desc": "Display the title 'Zoo Director' in your zoo",
     },
     "title_expedition": {
         "name": "Expedition Leader",

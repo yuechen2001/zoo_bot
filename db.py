@@ -1377,6 +1377,32 @@ def complete_chapter(user_id: int, chapter_num: int, reward_coins: int) -> None:
         )
 
 
+def get_quest_tasks_skipped(user_id: int, chapter_num: int) -> int:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT tasks_skipped FROM user_quest_progress WHERE user_id = ? AND chapter_num = ?",
+            (user_id, chapter_num),
+        ).fetchone()
+        return row["tasks_skipped"] if row else 0
+
+
+def increment_quest_tasks_skipped(user_id: int, chapter_num: int) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE user_quest_progress SET tasks_skipped = tasks_skipped + 1 "
+            "WHERE user_id = ? AND chapter_num = ?",
+            (user_id, chapter_num),
+        )
+
+
+def set_income_boost(user_id: int, expires_at: str | None) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET income_boost_expires_at = ? WHERE user_id = ?",
+            (expires_at, user_id),
+        )
+
+
 def award_quest_animal(user_id: int, species_name: str) -> bool:
     import uuid
 

@@ -13,16 +13,22 @@ _ACTIVE_FLAGS = {
 }
 
 
-def _store_section_text(section: str, tg_id: int) -> str:
+def _store_section_text(section: str, tg_id: int, page: int = 0) -> str:
+    from game.constants import STORE_ITEMS_PAGE_SIZE
+
     counts = db.get_item_counts(tg_id)
     user = db.get_user(tg_id)
 
     if section == "items":
+        all_items = list(ITEMS.items())
+        total_pages = max(1, (len(all_items) + STORE_ITEMS_PAGE_SIZE - 1) // STORE_ITEMS_PAGE_SIZE)
+        page = max(0, min(page, total_pages - 1))
+        page_items = all_items[page * STORE_ITEMS_PAGE_SIZE : (page + 1) * STORE_ITEMS_PAGE_SIZE]
         lines = [
-            "🏪 <b>Zoo Store — Items</b>\n",
+            f"🏪 <b>Zoo Store — Items</b> ({page + 1}/{total_pages})\n",
             "<i>Sit in your bag until used via /inventory.</i>\n",
         ]
-        for key, item in ITEMS.items():
+        for key, item in page_items:
             line = f"  {item['emoji']} <b>{item['name']}</b> — {item['price']} 🪙\n  {item['desc']}"
             badges = []
             n = counts.get(key, 0)
@@ -125,13 +131,18 @@ async def store_tab_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     section = query.data.removeprefix("store_tab_")
+    page = 0
+    if section.startswith("items_") and section.removeprefix("items_").isdigit():
+        page = int(section.removeprefix("items_"))
+        section = "items"
+
     owned = db.get_owned_title_keys(tg_id)
     counts = db.get_item_counts(tg_id)
     try:
         await query.edit_message_text(
-            _store_section_text(section, tg_id),
+            _store_section_text(section, tg_id, page),
             parse_mode="HTML",
-            reply_markup=store_tab_keyboard(section, owned, counts),
+            reply_markup=store_tab_keyboard(section, owned, counts, page),
         )
     except Exception:
         pass

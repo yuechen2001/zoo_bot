@@ -243,16 +243,23 @@ async def _tick_enclosure_income(ctx):
 
     group_earnings: dict = defaultdict(list)
 
+    now = datetime.datetime.now((datetime.timezone.utc))
     for user in db.get_all_users_with_animals():
         uid = user["user_id"]
         enclosures = db.get_enclosures(uid)
+        boost_expires = (
+            user["income_boost_expires_at"] if "income_boost_expires_at" in user.keys() else None
+        )
+        multiplier = (
+            2 if boost_expires and datetime.datetime.fromisoformat(boost_expires) > now else 1
+        )
         total_coins = 0
         for habitat, level in enclosures.items():
             rate = ENCLOSURE_LEVELS[level]["coins_per_animal_hr"]
             if rate == 0:
                 continue
             count = db.get_animal_count_by_habitat(uid, habitat)
-            total_coins += rate * count
+            total_coins += rate * count * multiplier
         if total_coins > 0:
             db.add_pending_enclosure_coins(uid, total_coins)
             pending_total = db.get_pending_enclosure_coins(uid)

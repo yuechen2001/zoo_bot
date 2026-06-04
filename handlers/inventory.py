@@ -2,7 +2,7 @@ import datetime
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 import db
-from game.constants import BREED_BOOST_HOURS
+from game.constants import BREED_BOOST_HOURS, INCOME_BOOST_HOURS
 from game.store_data import ITEMS, LURES, COSMETICS
 from utils import replace_command_ui
 
@@ -15,6 +15,9 @@ _NO_ARG_USABLE = {
     "epic_magnet",
     "streak_shield",
     "breed_accelerator",
+    "instant_hatch",
+    "income_boost",
+    "quest_task_skip",
 }
 
 _ACTIVE_FLAGS = {
@@ -225,6 +228,36 @@ def _apply(tg_id: int, key: str) -> str:
         new_ready = now + datetime.timedelta(seconds=remaining / 2)
         db.adjust_breed_time_and_consume(pending["id"], new_ready.isoformat(), purchase["id"])
         return "🚀 Breed Accelerator applied! Remaining breed time halved."
+
+    if key == "instant_hatch":
+        pending = db.get_pending_breed(tg_id)
+        if not pending:
+            return "No active breed to hatch!"
+        now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        db.adjust_breed_time_and_consume(pending["id"], now.isoformat(), purchase["id"])
+        return "🐣 Breeding completed instantly! Use /breed collect."
+
+    if key == "income_boost":
+        expires = datetime.datetime.now(datetime.timezone.utc).replace(
+            tzinfo=None
+        ) + datetime.timedelta(hours=INCOME_BOOST_HOURS)
+        db.set_income_boost(tg_id, expires.isoformat())
+        db.consume_purchase(purchase["id"])
+        return f"💰 Income Boost active for {INCOME_BOOST_HOURS} hours! Enclosure income doubled."
+
+    if key == "quest_task_skip":
+        from game.quests_data import CHAPTERS
+
+        active_ch = db.get_active_chapter(tg_id)
+        if not active_ch:
+            return "No active quest chapter!"
+        ch = CHAPTERS.get(active_ch)
+        skipped = db.get_quest_tasks_skipped(tg_id, active_ch)
+        if skipped >= len(ch["tasks"]) - 1:
+            return "Can't skip any more tasks in this chapter — at least one must be completed naturally."
+        db.increment_quest_tasks_skipped(tg_id, active_ch)
+        db.consume_purchase(purchase["id"])
+        return f"📜 Task skipped! One fewer task needed for Ch {active_ch}: *{ch['title']}*."
 
     return "Unknown item."
 

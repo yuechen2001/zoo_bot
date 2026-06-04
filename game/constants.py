@@ -48,9 +48,13 @@ WILD_EVENT_RARITY_WEIGHTS = [20, 40, 30, 10]
 # Quests
 QUEST_CHAPTER_COUNT = 21
 
+# Income boost
+INCOME_BOOST_HOURS = 4
+
 # Pagination
 ANIMAL_PAGE_SIZE = 8
 ENC_PAGE_SIZE = 3
+STORE_ITEMS_PAGE_SIZE = 4
 
 # Power-up display labels for /zoo — (user_flag_column, display_label)
 POWERUP_LABELS = [

@@ -40,9 +40,10 @@ async def _do_check_quest_advance(user_id: int, ctx) -> None:
 
         user = db.get_user(user_id)
         tasks_passing = sum(1 for t in ch["tasks"] if t["check"](user_id, user))
+        tasks_skipped = db.get_quest_tasks_skipped(user_id, active_ch)
         db.set_quest_step(user_id, active_ch, tasks_passing)
 
-        if tasks_passing < len(ch["tasks"]):
+        if tasks_passing + tasks_skipped < len(ch["tasks"]):
             break
 
         db.complete_chapter(user_id, active_ch, ch["reward_coins"])

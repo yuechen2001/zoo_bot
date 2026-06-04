@@ -1,6 +1,6 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from game.species_data import HABITATS
-from game.constants import MIN_INVEST, SPIN_COST, MAX_BET, ANIMAL_PAGE_SIZE
+from game.constants import MIN_INVEST, SPIN_COST, MAX_BET, ANIMAL_PAGE_SIZE, STORE_ITEMS_PAGE_SIZE
 
 MOOD_EMOJIS = ["😢", "😐", "🙂", "😄", "🤩"]
 
@@ -118,7 +118,9 @@ def store_welcome_keyboard() -> InlineKeyboardMarkup:
     )
 
 
-def store_tab_keyboard(section: str, owned_keys: set, counts: dict) -> InlineKeyboardMarkup:
+def store_tab_keyboard(
+    section: str, owned_keys: set, counts: dict, page: int = 0
+) -> InlineKeyboardMarkup:
     from game.store_data import ITEMS, LURES, COSMETICS
 
     tab_defs = [("items", "🧪 Items"), ("lures", "🎣 Lures"), ("titles", "🎩 Titles")]
@@ -132,13 +134,28 @@ def store_tab_keyboard(section: str, owned_keys: set, counts: dict) -> InlineKey
     rows = [tab_row]
 
     if section == "items":
+        all_items = list(ITEMS.items())
+        total_pages = max(1, (len(all_items) + STORE_ITEMS_PAGE_SIZE - 1) // STORE_ITEMS_PAGE_SIZE)
+        page = max(0, min(page, total_pages - 1))
+        start = page * STORE_ITEMS_PAGE_SIZE
+        page_items = all_items[start : start + STORE_ITEMS_PAGE_SIZE]
         btns = [
             InlineKeyboardButton(
                 f"{item['emoji']} {item['price']} 🪙",
                 callback_data=f"store_buy_{key}",
             )
-            for key, item in ITEMS.items()
+            for key, item in page_items
         ]
+        for i in range(0, len(btns), 3):
+            rows.append(btns[i : i + 3])
+        if total_pages > 1:
+            nav = []
+            if page > 0:
+                nav.append(InlineKeyboardButton("⬅️", callback_data=f"store_tab_items_{page - 1}"))
+            nav.append(InlineKeyboardButton(f"{page + 1}/{total_pages}", callback_data="zoo_noop"))
+            if page < total_pages - 1:
+                nav.append(InlineKeyboardButton("➡️", callback_data=f"store_tab_items_{page + 1}"))
+            rows.append(nav)
     elif section == "lures":
         btns = [
             InlineKeyboardButton(
@@ -147,6 +164,8 @@ def store_tab_keyboard(section: str, owned_keys: set, counts: dict) -> InlineKey
             )
             for key, item in LURES.items()
         ]
+        for i in range(0, len(btns), 3):
+            rows.append(btns[i : i + 3])
     else:
         btns = [
             InlineKeyboardButton(
@@ -159,9 +178,8 @@ def store_tab_keyboard(section: str, owned_keys: set, counts: dict) -> InlineKey
             )
             for key, item in COSMETICS.items()
         ]
-
-    for i in range(0, len(btns), 3):
-        rows.append(btns[i : i + 3])
+        for i in range(0, len(btns), 3):
+            rows.append(btns[i : i + 3])
 
     return InlineKeyboardMarkup(rows)
 

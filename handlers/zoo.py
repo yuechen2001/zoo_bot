@@ -175,6 +175,16 @@ def render_zoo_page(
 
     if active_powerups:
         active = [label for flag, label in POWERUP_LABELS if active_powerups[flag]]
+        boost_expires = (
+            active_powerups["income_boost_expires_at"]
+            if "income_boost_expires_at" in active_powerups.keys()
+            else None
+        )
+        if (
+            boost_expires
+            and datetime.datetime.fromisoformat(boost_expires) > datetime.datetime.utcnow()
+        ):
+            active.append("💰 Income Boost")
         if active:
             lines.append("⚡ Active: " + " · ".join(active))
 
