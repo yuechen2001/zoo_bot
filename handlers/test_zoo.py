@@ -29,7 +29,14 @@ def _make_animal(
     is_breeding=0,
     is_shiny=0,
     habitat="woodland",
+    caught_at=None,
 ):
+    import datetime
+
+    if caught_at is None:
+        caught_at = (
+            datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=10)
+        ).isoformat()
     return {
         "animal_id": animal_id,
         "user_id": user_id,
@@ -42,7 +49,7 @@ def _make_animal(
         "is_breeding": is_breeding,
         "is_shiny": is_shiny,
         "hunger_decay": 3,
-        "caught_at": "2026-01-01T00:00:00",
+        "caught_at": caught_at,
         "habitat": habitat,
     }
 

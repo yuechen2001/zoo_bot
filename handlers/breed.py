@@ -1,6 +1,7 @@
 import random
 import uuid
 import datetime
+from game.aging import get_stage
 from telegram import Update
 from telegram.ext import ContextTypes
 import db
@@ -73,6 +74,12 @@ async def breed_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     if animal_a["is_breeding"] or animal_b["is_breeding"]:
         await update.message.reply_text("One of those animals is already breeding!")
+        return
+
+    if get_stage(animal_a["caught_at"]) == "elder" or get_stage(animal_b["caught_at"]) == "elder":
+        await update.message.reply_text(
+            "👴 Elders are retired and can't breed. Choose younger animals."
+        )
         return
 
     pending = db.get_pending_breed(tg_id)
@@ -258,6 +265,12 @@ async def breed_p2_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     if animal_a["is_breeding"] or animal_b["is_breeding"]:
         await query.answer("One of those animals is already breeding!", show_alert=True)
+        return
+
+    if get_stage(animal_a["caught_at"]) == "elder" or get_stage(animal_b["caught_at"]) == "elder":
+        await query.answer(
+            "👴 Elders are retired and can't breed. Choose younger animals.", show_alert=True
+        )
         return
 
     pending = db.get_pending_breed(tg_id)

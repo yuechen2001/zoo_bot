@@ -13,6 +13,7 @@ from config import (
 )
 from keyboards import mood_keyboard, breed_collect_keyboard
 from game.species_data import ENCLOSURE_LEVELS, HABITATS, RARITY_LABELS
+from game.aging import get_stage, INCOME_MULTIPLIER
 from game.constants import WILD_EVENT_RARITY_WEIGHTS
 from utils import format_mention
 
@@ -254,12 +255,16 @@ async def _tick_enclosure_income(ctx):
             2 if boost_expires and datetime.datetime.fromisoformat(boost_expires) > now else 1
         )
         total_coins = 0
+        all_animals = db.get_animals(uid)
         for habitat, level in enclosures.items():
             rate = ENCLOSURE_LEVELS[level]["coins_per_animal_hr"]
             if rate == 0:
                 continue
-            count = db.get_animal_count_by_habitat(uid, habitat)
-            total_coins += rate * count * multiplier
+            habitat_animals = [a for a in all_animals if a["habitat"] == habitat]
+            animal_contribution = sum(
+                INCOME_MULTIPLIER[get_stage(a["caught_at"])] for a in habitat_animals
+            )
+            total_coins += rate * animal_contribution * multiplier
         if total_coins > 0:
             db.add_pending_enclosure_coins(uid, total_coins)
             pending_total = db.get_pending_enclosure_coins(uid)

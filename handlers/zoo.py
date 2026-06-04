@@ -6,6 +6,7 @@ import db
 from game.mood_engine import streak_label
 from game.species_data import HABITATS, ENCLOSURE_LEVELS, RARITY_SQUARE
 from game.constants import POWERUP_LABELS
+from game.aging import get_stage, STAGE_EMOJI as _STAGE_EMOJI
 from keyboards import zoo_page_keyboard
 from config import INVESTMENT_HOURS
 from utils import replace_command_ui
@@ -98,7 +99,9 @@ def _render_habitat_section(
             name = a["nickname"] or a["species_name"]
             lock = "  🔒" if a["animal_id"] in breeding_ids else ""
             shiny_tag = "⭐ " if a["is_shiny"] else ""
-            lines.append(f"    #{pos} {shiny_tag}{name} — 🍖 {a['hunger']}{lock}")
+            stage = get_stage(a["caught_at"])
+            stage_tag = f" {_STAGE_EMOJI[stage]}" if stage != "adult" else ""
+            lines.append(f"    #{pos} {shiny_tag}{name}{stage_tag} — 🍖 {a['hunger']}{lock}")
 
     return lines
 

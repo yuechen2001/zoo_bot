@@ -29,11 +29,16 @@ def _make_user(coins=500):
     return make_row(coins=coins, user_id=1)
 
 
-def _make_animal(animal_id, rarity="common", is_breeding=0):
+def _make_animal(animal_id, rarity="common", is_breeding=0, caught_at=None):
+    import datetime
+
+    if caught_at is None:
+        caught_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
     return make_row(
         animal_id=animal_id,
         rarity=rarity,
         is_breeding=is_breeding,
+        caught_at=caught_at,
         nickname=None,
         species_name="Frog",
         emoji="🐸",

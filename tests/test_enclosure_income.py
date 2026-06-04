@@ -78,9 +78,19 @@ async def test_enclosure_income_sends_named_group_message():
     ctx = MagicMock()
     ctx.bot.send_message = AsyncMock()
 
+    import datetime
+
+    adult_caught_at = (
+        datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=10)
+    ).isoformat()
+    mock_animals = [
+        {"habitat": "woodland", "caught_at": adult_caught_at},
+        {"habitat": "woodland", "caught_at": adult_caught_at},
+    ]
+
     with patch("scheduler.db.get_all_users_with_animals", return_value=[user]), patch(
         "scheduler.db.get_enclosures", return_value={"woodland": 2}
-    ), patch("scheduler.db.get_animal_count_by_habitat", return_value=2), patch(
+    ), patch("scheduler.db.get_animals", return_value=mock_animals), patch(
         "scheduler.db.add_pending_enclosure_coins"
     ), patch(
         "scheduler.db.get_pending_enclosure_coins", return_value=6
