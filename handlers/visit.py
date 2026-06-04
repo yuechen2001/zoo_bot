@@ -28,7 +28,11 @@ def _render_visit_zoo(username: str, animals: list) -> str:
         sorted_groups = sorted(
             species_groups.items(),
             key=lambda item: (
-                RARITY_ORDER.get(item[1][0]["rarity"], 99),
+                (
+                    RARITY_ORDER.index(item[1][0]["rarity"])
+                    if item[1][0]["rarity"] in RARITY_ORDER
+                    else 99
+                ),
                 item[1][0]["species_name"],
             ),
         )
