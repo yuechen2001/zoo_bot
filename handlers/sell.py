@@ -10,6 +10,29 @@ def _sell_price(animal) -> tuple[int, int]:
     return base, max(1, round(base * animal["hunger"] / 100))
 
 
+def _sell_confirm_keyboard(animal) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    f"✅ Sell for {_sell_price(animal)[1]} 🪙",
+                    callback_data=f"sell_yes_{animal['animal_id']}",
+                ),
+                InlineKeyboardButton("❌ Cancel", callback_data="sell_cancel"),
+            ]
+        ]
+    )
+
+
+def _sell_confirm_text(animal) -> str:
+    name = animal["nickname"] or animal["species_name"]
+    base, sell_price = _sell_price(animal)
+    return (
+        f"{animal['emoji']} *{name}* — sell for *{sell_price}* 🪙?\n"
+        f"_(hunger {animal['hunger']}/100 × base {base} 🪙)_"
+    )
+
+
 async def sell_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     tg_id = update.effective_user.id
     user = db.get_user(tg_id)
@@ -20,6 +43,29 @@ async def sell_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     animals = db.get_animals(tg_id)
     if not animals:
         await update.message.reply_text("You have no animals to sell.")
+        return
+
+    # /sell <number> — jump straight to confirm screen
+    if ctx.args and ctx.args[0].isdigit():
+        pos = int(ctx.args[0])
+        animal = db.get_animal_by_position(tg_id, pos)
+        if not animal:
+            await update.message.reply_text(
+                f"No animal at position {pos}. You have {len(animals)} animal(s)."
+            )
+            return
+        name = animal["nickname"] or animal["species_name"]
+        if animal["is_breeding"]:
+            await update.message.reply_text(f"{name} is currently breeding — can't sell!")
+            return
+        if db.has_pending_trade_for_animal(animal["animal_id"]):
+            await update.message.reply_text(f"{name} has a pending trade — can't sell!")
+            return
+        await update.message.reply_text(
+            _sell_confirm_text(animal),
+            reply_markup=_sell_confirm_keyboard(animal),
+            parse_mode="Markdown",
+        )
         return
 
     kb = animal_picker_keyboard(
@@ -48,22 +94,10 @@ async def sell_pick_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await query.answer(f"{name} has a pending trade — can't sell!", show_alert=True)
         return
 
-    base, sell_price = _sell_price(animal)
-    kb = InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton(
-                    f"✅ Sell for {sell_price} 🪙", callback_data=f"sell_yes_{animal['animal_id']}"
-                ),
-                InlineKeyboardButton("❌ Cancel", callback_data="sell_cancel"),
-            ]
-        ]
-    )
     await query.answer()
     await query.edit_message_text(
-        f"{animal['emoji']} *{name}* — sell for *{sell_price}* 🪙?\n"
-        f"_(hunger {animal['hunger']}/100 × base {base} 🪙)_",
-        reply_markup=kb,
+        _sell_confirm_text(animal),
+        reply_markup=_sell_confirm_keyboard(animal),
         parse_mode="Markdown",
     )
 
@@ -94,10 +128,21 @@ async def sell_yes_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await check_achievements(tg_id, "sell", ctx)
 
     await query.answer()
-    await query.edit_message_text(
-        f"💸 Sold {animal['emoji']} *{name}* for *{sell_price}* 🪙",
-        parse_mode="Markdown",
-    )
+    remaining = db.get_animals(tg_id)
+    if remaining:
+        kb = animal_picker_keyboard(
+            remaining, "sell_pick", "sell_cancel", page=0, page_callback_prefix="sell_page"
+        )
+        await query.edit_message_text(
+            f"💸 Sold {animal['emoji']} *{name}* for *{sell_price}* 🪙\n\nSell another?",
+            reply_markup=kb,
+            parse_mode="Markdown",
+        )
+    else:
+        await query.edit_message_text(
+            f"💸 Sold {animal['emoji']} *{name}* for *{sell_price}* 🪙",
+            parse_mode="Markdown",
+        )
 
 
 async def sell_cancel_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
