@@ -275,7 +275,7 @@ async def _tick_enclosure_income(ctx):
             )
             total_coins += rate * animal_contribution * multiplier
         if total_coins > 0:
-            db.add_pending_enclosure_coins(uid, total_coins)
+            db.add_pending_enclosure_coins(uid, round(total_coins))
             pending_total = db.get_pending_enclosure_coins(uid)
             mention = format_mention(user["username"], uid)
             if user["group_chat_id"]:
