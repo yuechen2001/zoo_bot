@@ -230,9 +230,13 @@ async def catch_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if success:
         animal_id = str(uuid.uuid4())
         db.add_animal(animal_id, tg_id, pending["species_id"])
+        shiny = random.random() < 0.015
+        if shiny:
+            db.set_animal_shiny(animal_id)
+        shiny_str = "⭐ " if shiny else ""
         await query.answer("Caught!")
         await query.edit_message_text(
-            f"🎉 You caught the {pending['emoji']} *{pending['name']}*!\n\n"
+            f"🎉 You caught the {pending['emoji']} *{shiny_str}{pending['name']}*!\n\n"
             f"Use /name to give it a nickname.",
             parse_mode="Markdown",
         )

@@ -97,7 +97,8 @@ def _render_habitat_section(
             pos = position[a["animal_id"]]
             name = a["nickname"] or a["species_name"]
             lock = "  🔒" if a["animal_id"] in breeding_ids else ""
-            lines.append(f"    #{pos} {name} — 🍖 {a['hunger']}{lock}")
+            shiny_tag = "⭐ " if a["is_shiny"] else ""
+            lines.append(f"    #{pos} {shiny_tag}{name} — 🍖 {a['hunger']}{lock}")
 
     return lines
 
@@ -147,7 +148,9 @@ def render_zoo_page(
     else:
         title_str = ""
 
-    lines = [f"🏕 {title_str}*{username}'s Zoo*\n"]
+    shiny_count = sum(1 for a in animals if a["is_shiny"])
+    shiny_header = f"  ⭐ ×{shiny_count}" if shiny_count else ""
+    lines = [f"🏕 {title_str}*{username}'s Zoo*{shiny_header}\n"]
     lines.extend(
         _render_habitat_section(habitat_key, species_groups, position, breeding_ids, enclosures)
     )

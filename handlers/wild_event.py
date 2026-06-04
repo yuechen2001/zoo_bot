@@ -88,15 +88,21 @@ async def wild_event_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     animal_id = str(uuid.uuid4())
     db.add_animal(animal_id, tg_id, species["species_id"])
+    shiny = random.random() < 0.015
+    if shiny:
+        db.set_animal_shiny(animal_id)
+    shiny_str = "⭐ " if shiny else ""
 
     mention = format_mention(query.from_user.username, tg_id)
-    await query.answer(f"🎉 You caught {species['emoji']} {species['name']}!", show_alert=True)
+    await query.answer(
+        f"🎉 You caught {species['emoji']} {shiny_str}{species['name']}!", show_alert=True
+    )
     await check_achievements(tg_id, "wild_catch", ctx)
     await check_achievements(tg_id, "catch", ctx)
     try:
         await query.edit_message_text(
             f"⚡ *Wild event over!*\n"
-            f"{species['emoji']} *{species['name']}* was caught by *{mention}*!",
+            f"{species['emoji']} *{shiny_str}{species['name']}* was caught by *{mention}*!",
             parse_mode="Markdown",
         )
     except Exception:

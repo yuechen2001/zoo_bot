@@ -66,7 +66,8 @@ def conn():
             happiness   INTEGER NOT NULL DEFAULT 100,
             level       INTEGER NOT NULL DEFAULT 1,
             xp          INTEGER NOT NULL DEFAULT 0,
-            is_breeding INTEGER NOT NULL DEFAULT 0
+            is_breeding INTEGER NOT NULL DEFAULT 0,
+            is_shiny    INTEGER NOT NULL DEFAULT 0
         );
         CREATE TABLE breeding_queue (
             id                   INTEGER PRIMARY KEY AUTOINCREMENT,

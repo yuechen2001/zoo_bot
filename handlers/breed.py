@@ -1,3 +1,4 @@
+import random
 import uuid
 import datetime
 from telegram import Update
@@ -180,10 +181,14 @@ async def _collect_breed(update, tg_id, ctx=None):
         pending["parent_a"],
         pending["parent_b"],
     )
+    shiny = random.random() < 0.015
+    if shiny:
+        db.set_animal_shiny(animal_id)
+    shiny_str = "⭐ " if shiny else ""
 
     await update.message.reply_text(
         f"🥚✨ Your egg has hatched!\n\n"
-        f"A *{offspring_species['emoji']} {offspring_species['name']}* joined your zoo!\n"
+        f"A *{offspring_species['emoji']} {shiny_str}{offspring_species['name']}* joined your zoo!\n"
         f"Use `/name <number> <name>` to give it a nickname.",
         parse_mode="Markdown",
     )

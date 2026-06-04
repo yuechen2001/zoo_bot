@@ -1200,6 +1200,18 @@ def count_animals(user_id: int) -> int:
         ).fetchone()[0]
 
 
+def count_shiny_animals(user_id: int) -> int:
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT COUNT(*) FROM animals WHERE user_id = ? AND is_shiny = 1", (user_id,)
+        ).fetchone()[0]
+
+
+def set_animal_shiny(animal_id: str) -> None:
+    with get_conn() as conn:
+        conn.execute("UPDATE animals SET is_shiny = 1 WHERE animal_id = ?", (animal_id,))
+
+
 def user_owns_rarity(user_id: int, rarity: str) -> bool:
     with get_conn() as conn:
         return (

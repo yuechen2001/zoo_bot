@@ -388,6 +388,21 @@ ACHIEVEMENTS = {
         "trigger": "breed",
         "check": lambda uid, u: db.count_collected_breeds(uid) >= 20,
     },
+    # ── Shinies ───────────────────────────────────────────────────────────────
+    "first_shiny": {
+        "emoji": "⭐",
+        "name": "Starborn",
+        "desc": "Obtain your first shiny animal",
+        "trigger": "catch",
+        "check": lambda uid, u: db.count_shiny_animals(uid) >= 1,
+    },
+    "shiny_3": {
+        "emoji": "🌟",
+        "name": "Constellation",
+        "desc": "Own 3 shiny animals at once",
+        "trigger": "catch",
+        "check": lambda uid, u: db.count_shiny_animals(uid) >= 3,
+    },
 }
 
 
