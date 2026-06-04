@@ -33,12 +33,24 @@ def _sell_confirm_text(animal) -> str:
     )
 
 
+async def _clear_sell_message(ctx: ContextTypes.DEFAULT_TYPE, tg_id: int) -> None:
+    prev = ctx.user_data.get("sell_msg")
+    if prev:
+        try:
+            await ctx.bot.delete_message(chat_id=prev["chat_id"], message_id=prev["msg_id"])
+        except Exception:
+            pass
+        ctx.user_data.pop("sell_msg", None)
+
+
 async def sell_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     tg_id = update.effective_user.id
     user = db.get_user(tg_id)
     if not user:
         await update.message.reply_text("Use /start first!")
         return
+
+    await _clear_sell_message(ctx, tg_id)
 
     animals = db.get_animals(tg_id)
     if not animals:
@@ -61,17 +73,19 @@ async def sell_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         if db.has_pending_trade_for_animal(animal["animal_id"]):
             await update.message.reply_text(f"{name} has a pending trade — can't sell!")
             return
-        await update.message.reply_text(
+        msg = await update.message.reply_text(
             _sell_confirm_text(animal),
             reply_markup=_sell_confirm_keyboard(animal),
             parse_mode="Markdown",
         )
+        ctx.user_data["sell_msg"] = {"chat_id": msg.chat_id, "msg_id": msg.message_id}
         return
 
     kb = animal_picker_keyboard(
         animals, "sell_pick", "sell_cancel", page=0, page_callback_prefix="sell_page"
     )
-    await update.message.reply_text("Which animal do you want to sell?", reply_markup=kb)
+    msg = await update.message.reply_text("Which animal do you want to sell?", reply_markup=kb)
+    ctx.user_data["sell_msg"] = {"chat_id": msg.chat_id, "msg_id": msg.message_id}
 
 
 async def sell_pick_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -139,6 +153,7 @@ async def sell_yes_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown",
         )
     else:
+        ctx.user_data.pop("sell_msg", None)
         await query.edit_message_text(
             f"💸 Sold {animal['emoji']} *{name}* for *{sell_price}* 🪙",
             parse_mode="Markdown",
@@ -147,6 +162,7 @@ async def sell_yes_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 async def sell_cancel_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    ctx.user_data.pop("sell_msg", None)
     await query.answer("Cancelled")
     await query.edit_message_text("Sell cancelled.")
 
