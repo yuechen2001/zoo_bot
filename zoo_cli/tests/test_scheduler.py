@@ -12,6 +12,7 @@ from scheduler import (
     _send_mood_prompts,
     _cleanup_expired_prompts,
     cleanup_expired_wild_events,
+    escape_tick,
 )
 from conftest import make_row
 
@@ -554,3 +555,78 @@ async def test_cleanup_expired_prompts_keeps_recent():
     await _cleanup_expired_prompts(ctx)
     ctx.bot.edit_message_reply_markup.assert_not_called()
     assert -100 in ctx.bot_data["prompt_messages"]
+
+
+# ── escape_tick ───────────────────────────────────────────────────────────────
+
+
+def _elder_caught_at() -> str:
+    """ISO timestamp 60 days ago (well past ELDER_DAYS=30)."""
+    return (
+        datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        - datetime.timedelta(days=60)
+    ).isoformat()
+
+
+def _make_escape_animal(**kw):
+    defaults = dict(
+        animal_id="a1",
+        species_name="Lion",
+        emoji="🦁",
+        nickname=None,
+        is_breeding=0,
+        caught_at=_elder_caught_at(),
+    )
+    return make_row(**{**defaults, **kw})
+
+
+def _make_escape_user():
+    return make_row(user_id=1, username="alice", group_chat_id=-100)
+
+
+@pytest.mark.asyncio
+async def test_escape_tick_fires_for_elder_animal():
+    """Elder animals must no longer be excluded from escape candidates."""
+    elder_animal = _make_escape_animal()
+    user = _make_escape_user()
+
+    ctx = MagicMock()
+    ctx.bot.send_message = AsyncMock(return_value=MagicMock(message_id=99))
+    ctx.job_queue.run_once = MagicMock()
+
+    with patch("scheduler.db.get_active_group_chats", return_value=[-100]), patch(
+        "scheduler.db.get_users_in_group", return_value=[user]
+    ), patch("scheduler.db.get_animals", return_value=[elder_animal]), patch(
+        "scheduler.db.create_escape", return_value=1
+    ), patch(
+        "scheduler.db.update_escape_message"
+    ), patch(
+        "scheduler.db.set_setting"
+    ), patch(
+        "handlers.escape.escape_keyboard", return_value=MagicMock()
+    ):
+        await escape_tick(ctx)
+
+    ctx.bot.send_message.assert_called_once()
+    ctx.job_queue.run_once.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_escape_tick_skips_group_with_no_candidates():
+    """Groups where every animal is breeding produce no escape message."""
+    breeding_animal = _make_escape_animal(is_breeding=1)
+    user = _make_escape_user()
+
+    ctx = MagicMock()
+    ctx.bot.send_message = AsyncMock()
+    ctx.job_queue.run_once = MagicMock()
+
+    with patch("scheduler.db.get_active_group_chats", return_value=[-100]), patch(
+        "scheduler.db.get_users_in_group", return_value=[user]
+    ), patch("scheduler.db.get_animals", return_value=[breeding_animal]), patch(
+        "scheduler.db.set_setting"
+    ):
+        await escape_tick(ctx)
+
+    ctx.bot.send_message.assert_not_called()
+    ctx.job_queue.run_once.assert_called_once()
