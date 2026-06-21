@@ -24,3 +24,5 @@ WILD_EVENT_EXPIRY_MINUTES = int(os.getenv("WILD_EVENT_EXPIRY_MINUTES", "5"))
 # Comma-separated Telegram user IDs allowed to use /admin commands
 # e.g. ADMIN_IDS=123456789,987654321
 ADMIN_IDS = {int(x.strip()) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip().isdigit()}
+
+WEBAPP_URL = os.getenv("WEBAPP_URL", "")

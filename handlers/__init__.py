@@ -54,6 +54,7 @@ from .quests import quests_command, quest_tab_callback, quest_story_callback
 from .visit import visit_command, visit_feed_callback
 from .escape import escape_callback
 from .inspect import inspect_command
+from .play import play_command
 
 __all__ = [
     "start_command",
@@ -120,4 +121,5 @@ __all__ = [
     "visit_feed_callback",
     "escape_callback",
     "inspect_command",
+    "play_command",
 ]
