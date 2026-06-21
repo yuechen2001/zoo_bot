@@ -33,6 +33,21 @@ resource "google_compute_firewall" "allow_ssh" {
   depends_on = [google_project_service.compute]
 }
 
+resource "google_compute_firewall" "allow_web" {
+  name    = "zoo-bot-allow-web"
+  network = "default"
+
+  allow {
+    protocol = "tcp"
+    ports    = ["80", "443"]
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+  target_tags   = ["zoo-bot"]
+
+  depends_on = [google_project_service.compute]
+}
+
 resource "google_compute_instance" "zoo_bot" {
   name         = "zoo-bot"
   machine_type = "e2-micro"
@@ -57,14 +72,17 @@ resource "google_compute_instance" "zoo_bot" {
   }
 
   metadata_startup_script = templatefile("${path.module}/startup.sh.tpl", {
-    bot_token              = var.bot_token
-    admin_ids              = var.admin_ids
-    repo_url               = var.repo_url
-    database_path          = var.database_path
-    prompt_interval        = var.prompt_interval_minutes
-    timezone               = var.timezone
-    checkin_window         = var.checkin_window_minutes
-    catch_expiry           = var.catch_expiry_minutes
+    bot_token       = var.bot_token
+    admin_ids       = var.admin_ids
+    repo_url        = var.repo_url
+    database_path   = var.database_path
+    prompt_interval = var.prompt_interval_minutes
+    timezone        = var.timezone
+    checkin_window  = var.checkin_window_minutes
+    catch_expiry    = var.catch_expiry_minutes
+    webapp_domain   = var.webapp_domain
+    webapp_url      = var.webapp_url
+    certbot_email   = var.certbot_email
   })
 
   depends_on = [google_project_service.compute]

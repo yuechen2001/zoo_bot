@@ -27,8 +27,25 @@ jobs:
       - name: Tests
         run: cd zoo_cli && pytest --cov=game --cov=species_data --cov-report=term-missing
 
+  webapp-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: zoo_webapp/package-lock.json
+
+      - name: Install webapp dependencies
+        run: cd zoo_webapp && npm ci
+
+      - name: Build webapp
+        run: cd zoo_webapp && npm run build
+
   deploy:
-    needs: ci
+    needs: [ci, webapp-ci]
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to GCP VM
@@ -41,13 +58,35 @@ jobs:
             cd /opt/zoo_bot
             git fetch origin main
             git reset --hard origin/main
+
+            # Install Python deps for bot and API into shared venv
             ./venv/bin/pip install -r zoo_cli/requirements.txt --quiet
-            # Inject any keys present in .env.example but missing from .env
+            ./venv/bin/pip install -r zoo_api/requirements.txt --quiet
+
+            # Inject any keys present in .env.example but missing from bot .env
             while IFS='=' read -r key value; do
               [[ -z "$key" || "$key" == \#* ]] && continue
               grep -q "^${key}=" zoo_cli/.env || echo "${key}=${value}" >> zoo_cli/.env
             done < zoo_cli/.env.example
+
+            # Inject any keys present in .env.example but missing from API .env
+            while IFS='=' read -r key value; do
+              [[ -z "$key" || "$key" == \#* ]] && continue
+              grep -q "^${key}=" zoo_api/.env || echo "${key}=${value}" >> zoo_api/.env
+            done < zoo_api/.env.example
+
+            # Build webapp on the VM (fast — ~2s with cached node_modules)
+            cd /opt/zoo_bot/zoo_webapp && npm ci --quiet && npm run build
+            cd /opt/zoo_bot
+
+            # Run DB migrations
             ./venv/bin/python zoo_cli/migrate.py up
+
+            # Restart services
             sudo systemctl restart zoobot
+            sudo systemctl restart zooapi
+            sudo systemctl reload nginx
+
             sleep 2
-            sudo systemctl is-active --quiet zoobot && echo "Bot restarted successfully" || (echo "Bot failed to start" && sudo journalctl -u zoobot -n 20 && exit 1)
+            sudo systemctl is-active --quiet zoobot && echo "Bot OK" || (echo "Bot failed" && sudo journalctl -u zoobot -n 20 && exit 1)
+            sudo systemctl is-active --quiet zooapi && echo "API OK" || (echo "API failed" && sudo journalctl -u zooapi -n 20 && exit 1)

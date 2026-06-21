@@ -72,3 +72,18 @@ variable "catch_expiry_minutes" {
   type        = number
   default     = 5
 }
+
+variable "webapp_domain" {
+  description = "Domain name for the Mini App (e.g. zoo.yourdomain.com). Must point to this VM's IP before certbot runs."
+  type        = string
+}
+
+variable "webapp_url" {
+  description = "Full HTTPS URL of the Mini App — passed to the bot as WEBAPP_URL (e.g. https://zoo.yourdomain.com)"
+  type        = string
+}
+
+variable "certbot_email" {
+  description = "Email address for Let's Encrypt certificate expiry notifications"
+  type        = string
+}

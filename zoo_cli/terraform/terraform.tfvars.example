@@ -9,3 +9,8 @@ admin_ids      = "537356731"
 
 # For private repo: "https://YOUR_GITHUB_TOKEN@github.com/yuechen2001/zoo_bot.git"
 repo_url       = "https://github.com/yuechen2001/zoo_bot.git"
+
+# Mini App domain + HTTPS
+webapp_domain  = "zoo.yourdomain.com"          # must point to the VM's IP in DNS
+webapp_url     = "https://zoo.yourdomain.com"  # passed to bot as WEBAPP_URL
+certbot_email  = "you@example.com"             # for Let's Encrypt expiry notices
