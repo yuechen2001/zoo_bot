@@ -5,9 +5,12 @@ from fastapi import HTTPException, Request
 from auth import validate_init_data
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
+DEV_USER_ID = os.getenv("DEV_USER_ID", "")  # set locally to bypass Telegram auth
 
 
 async def get_uid(request: Request) -> int:
+    if DEV_USER_ID:
+        return int(DEV_USER_ID)
     init_data = request.headers.get("X-Telegram-Init-Data", "")
     if not init_data:
         raise HTTPException(status_code=401, detail="Missing Telegram auth")
