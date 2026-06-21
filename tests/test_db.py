@@ -203,6 +203,47 @@ def test_collect_enclosure_coins_returns_zero_when_empty(db_env):
     assert db.collect_enclosure_coins(1) == 0
 
 
+# ── coin rounding: all writes produce whole numbers ──────────────────────────
+
+
+def test_add_coins_with_float_stores_integer(db_env):
+    initial = db.get_user(1)["coins"]
+    db.add_coins(1, 12.7)
+    result = db.get_user(1)["coins"]
+    assert result == round(initial + 12.7)
+    assert isinstance(result, int)
+
+
+def test_add_pending_enclosure_coins_with_float_stores_integer(db_env):
+    db.add_pending_enclosure_coins(1, 35.6)
+    pending = db.get_pending_enclosure_coins(1)
+    assert pending == 36
+    assert isinstance(pending, int)
+
+
+def test_collect_enclosure_coins_rounds_legacy_float_in_db(db_env):
+    """Simulate a DB row with a legacy float in pending_enclosure_coins."""
+    import sqlite3
+
+    conn = sqlite3.connect(db_env)
+    conn.execute("UPDATE users SET pending_enclosure_coins = 1932.4 WHERE user_id = 1")
+    conn.commit()
+    conn.close()
+
+    claimed = db.collect_enclosure_coins(1)
+    assert claimed == 1932
+    assert isinstance(claimed, int)
+    coins = db.get_user(1)["coins"]
+    assert isinstance(coins, int)
+    assert coins == 500 + 1932  # initial 500 + claimed
+
+
+def test_collect_enclosure_coins_zeroes_pending_after_collect(db_env):
+    db.add_pending_enclosure_coins(1, 100)
+    db.collect_enclosure_coins(1)
+    assert db.get_pending_enclosure_coins(1) == 0
+
+
 # ── claim_wild_event: atomic first-one-wins ───────────────────────────────────
 
 
