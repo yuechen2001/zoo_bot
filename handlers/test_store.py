@@ -1,7 +1,13 @@
 import pytest
 from html.parser import HTMLParser
 from unittest.mock import AsyncMock, MagicMock, patch
-from handlers.store import store_command, store_callback, store_tab_callback, _store_text
+from handlers.store import (
+    store_command,
+    store_callback,
+    store_tab_callback,
+    store_qty_callback,
+    _store_text,
+)
 import sys
 import os
 
@@ -325,3 +331,80 @@ async def test_store_tab_callback_titles_edits_message():
     ), patch("handlers.store.db.get_item_counts", return_value={}):
         await store_tab_callback(update, ctx)
     query.edit_message_text.assert_called_once()
+
+
+# ── store_qty_callback ────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_store_qty_single_purchase():
+    update, query, ctx = _make_callback("store_qty_mega_feed_1")
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.bulk_buy_item"
+    ) as mock_bulk, patch("handlers.store.db.get_owned_title_keys", return_value=set()), patch(
+        "handlers.store.db.get_item_counts", return_value={}
+    ):
+        await store_qty_callback(update, ctx)
+    mock_bulk.assert_called_once_with(1, "mega_feed", 30, 1)
+    query.answer.assert_called_once()
+    assert "×1" in query.answer.call_args[0][0]
+    assert "bag" in query.answer.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_store_qty_bulk_purchase():
+    update, query, ctx = _make_callback("store_qty_lure_woodland_5")
+    with patch("handlers.store.db.get_user", return_value=_make_user(coins=500)), patch(
+        "handlers.store.db.bulk_buy_item"
+    ) as mock_bulk, patch("handlers.store.db.get_owned_title_keys", return_value=set()), patch(
+        "handlers.store.db.get_item_counts", return_value={}
+    ):
+        await store_qty_callback(update, ctx)
+    mock_bulk.assert_called_once_with(1, "lure_woodland", 300, 5)
+    assert "×5" in query.answer.call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_store_qty_insufficient_coins():
+    update, query, ctx = _make_callback("store_qty_mega_feed_10")
+    with patch("handlers.store.db.get_user", return_value=_make_user(coins=50)):
+        await store_qty_callback(update, ctx)
+    query.answer.assert_called_once()
+    assert "coins" in query.answer.call_args[0][0].lower()
+    assert query.answer.call_args[1].get("show_alert") is True
+
+
+@pytest.mark.asyncio
+async def test_store_qty_cosmetic_rejected():
+    update, query, ctx = _make_callback("store_qty_title_keeper_1")
+    with patch("handlers.store.db.get_user", return_value=_make_user()):
+        await store_qty_callback(update, ctx)
+    query.answer.assert_called_once()
+    assert "bulk" in query.answer.call_args[0][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_store_qty_returns_to_items_tab_after_purchase():
+    update, query, ctx = _make_callback("store_qty_mega_feed_3")
+    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
+        "handlers.store.db.bulk_buy_item"
+    ), patch("handlers.store.db.get_owned_title_keys", return_value=set()), patch(
+        "handlers.store.db.get_item_counts", return_value={}
+    ):
+        await store_qty_callback(update, ctx)
+    query.edit_message_text.assert_called_once()
+    text = query.edit_message_text.call_args[0][0]
+    assert "Zoo Store" in text
+
+
+@pytest.mark.asyncio
+async def test_store_qty_lure_returns_to_lures_tab():
+    update, query, ctx = _make_callback("store_qty_lure_woodland_3")
+    with patch("handlers.store.db.get_user", return_value=_make_user(coins=500)), patch(
+        "handlers.store.db.bulk_buy_item"
+    ), patch("handlers.store.db.get_owned_title_keys", return_value=set()), patch(
+        "handlers.store.db.get_item_counts", return_value={}
+    ):
+        await store_qty_callback(update, ctx)
+    text = query.edit_message_text.call_args[0][0]
+    assert "Lures" in text
