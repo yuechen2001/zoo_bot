@@ -170,7 +170,10 @@ _HELP_SECTIONS = {
         "/achievements — view your milestones\n"
         "/quests — track the Zoo Expedition storyline (21 chapters, 7 arcs, exclusive animals)\n"
         "/footmassage — halve animal hunger decay for 1h (25 🪙, 4h cooldown)\n"
-        "/enclosures — view and upgrade your habitat enclosures (tap 💰 to collect income)"
+        "/enclosures — view and upgrade your habitat enclosures (tap 💰 to collect income)\n"
+        "/visit @user — visit another player's zoo and feed one animal for a coin bonus\n"
+        "/inspect <number> — view an animal's hidden trait stats (Speed, Genetics, Temperament)\n"
+        "/play — open the pixel-art zoo UI"
     ),
     "breeding": (
         "🥚 *Zoo Bot — Breeding*\n\n"
