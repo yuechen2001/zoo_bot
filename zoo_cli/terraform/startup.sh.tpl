@@ -6,7 +6,7 @@ echo "=== Zoo Bot startup script ==="
 
 # ── System dependencies ───────────────────────────────────────────────────────
 apt-get update -y
-apt-get install -y python3 python3-pip python3-venv git nginx certbot python3-certbot-nginx
+apt-get install -y python3 python3-pip python3-venv git nginx
 
 # ── Node.js 20 LTS (for webapp build) ────────────────────────────────────────
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
@@ -51,23 +51,25 @@ APIENVEOF
 # ── Run DB migrations ─────────────────────────────────────────────────────────
 /opt/zoo_bot/venv/bin/python /opt/zoo_bot/zoo_cli/migrate.py up
 
-# ── nginx config ──────────────────────────────────────────────────────────────
+# ── nginx config (plain HTTP — Cloudflare Tunnel handles HTTPS) ───────────────
 cat > /etc/nginx/sites-available/zoo << 'NGINXEOF'
 server {
     listen 80;
     server_name ${webapp_domain};
 
-    # Proxy /api/* to uvicorn
+    # Cloudflare sets this — pass real visitor IP to API
+    proxy_set_header CF-Connecting-IP $$http_cf_connecting_ip;
+
     location /api/ {
         proxy_pass http://127.0.0.1:8000;
         proxy_http_version 1.1;
         proxy_set_header Host $$host;
-        proxy_set_header X-Real-IP $$remote_addr;
+        proxy_set_header X-Real-IP $$http_cf_connecting_ip;
         proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
         proxy_read_timeout 30s;
     }
 
-    # Serve webapp static files
     location / {
         root /opt/zoo_bot/zoo_webapp/dist;
         try_files $$uri $$uri/ /index.html;
@@ -81,17 +83,34 @@ nginx -t
 systemctl enable nginx
 systemctl restart nginx
 
-# ── HTTPS via Let's Encrypt ───────────────────────────────────────────────────
-# DNS for ${webapp_domain} must point to this VM's IP before this runs.
-# If it fails here (DNS not yet set up), run manually:
-#   certbot --nginx -d ${webapp_domain} --non-interactive --agree-tos -m ${certbot_email}
-certbot --nginx \
-  -d ${webapp_domain} \
-  --non-interactive \
-  --agree-tos \
-  -m ${certbot_email} \
-  --redirect \
-  || echo "WARNING: certbot failed — point DNS to this VM then run certbot manually"
+# ── Cloudflare Tunnel ─────────────────────────────────────────────────────────
+curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb \
+  -o /tmp/cloudflared.deb
+dpkg -i /tmp/cloudflared.deb
+
+mkdir -p /etc/cloudflared
+chmod 700 /etc/cloudflared
+
+# Write tunnel credentials (generated locally via: cloudflared tunnel create zoo)
+cat > /etc/cloudflared/${cloudflare_tunnel_id}.json << 'CREDEOF'
+${cloudflare_tunnel_credentials}
+CREDEOF
+chmod 600 /etc/cloudflared/${cloudflare_tunnel_id}.json
+
+# Tunnel config: proxy everything through nginx on port 80
+cat > /etc/cloudflared/config.yml << 'CFEOF'
+tunnel: ${cloudflare_tunnel_id}
+credentials-file: /etc/cloudflared/${cloudflare_tunnel_id}.json
+
+ingress:
+  - hostname: ${webapp_domain}
+    service: http://localhost:80
+  - service: http_status:404
+CFEOF
+
+cloudflared service install
+systemctl enable cloudflared
+systemctl start cloudflared
 
 # ── Bot systemd service ───────────────────────────────────────────────────────
 cat > /etc/systemd/system/zoobot.service << 'SVCEOF'
@@ -147,4 +166,4 @@ BACKUPEOF
 chmod +x /usr/local/bin/zoo_backup.sh
 echo "0 2 * * * root /usr/local/bin/zoo_backup.sh" > /etc/cron.d/zoo_backup
 
-echo "=== Done. Bot + API running, nginx serving Mini App ==="
+echo "=== Done. Bot + API + cloudflared tunnel running ==="

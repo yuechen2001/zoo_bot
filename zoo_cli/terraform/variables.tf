@@ -74,7 +74,7 @@ variable "catch_expiry_minutes" {
 }
 
 variable "webapp_domain" {
-  description = "Domain name for the Mini App (e.g. zoo.yourdomain.com). Must point to this VM's IP before certbot runs."
+  description = "Domain for the Mini App (e.g. zoo.yourdomain.com). Add a CNAME in Cloudflare pointing to <tunnel-id>.cfargotunnel.com."
   type        = string
 }
 
@@ -83,7 +83,13 @@ variable "webapp_url" {
   type        = string
 }
 
-variable "certbot_email" {
-  description = "Email address for Let's Encrypt certificate expiry notifications"
+variable "cloudflare_tunnel_id" {
+  description = "UUID of the Cloudflare Tunnel (from: cloudflared tunnel create zoo)"
   type        = string
+}
+
+variable "cloudflare_tunnel_credentials" {
+  description = "JSON content of the tunnel credentials file (~/.cloudflared/<tunnel-id>.json)"
+  type        = string
+  sensitive   = true
 }
