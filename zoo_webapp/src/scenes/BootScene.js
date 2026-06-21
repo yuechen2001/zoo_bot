@@ -60,14 +60,18 @@ export default class BootScene extends Phaser.Scene {
     }).setOrigin(0.5)
 
     try {
-      const [user, animals, enclosures] = await Promise.all([
+      const [user, animals, enclosures, quests, inventory] = await Promise.all([
         api.getMe(),
         api.getAnimals(),
         api.getEnclosures(),
+        api.getQuests(),
+        api.getInventory(),
       ])
       GameState.setUser(user)
       GameState.setAnimals(animals)
       GameState.setEnclosures(enclosures)
+      GameState.setQuests(quests)
+      GameState.setInventory(inventory)
       this.scene.start('Zoo')
     } catch (err) {
       status.setText(`Error: ${err.message}`)

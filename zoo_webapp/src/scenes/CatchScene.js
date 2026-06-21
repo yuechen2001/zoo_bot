@@ -43,9 +43,6 @@ export default class CatchScene extends Phaser.Scene {
     }).setOrigin(0.5, 0)
     this._objs.push(title)
 
-    // Fetch inventory to show quantities
-    const inventory = GameState.user ? {} : {}
-
     const btnW = (width - 24) / 2
     LURES.forEach((lure, i) => {
       const col = i % 2
@@ -53,14 +50,19 @@ export default class CatchScene extends Phaser.Scene {
       const x = 8 + col * (btnW + 8)
       const y = 108 + row * 44
 
-      const bg = this.add.rectangle(x, y, btnW, 36, 0x1a3a5a).setOrigin(0, 0).setInteractive({ useHandCursor: true })
-      const label = this.add.text(x + btnW / 2, y + 18, lure.label, {
-        fontFamily: 'monospace', fontSize: '12px', color: '#cccccc',
-      }).setOrigin(0.5)
+      const qty = GameState.lureQty(lure.key)
+      const hasLure = qty > 0
+      const bg = this.add.rectangle(x, y, btnW, 36, hasLure ? 0x1a3a5a : 0x111111).setOrigin(0, 0).setInteractive({ useHandCursor: true })
+      const label = this.add.text(x + 8, y + 10, lure.label, {
+        fontFamily: 'monospace', fontSize: '11px', color: hasLure ? '#cccccc' : '#555555',
+      })
+      const qtyLabel = this.add.text(x + btnW - 6, y + 10, `×${qty}`, {
+        fontFamily: 'monospace', fontSize: '10px', color: hasLure ? '#ffd700' : '#444444',
+      }).setOrigin(1, 0)
       bg.on('pointerdown', () => { this._selectedLure = lure.key; this._doSearch() })
-      bg.on('pointerover', () => bg.setFillStyle(0x2a5a8a))
-      bg.on('pointerout', () => bg.setFillStyle(0x1a3a5a))
-      this._objs.push(bg, label)
+      bg.on('pointerover', () => bg.setFillStyle(hasLure ? 0x2a5a8a : 0x1a1a1a))
+      bg.on('pointerout', () => bg.setFillStyle(hasLure ? 0x1a3a5a : 0x111111))
+      this._objs.push(bg, label, qtyLabel)
     })
 
     // No lure option

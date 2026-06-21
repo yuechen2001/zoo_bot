@@ -10,6 +10,15 @@ const POWERUP_LABELS = [
   ['streak_shield_active', '🛡️'],
 ]
 
+const NAV = [
+  { label: 'CATCH', scene: 'Catch' },
+  { label: 'BREED', scene: 'Breed' },
+  { label: 'ZOO', scene: 'Zoo' },
+  { label: 'STORE', scene: 'Store' },
+  { label: 'QUESTS', scene: 'Quests' },
+  { label: 'GAMES', scene: 'Games' },
+]
+
 export default class HUD {
   constructor(scene) {
     this.scene = scene
@@ -51,25 +60,16 @@ export default class HUD {
     this.navBar = s.add.rectangle(0, H - 48, W, 48, 0x0d1b2a, 0.95).setOrigin(0, 0).setDepth(this.depth)
     this.navBorder = s.add.rectangle(0, H - 48, W, 2, 0xffd700).setOrigin(0, 0).setDepth(this.depth)
 
-    const navItems = [
-      { label: 'CATCH', scene: 'Catch' },
-      { label: 'BREED', scene: 'Breed' },
-      { label: 'ZOO', scene: 'Zoo' },
-      { label: 'STORE', scene: 'Store' },
-      { label: 'QUESTS', scene: 'Quests' },
-    ]
-    const btnW = W / navItems.length
-    this.navButtons = navItems.map((item, i) => {
+    const btnW = W / NAV.length
+    this.navButtons = NAV.map((item, i) => {
       const x = btnW * i + btnW / 2
+      const isActive = item.scene === s.scene.key
       const btn = s.add.text(x, H - 24, item.label, {
-        fontFamily: 'monospace', fontSize: '11px', color: '#cccccc',
+        fontFamily: 'monospace', fontSize: '10px', color: isActive ? '#ffd700' : '#cccccc',
       }).setOrigin(0.5).setDepth(this.depth).setInteractive({ useHandCursor: true })
-      btn.on('pointerdown', () => {
-        if (item.scene !== s.scene.key) s.scene.start(item.scene)
-      })
+      btn.on('pointerdown', () => { if (!isActive) s.scene.start(item.scene) })
       btn.on('pointerover', () => btn.setColor('#ffd700'))
-      btn.on('pointerout', () => btn.setColor(item.scene === s.scene.key ? '#ffd700' : '#cccccc'))
-      if (item.scene === s.scene.key) btn.setColor('#ffd700')
+      btn.on('pointerout', () => btn.setColor(isActive ? '#ffd700' : '#cccccc'))
       return btn
     })
 
@@ -83,6 +83,9 @@ export default class HUD {
     this.streakText.setText(`🔥 ${u.streak_windows}`)
     const active = POWERUP_LABELS.filter(([k]) => u[k]).map(([, icon]) => icon).join(' ')
     this.powerupText.setText(active)
+
+    const task = GameState.activeQuestTask()
+    if (task) this.questText.setText(`📜 ${task}`)
   }
 
   setQuestBanner(text) {
@@ -97,9 +100,7 @@ export default class HUD {
     this.questBar.setSize(W, 24)
     this.navBar.setPosition(0, H - 48).setSize(W, 48)
     this.navBorder.setPosition(0, H - 48)
-    const btnW = W / this.navButtons.length
-    this.navButtons.forEach((btn, i) => {
-      btn.setPosition(btnW * i + btnW / 2, H - 24)
-    })
+    const btnW = W / NAV.length
+    this.navButtons.forEach((btn, i) => btn.setPosition(btnW * i + btnW / 2, H - 24))
   }
 }

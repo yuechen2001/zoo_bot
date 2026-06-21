@@ -1,12 +1,16 @@
 // Singleton holding live player state, shared across all scenes
 const GameState = {
-  user: null,       // user row from /user/me
-  animals: [],      // from /animals
-  enclosures: {},   // from /enclosures
+  user: null,
+  animals: [],
+  enclosures: {},
+  quests: null,
+  inventory: [],
 
   setUser(u) { this.user = u },
   setAnimals(a) { this.animals = a },
   setEnclosures(e) { this.enclosures = e },
+  setQuests(q) { this.quests = q },
+  setInventory(inv) { this.inventory = inv },
 
   animalsByHabitat() {
     const map = {}
@@ -16,6 +20,21 @@ const GameState = {
       map[h].push(a)
     }
     return map
+  },
+
+  activeQuestTask() {
+    if (!this.quests) return null
+    const active = this.quests.chapters?.find(ch => ch.is_active)
+    if (!active) return null
+    const task = active.tasks?.find(t => !t.done)
+    return task
+      ? `Ch${active.chapter_num}: ${task.desc}`
+      : `Ch${active.chapter_num}: ${active.title} ✅`
+  },
+
+  lureQty(key) {
+    const item = this.inventory.find(i => i.key === key)
+    return item?.quantity ?? 0
   },
 }
 

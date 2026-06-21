@@ -6,6 +6,7 @@ import BreedScene from './scenes/BreedScene.js'
 import EnclosureScene from './scenes/EnclosureScene.js'
 import StoreScene from './scenes/StoreScene.js'
 import QuestScene from './scenes/QuestScene.js'
+import GamesScene from './scenes/GamesScene.js'
 
 const config = {
   type: Phaser.AUTO,
@@ -13,7 +14,7 @@ const config = {
   height: window.innerHeight,
   backgroundColor: '#1a1a2e',
   pixelArt: true,
-  scene: [BootScene, ZooScene, CatchScene, BreedScene, EnclosureScene, StoreScene, QuestScene],
+  scene: [BootScene, ZooScene, CatchScene, BreedScene, EnclosureScene, StoreScene, QuestScene, GamesScene],
   scale: {
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
