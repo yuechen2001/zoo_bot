@@ -979,6 +979,18 @@ def buy_item(user_id: int, item_key: str, price: int) -> None:
         )
 
 
+def bulk_buy_item(user_id: int, item_key: str, total_cost: int, qty: int) -> None:
+    """Atomically deduct total_cost and record qty purchases of item_key."""
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET coins = ROUND(coins - ?) WHERE user_id = ?", (total_cost, user_id)
+        )
+        conn.executemany(
+            "INSERT INTO user_purchases (user_id, item_key) VALUES (?, ?)",
+            [(user_id, item_key)] * qty,
+        )
+
+
 # ── Scheduler helpers ─────────────────────────────────────────────────────────
 
 

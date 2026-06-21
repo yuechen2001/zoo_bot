@@ -94,7 +94,7 @@ from handlers.gift import gift_command
 from handlers.visit import visit_command, visit_feed_callback
 from handlers.escape import escape_callback
 from handlers.inspect import inspect_command
-from handlers.store import store_command, store_callback, store_tab_callback
+from handlers.store import store_command, store_callback, store_tab_callback, store_qty_callback
 from handlers.footmassage import footmassage_command
 from handlers.wild_event import wild_event_callback
 
@@ -213,6 +213,8 @@ async def handle_callback(update, ctx):
         await gamble_bet_callback(update, ctx)
     elif data.startswith("store_tab_"):
         await store_tab_callback(update, ctx)
+    elif data.startswith("store_qty_"):
+        await store_qty_callback(update, ctx)
     elif data.startswith("store_buy_"):
         await store_callback(update, ctx)
     elif (

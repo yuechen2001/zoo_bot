@@ -3,7 +3,7 @@ from telegram.ext import ContextTypes
 import db
 from game.achievements import triggers
 from game.store_data import STORE_ITEMS, ITEMS, LURES, PURCHASABLE_COSMETICS
-from keyboards import store_tab_keyboard, store_welcome_keyboard
+from keyboards import store_tab_keyboard, store_welcome_keyboard, store_qty_keyboard
 from utils import replace_command_ui
 
 _ACTIVE_FLAGS = {
@@ -198,13 +198,73 @@ async def store_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             pass
         return
 
-    db.deduct_coins(tg_id, item["price"])
-    db.record_purchase(tg_id, key)
+    # Non-cosmetic: show quantity picker
+    qty_text = (
+        f"{item['emoji']} <b>{item['name']}</b> — {item['price']} 🪙 each\n\n"
+        f"How many would you like?\n\n"
+        f"<i>You have {user['coins']} 🪙</i>"
+    )
+    try:
+        await query.edit_message_text(
+            qty_text,
+            parse_mode="HTML",
+            reply_markup=store_qty_keyboard(key, item["price"], user["coins"]),
+        )
+    except Exception:
+        pass
+    await query.answer()
+
+
+@triggers("store")
+async def store_qty_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    tg_id = query.from_user.id
+
+    user = db.get_user(tg_id)
+    if not user:
+        await query.answer("Use /start first!", show_alert=True)
+        return
+
+    rest = query.data.removeprefix("store_qty_")
+    # format: {item_key}_{qty} — item_key may contain underscores so split from right
+    key, _, qty_str = rest.rpartition("_")
+    if not qty_str.isdigit() or not key:
+        await query.answer("Invalid selection.", show_alert=True)
+        return
+
+    qty = int(qty_str)
+    item = STORE_ITEMS.get(key)
+    if not item or item.get("is_special") or item["category"] == "cosmetic":
+        await query.answer("This item can't be bulk purchased.", show_alert=True)
+        return
+
+    total_cost = item["price"] * qty
+    if user["coins"] < total_cost:
+        await query.answer(
+            f"Not enough coins! ×{qty} costs {total_cost} 🪙 (you have {user['coins']} 🪙).",
+            show_alert=True,
+        )
+        return
+
+    db.bulk_buy_item(tg_id, key, total_cost, qty)
+
     if key.startswith("lure_"):
-        msg = f"✅ {item['emoji']} {item['name']} added to your bag! Use /catch to apply it."
+        confirm = f"✅ ×{qty} {item['emoji']} {item['name']} added to your bag!"
     else:
-        msg = f"✅ {item['emoji']} {item['name']} added to your bag! Use /inventory to activate it."
-    await query.answer(msg, show_alert=True)
+        confirm = f"✅ ×{qty} {item['emoji']} {item['name']} added to your bag! Use /inventory to activate."
+    await query.answer(confirm, show_alert=True)
+
+    section = "lures" if key.startswith("lure_") else "items"
+    owned = db.get_owned_title_keys(tg_id)
+    counts = db.get_item_counts(tg_id)
+    try:
+        await query.edit_message_text(
+            _store_section_text(section, tg_id),
+            parse_mode="HTML",
+            reply_markup=store_tab_keyboard(section, owned, counts),
+        )
+    except Exception:
+        pass
 
 
 async def _buy(update, tg_id: int, user, item_key: str):

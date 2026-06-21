@@ -203,6 +203,7 @@ def _make_callback(data):
     query.from_user.id = 1
     query.data = data
     query.answer = AsyncMock()
+    query.edit_message_text = AsyncMock()
     query.edit_message_reply_markup = AsyncMock()
     query.message.reply_text = AsyncMock()
     update = MagicMock()
@@ -238,30 +239,18 @@ async def test_callback_insufficient_coins():
 
 
 @pytest.mark.asyncio
-async def test_callback_buy_item_goes_to_bag():
+async def test_callback_buy_item_shows_qty_picker():
     update, query, ctx = _make_callback("store_buy_mega_feed")
-    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
-        "handlers.store.db.deduct_coins"
-    ) as mock_deduct, patch("handlers.store.db.record_purchase") as mock_record, patch(
-        "game.achievements.check_achievements", new_callable=AsyncMock
-    ):
+    with patch("handlers.store.db.get_user", return_value=_make_user()):
         await store_callback(update, ctx)
-    mock_deduct.assert_called_once_with(1, 30)
-    mock_record.assert_called_once_with(1, "mega_feed")
+    # Should edit the message to the qty picker, not buy directly
+    query.edit_message_text.assert_called_once()
+    text = query.edit_message_text.call_args[0][0]
+    assert "Mega Feed" in text
+    assert "How many" in text
+    # No purchase should have happened
     query.answer.assert_called_once()
-    assert "bag" in query.answer.call_args[0][0].lower()
-
-
-@pytest.mark.asyncio
-async def test_callback_buy_item_points_to_inventory():
-    update, query, ctx = _make_callback("store_buy_mega_feed")
-    with patch("handlers.store.db.get_user", return_value=_make_user()), patch(
-        "handlers.store.db.deduct_coins"
-    ), patch("handlers.store.db.record_purchase"), patch(
-        "game.achievements.check_achievements", new_callable=AsyncMock
-    ):
-        await store_callback(update, ctx)
-    assert "/inventory" in query.answer.call_args[0][0]
+    assert query.answer.call_args[1].get("show_alert") is not True
 
 
 @pytest.mark.asyncio

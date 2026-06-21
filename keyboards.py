@@ -106,6 +106,27 @@ def catch_keyboard(species_id: int, cost: int):
     )
 
 
+_STORE_QTY_OPTIONS = [1, 3, 5, 10]
+
+
+def store_qty_keyboard(item_key: str, price: int, user_coins: int) -> InlineKeyboardMarkup:
+    back_tab = "lures" if item_key.startswith("lure_") else "items"
+    qty_row = []
+    for qty in _STORE_QTY_OPTIONS:
+        total = price * qty
+        if user_coins >= total:
+            qty_row.append(
+                InlineKeyboardButton(
+                    f"×{qty} ({total} 🪙)", callback_data=f"store_qty_{item_key}_{qty}"
+                )
+            )
+        else:
+            qty_row.append(InlineKeyboardButton(f"×{qty} 💸", callback_data="zoo_noop"))
+    return InlineKeyboardMarkup(
+        [qty_row, [InlineKeyboardButton("↩ Back", callback_data=f"store_tab_{back_tab}")]]
+    )
+
+
 def store_welcome_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
