@@ -247,7 +247,7 @@ async def _tick_enclosure_income(ctx):
 
     group_earnings: dict = defaultdict(list)
 
-    now = datetime.datetime.now((datetime.timezone.utc))
+    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
     for user in db.get_all_users_with_animals():
         uid = user["user_id"]
         enclosures = db.get_enclosures(uid)
@@ -284,7 +284,7 @@ async def _tick_enclosure_income(ctx):
     for group_chat_id, earnings in group_earnings.items():
         lines = ["🏦 *Enclosure income ready!*"]
         for mention, coins, pending_total in earnings:
-            lines.append(f"  {mention}: +{coins} 🪙 (total pending: {pending_total} 🪙)")
+            lines.append(f"  {mention}: +{round(coins)} 🪙 (total pending: {pending_total} 🪙)")
         try:
             await ctx.bot.send_message(group_chat_id, "\n".join(lines), parse_mode="Markdown")
         except Exception:
