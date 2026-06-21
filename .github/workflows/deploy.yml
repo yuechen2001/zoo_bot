@@ -16,16 +16,16 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r zoo_cli/requirements.txt
 
       - name: Lint (ruff)
-        run: ruff check .
+        run: ruff check zoo_cli/
 
       - name: Format check (black)
-        run: black --check .
+        run: black --check zoo_cli/
 
       - name: Tests
-        run: pytest --cov=game --cov=species_data --cov-report=term-missing
+        run: cd zoo_cli && pytest --cov=game --cov=species_data --cov-report=term-missing
 
   deploy:
     needs: ci
@@ -41,13 +41,13 @@ jobs:
             cd /opt/zoo_bot
             git fetch origin main
             git reset --hard origin/main
-            ./venv/bin/pip install -r requirements.txt --quiet
+            ./venv/bin/pip install -r zoo_cli/requirements.txt --quiet
             # Inject any keys present in .env.example but missing from .env
             while IFS='=' read -r key value; do
               [[ -z "$key" || "$key" == \#* ]] && continue
-              grep -q "^${key}=" .env || echo "${key}=${value}" >> .env
-            done < .env.example
-            ./venv/bin/python migrate.py up
+              grep -q "^${key}=" zoo_cli/.env || echo "${key}=${value}" >> zoo_cli/.env
+            done < zoo_cli/.env.example
+            ./venv/bin/python zoo_cli/migrate.py up
             sudo systemctl restart zoobot
             sleep 2
             sudo systemctl is-active --quiet zoobot && echo "Bot restarted successfully" || (echo "Bot failed to start" && sudo journalctl -u zoobot -n 20 && exit 1)

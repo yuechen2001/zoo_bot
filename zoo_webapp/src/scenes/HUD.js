@@ -1,0 +1,105 @@
+import Phaser from 'phaser'
+import GameState from '../GameState.js'
+
+const POWERUP_LABELS = [
+  ['lucky_catch_active', '🎯'],
+  ['mood_booster_active', '✨'],
+  ['catch_net_active', '🪤'],
+  ['rare_magnet_active', '🧲'],
+  ['epic_magnet_active', '💜'],
+  ['streak_shield_active', '🛡️'],
+]
+
+export default class HUD {
+  constructor(scene) {
+    this.scene = scene
+    this.depth = 100
+    this._build()
+  }
+
+  _build() {
+    const s = this.scene
+    const W = s.scale.width
+
+    // Top bar background
+    this.topBar = s.add.rectangle(0, 0, W, 40, 0x0d1b2a, 0.95).setOrigin(0, 0).setDepth(this.depth)
+    this.topBarBorder = s.add.rectangle(0, 40, W, 2, 0xffd700).setOrigin(0, 0).setDepth(this.depth)
+
+    // Coins
+    this.coinsText = s.add.text(8, 6, '🪙 0', {
+      fontFamily: 'monospace', fontSize: '14px', color: '#ffd700',
+    }).setDepth(this.depth)
+
+    // Streak
+    this.streakText = s.add.text(W / 2, 6, '🔥 0', {
+      fontFamily: 'monospace', fontSize: '14px', color: '#ff9944',
+    }).setOrigin(0.5, 0).setDepth(this.depth)
+
+    // Power-ups (right side)
+    this.powerupText = s.add.text(W - 8, 6, '', {
+      fontFamily: 'monospace', fontSize: '12px', color: '#aaddff',
+    }).setOrigin(1, 0).setDepth(this.depth)
+
+    // Quest banner
+    this.questBar = s.add.rectangle(0, 42, W, 24, 0x1a3a1a, 0.9).setOrigin(0, 0).setDepth(this.depth)
+    this.questText = s.add.text(8, 46, '📜 —', {
+      fontFamily: 'monospace', fontSize: '11px', color: '#88ff88',
+    }).setDepth(this.depth)
+
+    // Bottom nav bar
+    const H = s.scale.height
+    this.navBar = s.add.rectangle(0, H - 48, W, 48, 0x0d1b2a, 0.95).setOrigin(0, 0).setDepth(this.depth)
+    this.navBorder = s.add.rectangle(0, H - 48, W, 2, 0xffd700).setOrigin(0, 0).setDepth(this.depth)
+
+    const navItems = [
+      { label: 'CATCH', scene: 'Catch' },
+      { label: 'BREED', scene: 'Breed' },
+      { label: 'ZOO', scene: 'Zoo' },
+      { label: 'STORE', scene: 'Store' },
+      { label: 'QUESTS', scene: 'Quests' },
+    ]
+    const btnW = W / navItems.length
+    this.navButtons = navItems.map((item, i) => {
+      const x = btnW * i + btnW / 2
+      const btn = s.add.text(x, H - 24, item.label, {
+        fontFamily: 'monospace', fontSize: '11px', color: '#cccccc',
+      }).setOrigin(0.5).setDepth(this.depth).setInteractive({ useHandCursor: true })
+      btn.on('pointerdown', () => {
+        if (item.scene !== s.scene.key) s.scene.start(item.scene)
+      })
+      btn.on('pointerover', () => btn.setColor('#ffd700'))
+      btn.on('pointerout', () => btn.setColor(item.scene === s.scene.key ? '#ffd700' : '#cccccc'))
+      if (item.scene === s.scene.key) btn.setColor('#ffd700')
+      return btn
+    })
+
+    this.update()
+  }
+
+  update() {
+    const u = GameState.user
+    if (!u) return
+    this.coinsText.setText(`🪙 ${u.coins}`)
+    this.streakText.setText(`🔥 ${u.streak_windows}`)
+    const active = POWERUP_LABELS.filter(([k]) => u[k]).map(([, icon]) => icon).join(' ')
+    this.powerupText.setText(active)
+  }
+
+  setQuestBanner(text) {
+    this.questText.setText(`📜 ${text}`)
+  }
+
+  resize(W, H) {
+    this.topBar.setSize(W, 40)
+    this.topBarBorder.setSize(W, 2)
+    this.streakText.setX(W / 2)
+    this.powerupText.setX(W - 8)
+    this.questBar.setSize(W, 24)
+    this.navBar.setPosition(0, H - 48).setSize(W, 48)
+    this.navBorder.setPosition(0, H - 48)
+    const btnW = W / this.navButtons.length
+    this.navButtons.forEach((btn, i) => {
+      btn.setPosition(btnW * i + btnW / 2, H - 24)
+    })
+  }
+}

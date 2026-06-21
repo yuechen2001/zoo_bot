@@ -7,6 +7,16 @@ __pycache__/
 *.pyc
 
 # Agent harness files — local only
-CLAUDE.md
-docs/
-tests/test_architecture.py
+zoo_cli/CLAUDE.md
+zoo_cli/docs/
+zoo_cli/tests/test_architecture.py
+
+# zoo_api
+zoo_api/.venv/
+zoo_api/__pycache__/
+zoo_api/routers/__pycache__/
+zoo_api/.env
+
+# zoo_webapp
+zoo_webapp/node_modules/
+zoo_webapp/dist/

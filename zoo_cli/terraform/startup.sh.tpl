@@ -15,10 +15,10 @@ cd /opt/zoo_bot
 # ── Python venv + dependencies ────────────────────────────────────────────────
 python3 -m venv venv
 /opt/zoo_bot/venv/bin/pip install --upgrade pip
-/opt/zoo_bot/venv/bin/pip install -r requirements.txt
+/opt/zoo_bot/venv/bin/pip install -r zoo_cli/requirements.txt
 
 # ── Write .env ────────────────────────────────────────────────────────────────
-cat > /opt/zoo_bot/.env << 'ENVEOF'
+cat > /opt/zoo_bot/zoo_cli/.env << 'ENVEOF'
 BOT_TOKEN=${bot_token}
 DATABASE_PATH=${database_path}
 PROMPT_INTERVAL_MINUTES=${prompt_interval}
@@ -35,7 +35,7 @@ Description=Zoo Bot
 After=network.target
 
 [Service]
-WorkingDirectory=/opt/zoo_bot
+WorkingDirectory=/opt/zoo_bot/zoo_cli
 ExecStart=/opt/zoo_bot/venv/bin/python main.py
 Restart=always
 RestartSec=5
