@@ -502,7 +502,9 @@ def collect_investment(investment_id: int):
 
 def add_coins(user_id: int, amount: int):
     with get_conn() as conn:
-        conn.execute("UPDATE users SET coins = coins + ? WHERE user_id = ?", (amount, user_id))
+        conn.execute(
+            "UPDATE users SET coins = ROUND(coins + ?) WHERE user_id = ?", (amount, user_id)
+        )
 
 
 # ── Enclosures ────────────────────────────────────────────────────────────────
@@ -583,7 +585,7 @@ def upgrade_enclosure(user_id: int, habitat: str) -> str:
         user = conn.execute("SELECT coins FROM users WHERE user_id = ?", (user_id,)).fetchone()
         if not user or user["coins"] < cost:
             return "insufficient_coins"
-        conn.execute("UPDATE users SET coins = coins - ? WHERE user_id = ?", (cost, user_id))
+        conn.execute("UPDATE users SET coins = ROUND(coins - ?) WHERE user_id = ?", (cost, user_id))
         conn.execute(
             "INSERT INTO user_enclosures (user_id, habitat, level) VALUES (?, ?, ?) "
             "ON CONFLICT(user_id, habitat) DO UPDATE SET level = level + 1",
@@ -646,7 +648,7 @@ def get_pending_enclosure_coins(user_id: int) -> int:
 def add_pending_enclosure_coins(user_id: int, amount: int):
     with get_conn() as conn:
         conn.execute(
-            "UPDATE users SET pending_enclosure_coins = pending_enclosure_coins + ? WHERE user_id = ?",
+            "UPDATE users SET pending_enclosure_coins = ROUND(pending_enclosure_coins + ?) WHERE user_id = ?",
             (amount, user_id),
         )
 
@@ -659,9 +661,9 @@ def collect_enclosure_coins(user_id: int) -> int:
         ).fetchone()
         if not row or row["pending_enclosure_coins"] == 0:
             return 0
-        amount = row["pending_enclosure_coins"]
+        amount = round(row["pending_enclosure_coins"])
         conn.execute(
-            "UPDATE users SET coins = coins + ?, pending_enclosure_coins = 0 WHERE user_id = ?",
+            "UPDATE users SET coins = ROUND(coins + ?), pending_enclosure_coins = 0 WHERE user_id = ?",
             (amount, user_id),
         )
         return amount
@@ -760,7 +762,9 @@ def get_owned_title_keys(user_id: int) -> set[str]:
 
 def deduct_coins(user_id: int, amount: int):
     with get_conn() as conn:
-        conn.execute("UPDATE users SET coins = coins - ? WHERE user_id = ?", (amount, user_id))
+        conn.execute(
+            "UPDATE users SET coins = ROUND(coins - ?) WHERE user_id = ?", (amount, user_id)
+        )
 
 
 def get_oldest_purchase(user_id: int, item_key: str):
@@ -831,7 +835,7 @@ def record_checkin(user_id: int, emoji: str, coins: int, new_streak: int, now_st
     with get_conn() as conn:
         conn.execute(
             "UPDATE users SET streak_windows = ?, consecutive_misses = 0, "
-            "coins = coins + ?, last_checkin_at = ? WHERE user_id = ?",
+            "coins = ROUND(coins + ?), last_checkin_at = ? WHERE user_id = ?",
             (new_streak, coins, now_str, user_id),
         )
         conn.execute(
@@ -847,7 +851,7 @@ def record_checkin(user_id: int, emoji: str, coins: int, new_streak: int, now_st
 def activate_massage(user_id: int, cost: int, massage_until: str) -> None:
     with get_conn() as conn:
         conn.execute(
-            "UPDATE users SET coins = coins - ?, massage_active_until = ? WHERE user_id = ?",
+            "UPDATE users SET coins = ROUND(coins - ?), massage_active_until = ? WHERE user_id = ?",
             (cost, massage_until, user_id),
         )
 
@@ -858,7 +862,7 @@ def activate_massage(user_id: int, cost: int, massage_until: str) -> None:
 def feed_animal(user_id: int, animal_id: str, new_hunger: int, feed_cost: int) -> None:
     with get_conn() as conn:
         conn.execute(
-            "UPDATE users SET coins = coins - ?, feeds_given = feeds_given + 1 WHERE user_id = ?",
+            "UPDATE users SET coins = ROUND(coins - ?), feeds_given = feeds_given + 1 WHERE user_id = ?",
             (feed_cost, user_id),
         )
         conn.execute(
@@ -879,7 +883,7 @@ def start_breed(
     cost: int,
 ) -> None:
     with get_conn() as conn:
-        conn.execute("UPDATE users SET coins = coins - ? WHERE user_id = ?", (cost, user_id))
+        conn.execute("UPDATE users SET coins = ROUND(coins - ?) WHERE user_id = ?", (cost, user_id))
         conn.execute(
             "UPDATE animals SET is_breeding = 1 WHERE animal_id IN (?, ?)",
             (animal_a_id, animal_b_id),
@@ -967,7 +971,9 @@ def get_breeding_animal_ids(user_id: int) -> set:
 def buy_item(user_id: int, item_key: str, price: int) -> None:
     """Atomically deduct coins and record the purchase."""
     with get_conn() as conn:
-        conn.execute("UPDATE users SET coins = coins - ? WHERE user_id = ?", (price, user_id))
+        conn.execute(
+            "UPDATE users SET coins = ROUND(coins - ?) WHERE user_id = ?", (price, user_id)
+        )
         conn.execute(
             "INSERT INTO user_purchases (user_id, item_key) VALUES (?, ?)", (user_id, item_key)
         )
@@ -998,7 +1004,7 @@ def adjust_coins(user_id: int, delta: int) -> None:
     """Add (or remove) coins, floored at 0."""
     with get_conn() as conn:
         conn.execute(
-            "UPDATE users SET coins = MAX(0, coins + ?) WHERE user_id = ?", (delta, user_id)
+            "UPDATE users SET coins = ROUND(MAX(0, coins + ?)) WHERE user_id = ?", (delta, user_id)
         )
 
 
@@ -1109,7 +1115,7 @@ def claim_daily(user_id: int, coins: int, new_streak: int, now_str: str) -> None
             "INSERT INTO daily_log (user_id, claimed_at) VALUES (?, ?)", (user_id, now_str)
         )
         conn.execute(
-            "UPDATE users SET coins = coins + ?, daily_streak = ? WHERE user_id = ?",
+            "UPDATE users SET coins = ROUND(coins + ?), daily_streak = ? WHERE user_id = ?",
             (coins, new_streak, user_id),
         )
 
@@ -1128,7 +1134,9 @@ def sell_animal(user_id: int, animal_id: str, price: int) -> None:
             (animal_id, animal_id),
         )
         conn.execute("DELETE FROM animals WHERE animal_id = ?", (animal_id,))
-        conn.execute("UPDATE users SET coins = coins + ? WHERE user_id = ?", (price, user_id))
+        conn.execute(
+            "UPDATE users SET coins = ROUND(coins + ?) WHERE user_id = ?", (price, user_id)
+        )
 
 
 # ── Name ──────────────────────────────────────────────────────────────────────
@@ -1392,7 +1400,7 @@ def complete_chapter(user_id: int, chapter_num: int, reward_coins: int) -> None:
             (user_id, chapter_num),
         )
         conn.execute(
-            "UPDATE users SET coins = coins + ? WHERE user_id = ?",
+            "UPDATE users SET coins = ROUND(coins + ?) WHERE user_id = ?",
             (reward_coins, user_id),
         )
 
