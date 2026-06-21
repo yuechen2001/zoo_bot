@@ -484,14 +484,11 @@ async def escape_tick(ctx):
         users = db.get_users_in_group(group_chat_id)
         candidates = []
         for user in users:
-            animals = [
-                a
-                for a in db.get_animals(user["user_id"])
-                if not a["is_breeding"] and get_stage(a["caught_at"]) != "elder"
-            ]
+            animals = [a for a in db.get_animals(user["user_id"]) if not a["is_breeding"]]
             for a in animals:
                 candidates.append((user, a))
         if not candidates:
+            logger.info("escape_tick: no candidates in group %s, skipping", group_chat_id)
             continue
         user, animal = random.choice(candidates)
         name = animal["nickname"] or animal["species_name"]
