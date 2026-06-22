@@ -15,7 +15,10 @@ async def play_command(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if not WEBAPP_URL:
         await update.message.reply_text("The zoo web app isn't set up yet. Stay tuned!")
         return
-    kb = InlineKeyboardMarkup(
-        [[InlineKeyboardButton("🎮 Open Zoo", web_app=WebAppInfo(url=WEBAPP_URL))]]
-    )
+    if update.message.chat.type == "private":
+        kb = InlineKeyboardMarkup(
+            [[InlineKeyboardButton("🎮 Open Zoo", web_app=WebAppInfo(url=WEBAPP_URL))]]
+        )
+    else:
+        kb = InlineKeyboardMarkup([[InlineKeyboardButton("🎮 Open Zoo", url=WEBAPP_URL)]])
     await update.message.reply_text("Tap below to open your zoo!", reply_markup=kb)
