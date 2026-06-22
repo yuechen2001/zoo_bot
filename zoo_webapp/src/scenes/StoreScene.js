@@ -25,6 +25,16 @@ export default class StoreScene extends Phaser.Scene {
   _render() {
     this._clear()
     const { width } = this.scale
+
+    // Inventory shortcut
+    const invBtn = this.add.text(width - 8, 54, '🎒 Inventory', {
+      fontFamily: 'monospace', fontSize: '11px', color: '#aaaaaa',
+    }).setOrigin(1, 0.5).setDepth(1).setInteractive({ useHandCursor: true })
+    invBtn.on('pointerdown', () => this.scene.start('Inventory'))
+    invBtn.on('pointerover', () => invBtn.setColor('#ffd700'))
+    invBtn.on('pointerout', () => invBtn.setColor('#aaaaaa'))
+    this._objs.push(invBtn)
+
     const tabW = width / TABS.length
 
     // Tabs

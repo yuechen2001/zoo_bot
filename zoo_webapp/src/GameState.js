@@ -33,8 +33,7 @@ const GameState = {
   },
 
   lureQty(key) {
-    const item = this.inventory.find(i => i.key === key)
-    return item?.quantity ?? 0
+    return this.inventory?.lures?.[key] ?? 0
   },
 }
 
