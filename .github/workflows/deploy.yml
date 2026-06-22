@@ -27,6 +27,28 @@ jobs:
       - name: Tests
         run: cd zoo_cli && pytest --cov=game --cov=species_data --cov-report=term-missing
 
+  api-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install zoo_cli deps (shared by API at runtime)
+        run: pip install -r zoo_cli/requirements.txt
+
+      - name: Install zoo_api deps
+        run: pip install -r zoo_api/requirements.txt
+
+      - name: Lint (ruff)
+        run: ruff check zoo_api/
+
+      - name: Format check (black)
+        run: black --check zoo_api/
+
   webapp-ci:
     runs-on: ubuntu-latest
     steps:
@@ -45,7 +67,7 @@ jobs:
         run: cd zoo_webapp && npm run build
 
   deploy:
-    needs: [ci, webapp-ci]
+    needs: [ci, api-ci, webapp-ci]
     runs-on: ubuntu-latest
     steps:
       - name: Deploy bot + API to GCP VM
