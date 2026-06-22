@@ -1,3 +1,6 @@
+# Web auth
+WEB_LINK_EXPIRY_HOURS = 24
+
 # Catch / lures
 LURE_MULTIPLIER = 1.5
 NO_LURE_COST = 10

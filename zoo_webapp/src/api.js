@@ -1,7 +1,23 @@
 const API_BASE = '/api/v1'
 
-function getInitData() {
-  return window.Telegram?.WebApp?.initData || ''
+// Persist magic link token from URL into localStorage, then clean the URL
+;(function () {
+  const p = new URLSearchParams(window.location.search)
+  const t = p.get('token')
+  if (t) {
+    localStorage.setItem('zoo_web_token', t)
+    p.delete('token')
+    const clean = window.location.pathname + (p.toString() ? '?' + p : '')
+    window.history.replaceState({}, '', clean)
+  }
+})()
+
+function getAuthHeaders() {
+  const tgData = window.Telegram?.WebApp?.initData
+  if (tgData) return { 'X-Telegram-Init-Data': tgData }
+  const webToken = localStorage.getItem('zoo_web_token')
+  if (webToken) return { 'X-Web-Auth-Token': webToken }
+  return {}
 }
 
 async function request(method, path, body = null) {
@@ -9,7 +25,7 @@ async function request(method, path, body = null) {
     method,
     headers: {
       'Content-Type': 'application/json',
-      'X-Telegram-Init-Data': getInitData(),
+      ...getAuthHeaders(),
     },
   }
   if (body !== null) opts.body = JSON.stringify(body)

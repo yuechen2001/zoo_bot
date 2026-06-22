@@ -55,6 +55,7 @@ from .visit import visit_command, visit_feed_callback
 from .escape import escape_callback
 from .inspect import inspect_command
 from .play import play_command
+from .magic_link import weblink_command
 
 __all__ = [
     "start_command",
@@ -122,4 +123,5 @@ __all__ = [
     "escape_callback",
     "inspect_command",
     "play_command",
+    "weblink_command",
 ]

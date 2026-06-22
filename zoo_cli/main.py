@@ -32,6 +32,7 @@ from scheduler import (
 )
 from handlers import (
     play_command,
+    weblink_command,
     achievements_command,
     achievements_tab_callback,
     admin_command,
@@ -145,6 +146,7 @@ async def post_init(application):
             BotCommand("inspect", "View an animal's hidden trait stats"),
             BotCommand("help", "Show all commands"),
             BotCommand("play", "Open the pixel-art zoo UI"),
+            BotCommand("weblink", "Get a browser link to your zoo (24h)"),
         ]
     )
 
@@ -299,6 +301,7 @@ def main():
     app.add_handler(CommandHandler("quests", quests_command))
     app.add_handler(CommandHandler("inspect", inspect_command))
     app.add_handler(CommandHandler("play", play_command))
+    app.add_handler(CommandHandler("weblink", weblink_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, name_text_handler))
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_error_handler(error_handler)
