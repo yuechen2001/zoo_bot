@@ -44,8 +44,14 @@ export default class HUD {
       fontFamily: 'monospace', fontSize: '14px', color: '#ff9944',
     }).setOrigin(0.5, 0).setDepth(this.depth)
 
-    // Power-ups (right side)
-    this.powerupText = s.add.text(W - 8, 6, '', {
+    // Achievements trophy button
+    this.trophyBtn = s.add.text(W - 8, 6, '🏆', {
+      fontSize: '16px',
+    }).setOrigin(1, 0).setDepth(this.depth).setInteractive({ useHandCursor: true })
+    this.trophyBtn.on('pointerdown', () => s.scene.start('Achievements'))
+
+    // Power-ups (right of streak, left of trophy)
+    this.powerupText = s.add.text(W - 28, 6, '', {
       fontFamily: 'monospace', fontSize: '12px', color: '#aaddff',
     }).setOrigin(1, 0).setDepth(this.depth)
 
@@ -96,7 +102,8 @@ export default class HUD {
     this.topBar.setSize(W, 40)
     this.topBarBorder.setSize(W, 2)
     this.streakText.setX(W / 2)
-    this.powerupText.setX(W - 8)
+    this.trophyBtn.setX(W - 8)
+    this.powerupText.setX(W - 28)
     this.questBar.setSize(W, 24)
     this.navBar.setPosition(0, H - 48).setSize(W, 48)
     this.navBorder.setPosition(0, H - 48)

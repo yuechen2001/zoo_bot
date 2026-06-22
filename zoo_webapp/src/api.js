@@ -49,6 +49,12 @@ export const api = {
   getQuests: () => request('GET', '/quests'),
   getAchievements: () => request('GET', '/achievements'),
 
+  getPendingEscape: () => request('GET', '/escapes/pending'),
+  resolveEscape: (escape_id, action) => request('POST', `/escapes/${escape_id}/resolve`, { action }),
+
+  getActiveWildEvent: () => request('GET', '/wild-events/active'),
+  claimWildEvent: (event_id) => request('POST', `/wild-events/${event_id}/claim`),
+
   getInvestment: () => request('GET', '/investments'),
   createInvestment: (amount) => request('POST', '/investments/create', { amount }),
   collectInvestment: () => request('POST', '/investments/collect'),

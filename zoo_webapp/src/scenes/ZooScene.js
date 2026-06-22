@@ -133,6 +133,14 @@ export default class ZooScene extends Phaser.Scene {
         this._tiles.push(empty)
         this.scrollContainer.add(empty)
       }
+
+      // Enclosure shortcut button (bottom-right of tile)
+      const encBtn = this.add.text(x + TILE_W - 4, y + TILE_H - 4, '🏠', {
+        fontSize: '14px',
+      }).setOrigin(1, 1).setInteractive({ useHandCursor: true }).setDepth(5)
+      encBtn.on('pointerdown', () => this.scene.start('Enclosures'))
+      this._tiles.push(encBtn)
+      this.scrollContainer.add(encBtn)
     })
 
     // Enable drag-to-scroll if content is taller than screen
@@ -270,6 +278,9 @@ export default class ZooScene extends Phaser.Scene {
   }
 
   _setupBreedPoller() {
+    this._escapeModalOpen = false
+    this._wildEventBannerOpen = false
+
     this.time.addEvent({
       delay: 30000,
       loop: true,
@@ -280,7 +291,189 @@ export default class ZooScene extends Phaser.Scene {
             this.hud.setQuestBanner('🐣 Your breed is ready! Open BREED to collect.')
           }
         } catch (_) {}
+
+        if (!this._escapeModalOpen) {
+          try {
+            const escape = await api.getPendingEscape()
+            if (escape) this._showEscapeModal(escape)
+          } catch (_) {}
+        }
+
+        if (!this._wildEventBannerOpen) {
+          try {
+            const wild = await api.getActiveWildEvent()
+            if (wild) this._showWildEventBanner(wild)
+          } catch (_) {}
+        }
       },
+    })
+  }
+
+  _showEscapeModal(escape) {
+    if (this._escapeModalOpen) return
+    this._escapeModalOpen = true
+
+    const { width, height } = this.scale
+    const panelW = Math.min(280, width - 20)
+    const panelH = 210
+    const px = (width - panelW) / 2
+    const py = (height - panelH) / 2
+
+    const objs = []
+    const close = () => {
+      objs.forEach(o => o.destroy())
+      this._escapeModalOpen = false
+    }
+
+    const bg = this.add.rectangle(px, py, panelW, panelH, 0x1a0a00, 0.97).setOrigin(0, 0).setDepth(60)
+    const border = this.add.rectangle(px, py, panelW, panelH).setStrokeStyle(2, 0xff6622).setOrigin(0, 0).setDepth(60)
+
+    const title = this.add.text(px + panelW / 2, py + 10, `🚨 ${escape.emoji} ${escape.name} escaped!`, {
+      fontFamily: 'monospace', fontSize: '12px', color: '#ff6622', wordWrap: { width: panelW - 20 },
+    }).setOrigin(0.5, 0).setDepth(61)
+
+    const sub = this.add.text(px + panelW / 2, py + 36, `Habitat: ${escape.habitat}`, {
+      fontFamily: 'monospace', fontSize: '10px', color: '#aaaaaa',
+    }).setOrigin(0.5, 0).setDepth(61)
+
+    objs.push(bg, border, title, sub)
+
+    const actions = [
+      { label: '🎣 Lure (90%)', action: 'lure', color: 0x1a3a5a },
+      { label: '🏃 Chase (35%)', action: 'chase', color: 0x3a1a00 },
+      { label: '🕊️ Release', action: 'release', color: 0x1a1a1a },
+      { label: '✕ Later', action: null, color: 0x222222 },
+    ]
+
+    const btnW = (panelW - 16) / 2
+    actions.forEach((act, i) => {
+      const bx = px + 8 + (i % 2) * (btnW + 4)
+      const by = py + 70 + Math.floor(i / 2) * 44
+      const btnBg = this.add.rectangle(bx, by, btnW, 34, act.color).setOrigin(0, 0).setDepth(61).setInteractive({ useHandCursor: true })
+      const btnLabel = this.add.text(bx + btnW / 2, by + 17, act.label, {
+        fontFamily: 'monospace', fontSize: '10px', color: '#ffffff',
+      }).setOrigin(0.5).setDepth(62)
+      btnBg.on('pointerover', () => btnBg.setAlpha(0.75))
+      btnBg.on('pointerout', () => btnBg.setAlpha(1))
+      btnBg.on('pointerdown', async () => {
+        if (!act.action) { close(); return }
+        btnBg.disableInteractive()
+        try {
+          const res = await api.resolveEscape(escape.escape_id, act.action)
+          close()
+          this._showToast(res.message)
+          if (res.success) {
+            const animals = await api.getAnimals()
+            GameState.setAnimals(animals)
+            this._rebuildWorld()
+          }
+        } catch (err) {
+          close()
+          this._showToast(err.message)
+        }
+      })
+      objs.push(btnBg, btnLabel)
+    })
+  }
+
+  _showWildEventBanner(wild) {
+    if (this._wildEventBannerOpen) return
+    this._wildEventBannerOpen = true
+
+    const { width, height } = this.scale
+    const bannerY = height - 56 - 48
+
+    const objs = []
+    const close = () => {
+      objs.forEach(o => o.destroy())
+      this._wildEventBannerOpen = false
+    }
+
+    const bg = this.add.rectangle(0, bannerY, width, 48, 0x1a1a00, 0.95).setOrigin(0, 0).setDepth(55)
+    const border = this.add.rectangle(0, bannerY, width, 2, 0xffdd00).setOrigin(0, 0).setDepth(55)
+
+    const txt = this.add.text(12, bannerY + 8, `⚡ Wild ${wild.species_emoji} ${wild.species_name} spotted! (${wild.rarity})`, {
+      fontFamily: 'monospace', fontSize: '11px', color: '#ffdd00',
+    }).setDepth(56)
+
+    const claimBtn = this.add.text(width - 70, bannerY + 8, '[ CLAIM ]', {
+      fontFamily: 'monospace', fontSize: '11px', color: '#ffffff',
+      backgroundColor: '#444400', padding: { x: 4, y: 2 },
+    }).setDepth(56).setInteractive({ useHandCursor: true })
+
+    const dismissBtn = this.add.text(width - 14, bannerY + 8, '✕', {
+      fontFamily: 'monospace', fontSize: '11px', color: '#888888',
+    }).setOrigin(1, 0).setDepth(56).setInteractive({ useHandCursor: true })
+
+    dismissBtn.on('pointerdown', close)
+
+    claimBtn.on('pointerdown', () => {
+      close()
+      this._showWildClaimModal(wild)
+    })
+
+    objs.push(bg, border, txt, claimBtn, dismissBtn)
+  }
+
+  _showWildClaimModal(wild) {
+    const { width, height } = this.scale
+    const panelW = Math.min(260, width - 20)
+    const panelH = 180
+    const px = (width - panelW) / 2
+    const py = (height - panelH) / 2
+
+    const objs = []
+    const close = () => objs.forEach(o => o.destroy())
+
+    const bg = this.add.rectangle(px, py, panelW, panelH, 0x001a1a, 0.97).setOrigin(0, 0).setDepth(60)
+    const border = this.add.rectangle(px, py, panelW, panelH).setStrokeStyle(2, 0xffdd00).setOrigin(0, 0).setDepth(60)
+
+    const title = this.add.text(px + panelW / 2, py + 10, `⚡ ${wild.species_emoji} ${wild.species_name}`, {
+      fontFamily: 'monospace', fontSize: '14px', color: '#ffdd00',
+    }).setOrigin(0.5, 0).setDepth(61)
+
+    const rarityTxt = this.add.text(px + panelW / 2, py + 32, wild.rarity.toUpperCase(), {
+      fontFamily: 'monospace', fontSize: '11px', color: '#aaaaaa',
+    }).setOrigin(0.5, 0).setDepth(61)
+
+    const noteTxt = this.add.text(px + panelW / 2, py + 52, `Needs ${wild.habitat} lure to claim`, {
+      fontFamily: 'monospace', fontSize: '10px', color: '#888888',
+    }).setOrigin(0.5, 0).setDepth(61)
+
+    objs.push(bg, border, title, rarityTxt, noteTxt)
+
+    const btnW = (panelW - 16) / 2
+    const buttons = [
+      { label: '🎯 Claim!', primary: true },
+      { label: '✕ Cancel', primary: false },
+    ]
+    buttons.forEach(({ label, primary }, i) => {
+      const bx = px + 8 + i * (btnW + 4)
+      const by = py + 110
+      const btnBg = this.add.rectangle(bx, by, btnW, 36, primary ? 0x3a3a00 : 0x222222).setOrigin(0, 0).setDepth(61).setInteractive({ useHandCursor: true })
+      const btnLabel = this.add.text(bx + btnW / 2, by + 18, label, {
+        fontFamily: 'monospace', fontSize: '11px', color: primary ? '#ffdd00' : '#888888',
+      }).setOrigin(0.5).setDepth(62)
+      btnBg.on('pointerover', () => btnBg.setAlpha(0.75))
+      btnBg.on('pointerout', () => btnBg.setAlpha(1))
+      btnBg.on('pointerdown', async () => {
+        if (!primary) { close(); return }
+        btnBg.disableInteractive()
+        try {
+          const res = await api.claimWildEvent(wild.event_id)
+          close()
+          this._showToast(res.message)
+          if (res.caught) {
+            const animals = await api.getAnimals()
+            GameState.setAnimals(animals)
+            this._rebuildWorld()
+          }
+        } catch (err) {
+          close()
+          this._showToast(err.message)
+        }
+      })
+      objs.push(btnBg, btnLabel)
     })
   }
 }
