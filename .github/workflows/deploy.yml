@@ -77,6 +77,7 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            git config --global --add safe.directory /opt/zoo_bot
             cd /opt/zoo_bot
             git fetch origin main
             git reset --hard origin/main
@@ -88,13 +89,13 @@ jobs:
             # Inject any keys present in .env.example but missing from bot .env
             while IFS='=' read -r key value; do
               [[ -z "$key" || "$key" == \#* ]] && continue
-              grep -q "^${key}=" zoo_cli/.env || echo "${key}=${value}" >> zoo_cli/.env
+              grep -q "^${key}=" /opt/zoo_bot/zoo_cli/.env || echo "${key}=${value}" | sudo tee -a /opt/zoo_bot/zoo_cli/.env > /dev/null
             done < zoo_cli/.env.example
 
             # Inject any keys present in .env.example but missing from API .env
             while IFS='=' read -r key value; do
               [[ -z "$key" || "$key" == \#* ]] && continue
-              grep -q "^${key}=" zoo_api/.env || echo "${key}=${value}" >> zoo_api/.env
+              grep -q "^${key}=" /opt/zoo_bot/zoo_api/.env || echo "${key}=${value}" | sudo tee -a /opt/zoo_bot/zoo_api/.env > /dev/null
             done < zoo_api/.env.example
 
             # Run DB migrations
