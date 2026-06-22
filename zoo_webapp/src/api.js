@@ -44,9 +44,16 @@ export const api = {
   getInventory: () => request('GET', '/inventory'),
   useItem: (item_key) => request('POST', '/inventory/use', { item_key }),
   equipTitle: (title_key) => request('POST', '/inventory/equip', { title_key }),
+  unequipTitle: () => request('POST', '/inventory/equip', { title_key: null }),
 
   getQuests: () => request('GET', '/quests'),
   getAchievements: () => request('GET', '/achievements'),
+
+  getInvestment: () => request('GET', '/investments'),
+  createInvestment: (amount) => request('POST', '/investments/create', { amount }),
+  collectInvestment: () => request('POST', '/investments/collect'),
+
+  massageAnimals: () => request('POST', '/minigames/massage'),
 
   claimDaily: () => request('POST', '/daily/claim'),
   getTriviaQuestion: () => request('GET', '/trivia/question'),

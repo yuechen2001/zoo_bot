@@ -11,8 +11,18 @@ export default class GamesScene extends Phaser.Scene {
     this._objs = []
     this._triviaState = null  // null | { question, choices, answer_key, wager }
     this._triviaWager = 0
+    this._investData = null   // null = loading, object = loaded
+    this._investAmt = 100
     this._render()
+    this._loadInvestment()
     this.scale.on('resize', (s) => { this.hud.resize(s.width, s.height); this._render() })
+  }
+
+  async _loadInvestment() {
+    try {
+      this._investData = await api.getInvestment()
+      this._render()
+    } catch (_) {}
   }
 
   _clear() { this._objs.forEach(o => o.destroy()); this._objs = [] }
@@ -28,10 +38,12 @@ export default class GamesScene extends Phaser.Scene {
     this._objs.push(title)
     y += 30
 
+    y = this._renderMassageCard(y)
     y = this._renderDailyCard(y)
     y = this._renderTriviaCard(y)
     y = this._renderSlotsCard(y)
     y = this._renderGambleCard(y)
+    y = this._renderInvestCard(y)
   }
 
   // ── Daily Claim ──────────────────────────────────────────────────────────────
@@ -255,6 +267,170 @@ export default class GamesScene extends Phaser.Scene {
       GameState.setUser(user)
       this.hud.update()
       this._gambResult = res
+      this._render()
+    } catch (err) {
+      this._showToast(err.message)
+    }
+  }
+
+  // ── Foot Massage ─────────────────────────────────────────────────────────────
+
+  _getMassageStatus() {
+    const ts = GameState.user?.massage_active_until
+    if (!ts) return { state: 'available' }
+    const untilMs = new Date(ts + 'Z').getTime()
+    const now = Date.now()
+    if (untilMs > now) {
+      return { state: 'active', minsLeft: Math.ceil((untilMs - now) / 60000) }
+    }
+    const cooldownEnd = untilMs + 4 * 3600 * 1000
+    if (now < cooldownEnd) {
+      return { state: 'cooldown', minsLeft: Math.ceil((cooldownEnd - now) / 60000) }
+    }
+    return { state: 'available' }
+  }
+
+  _renderMassageCard(y) {
+    const { width } = this.scale
+    y = this._cardBg(y, 72)
+    this.add.text(12, y + 8, '🦶 Foot Massage  (25 🪙)', {
+      fontFamily: 'monospace', fontSize: '13px', color: '#ffffff',
+    }).setDepth(1)
+
+    const status = this._getMassageStatus()
+    let statusText = ''
+    if (status.state === 'active') statusText = `Active — ${status.minsLeft}m left`
+    else if (status.state === 'cooldown') statusText = `Cooldown — ${status.minsLeft}m`
+    this.add.text(12, y + 28, statusText || 'Halves hunger decay for 1h', {
+      fontFamily: 'monospace', fontSize: '10px', color: '#aaaaaa',
+    }).setDepth(1)
+
+    const canMassage = status.state === 'available'
+    const btn = this.add.rectangle(width - 14, y + 38, 100, 26, canMassage ? 0x1a2a4a : 0x111111)
+      .setOrigin(1, 0.5).setDepth(1).setInteractive({ useHandCursor: canMassage })
+    const btnLabel = this.add.text(width - 14, y + 38, 'MASSAGE', {
+      fontFamily: 'monospace', fontSize: '11px', color: canMassage ? '#aaddff' : '#555555',
+    }).setOrigin(1, 0.5).setDepth(2)
+    if (canMassage) {
+      btn.on('pointerdown', () => this._massage())
+      btn.on('pointerover', () => btn.setFillStyle(0x2a4a7a))
+      btn.on('pointerout', () => btn.setFillStyle(0x1a2a4a))
+    }
+    this._objs.push(btn, btnLabel)
+    return y + 80
+  }
+
+  async _massage() {
+    try {
+      await api.massageAnimals()
+      const user = await api.getMe()
+      GameState.setUser(user)
+      this.hud.update()
+      this._showToast('🦶 Massage activated! Hunger decays slower for 1h')
+      this._render()
+    } catch (err) {
+      this._showToast(err.message)
+    }
+  }
+
+  // ── Investment Bank ───────────────────────────────────────────────────────────
+
+  _renderInvestCard(y) {
+    const { width } = this.scale
+    const d = this._investData
+    const cardH = d?.active ? 100 : 100
+    y = this._cardBg(y, cardH)
+
+    this.add.text(12, y + 8, '📈 Investment Bank', {
+      fontFamily: 'monospace', fontSize: '13px', color: '#ffffff',
+    }).setDepth(1)
+
+    if (!d) {
+      this.add.text(12, y + 30, 'Loading…', {
+        fontFamily: 'monospace', fontSize: '10px', color: '#555555',
+      }).setDepth(1)
+      return y + cardH + 8
+    }
+
+    if (d.active) {
+      const readyLabel = d.is_ready ? '✅ READY TO COLLECT' : `⏳ ${this._fmtSecs(d.seconds_remaining)}`
+      this.add.text(12, y + 28, `${d.amount} 🪙  →  ${d.return_amount} 🪙  (+${d.rate_pct}%)`, {
+        fontFamily: 'monospace', fontSize: '10px', color: '#aaaaaa',
+      }).setDepth(1)
+      this.add.text(12, y + 46, readyLabel, {
+        fontFamily: 'monospace', fontSize: '11px', color: d.is_ready ? '#44ff44' : '#ffd700',
+      }).setDepth(1)
+
+      if (d.is_ready) {
+        const btn = this.add.rectangle(width - 14, y + 60, 100, 26, 0x1a4a1a).setOrigin(1, 0.5).setDepth(1).setInteractive({ useHandCursor: true })
+        const btnLabel = this.add.text(width - 14, y + 60, 'COLLECT', {
+          fontFamily: 'monospace', fontSize: '11px', color: '#88ff88',
+        }).setOrigin(1, 0.5).setDepth(2)
+        btn.on('pointerdown', () => this._collectInvest())
+        btn.on('pointerover', () => btn.setFillStyle(0x2a6a2a))
+        btn.on('pointerout', () => btn.setFillStyle(0x1a4a1a))
+        this._objs.push(btn, btnLabel)
+      }
+    } else {
+      this.add.text(12, y + 28, `${d.rate_pct}% return after ${d.hours}h`, {
+        fontFamily: 'monospace', fontSize: '10px', color: '#aaaaaa',
+      }).setDepth(1)
+
+      const minus = this.add.text(12, y + 60, '[-]', {
+        fontFamily: 'monospace', fontSize: '13px', color: '#aaaaaa',
+      }).setDepth(2).setInteractive({ useHandCursor: true })
+      minus.on('pointerdown', () => { this._investAmt = Math.max(10, this._investAmt - 10); this._render() })
+
+      this.add.text(60, y + 60, `${this._investAmt} 🪙`, {
+        fontFamily: 'monospace', fontSize: '13px', color: '#ffd700',
+      }).setOrigin(0, 0.5).setDepth(2)
+
+      const plus = this.add.text(130, y + 60, '[+]', {
+        fontFamily: 'monospace', fontSize: '13px', color: '#aaaaaa',
+      }).setDepth(2).setInteractive({ useHandCursor: true })
+      plus.on('pointerdown', () => { this._investAmt = Math.min(9999, this._investAmt + 10); this._render() })
+
+      const btn = this.add.rectangle(width - 14, y + 60, 100, 26, 0x1a3a1a).setOrigin(1, 0.5).setDepth(1).setInteractive({ useHandCursor: true })
+      const btnLabel = this.add.text(width - 14, y + 60, 'INVEST', {
+        fontFamily: 'monospace', fontSize: '11px', color: '#88ff88',
+      }).setOrigin(1, 0.5).setDepth(2)
+      btn.on('pointerdown', () => this._invest())
+      btn.on('pointerover', () => btn.setFillStyle(0x2a5a2a))
+      btn.on('pointerout', () => btn.setFillStyle(0x1a3a1a))
+      this._objs.push(minus, plus, btn, btnLabel)
+    }
+
+    return y + cardH + 8
+  }
+
+  _fmtSecs(s) {
+    const h = Math.floor(s / 3600)
+    const m = Math.floor((s % 3600) / 60)
+    return h ? `${h}h ${m}m` : `${m}m`
+  }
+
+  async _invest() {
+    try {
+      const res = await api.createInvestment(this._investAmt)
+      const user = await api.getMe()
+      GameState.setUser(user)
+      this.hud.update()
+      this._investData = { active: true, amount: res.amount, return_amount: res.return_amount, rate_pct: res.rate_pct, hours: res.hours, is_ready: false, seconds_remaining: res.hours * 3600 }
+      this._showToast(`📈 Invested ${res.amount} 🪙!`)
+      this._render()
+    } catch (err) {
+      this._showToast(err.message)
+    }
+  }
+
+  async _collectInvest() {
+    try {
+      const res = await api.collectInvestment()
+      const user = await api.getMe()
+      GameState.setUser(user)
+      this.hud.update()
+      this._investData = { active: false, rate_pct: this._investData?.rate_pct || 25, hours: this._investData?.hours || 24 }
+      this._showToast(`💰 Collected ${res.return_amount} 🪙! (+${res.profit})`)
       this._render()
     } catch (err) {
       this._showToast(err.message)

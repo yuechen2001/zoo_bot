@@ -11,6 +11,9 @@ from game.constants import (
     DAILY_COOLDOWN_HOURS,
     DAILY_STREAK_EXPIRY_HOURS,
     DAILY_TIERS,
+    MASSAGE_COOLDOWN_HOURS,
+    MASSAGE_COST,
+    MASSAGE_DURATION_HOURS,
     MAX_BET,
     SPIN_COST,
     SYMBOLS,
@@ -172,3 +175,32 @@ async def slots_spin(uid: int = Depends(get_uid)):
         db.add_coins(uid, payout)
 
     return {"reels": reels, "payout": payout, "net": payout - SPIN_COST}
+
+
+# ── Foot Massage ──────────────────────────────────────────────────────────────
+
+
+@router.post("/minigames/massage")
+async def foot_massage(uid: int = Depends(get_uid)):
+    user = db.get_user(uid)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    active_until = user["massage_active_until"]
+    if active_until:
+        au_dt = datetime.datetime.fromisoformat(active_until)
+        if now < au_dt:
+            remaining = int((au_dt - now).total_seconds())
+            raise HTTPException(status_code=400, detail=f"Massage active! {remaining // 60}m remaining")
+        cooldown_end = au_dt + datetime.timedelta(hours=MASSAGE_COOLDOWN_HOURS)
+        if now < cooldown_end:
+            remaining = int((cooldown_end - now).total_seconds())
+            raise HTTPException(status_code=400, detail=f"On cooldown. {remaining // 60}m remaining")
+
+    if user["coins"] < MASSAGE_COST:
+        raise HTTPException(status_code=400, detail=f"Need {MASSAGE_COST} 🪙 for a massage")
+
+    massage_until = (now + datetime.timedelta(hours=MASSAGE_DURATION_HOURS)).isoformat()
+    db.activate_massage(uid, MASSAGE_COST, massage_until)
+    return {"cost": MASSAGE_COST, "active_until": massage_until}
