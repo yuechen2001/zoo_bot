@@ -9,7 +9,7 @@ export async function onRequest({ request, env, params }) {
     })
   }
 
-  const targetUrl = 'http://' + env.VM_IP + ':8000' + apiPath + url.search
+  const targetUrl = 'http://' + env.VM_IP + ':8080' + apiPath + url.search
 
   const headers = new Headers(request.headers)
   if (env.API_SECRET) {

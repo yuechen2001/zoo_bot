@@ -53,7 +53,7 @@ resource "google_compute_firewall" "allow_api" {
 
   allow {
     protocol = "tcp"
-    ports    = ["8000"]
+    ports    = ["8080"]
   }
 
   source_ranges = ["0.0.0.0/0"]
