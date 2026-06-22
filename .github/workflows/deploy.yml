@@ -78,6 +78,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             git config --global --add safe.directory /opt/zoo_bot
+            sudo chown -R ubuntu:ubuntu /opt/zoo_bot
             cd /opt/zoo_bot
             git fetch origin main
             git reset --hard origin/main
@@ -89,13 +90,13 @@ jobs:
             # Inject any keys present in .env.example but missing from bot .env
             while IFS='=' read -r key value; do
               [[ -z "$key" || "$key" == \#* ]] && continue
-              grep -q "^${key}=" /opt/zoo_bot/zoo_cli/.env || echo "${key}=${value}" | sudo tee -a /opt/zoo_bot/zoo_cli/.env > /dev/null
+              grep -q "^${key}=" zoo_cli/.env || echo "${key}=${value}" >> zoo_cli/.env
             done < zoo_cli/.env.example
 
             # Inject any keys present in .env.example but missing from API .env
             while IFS='=' read -r key value; do
               [[ -z "$key" || "$key" == \#* ]] && continue
-              grep -q "^${key}=" /opt/zoo_bot/zoo_api/.env || echo "${key}=${value}" | sudo tee -a /opt/zoo_bot/zoo_api/.env > /dev/null
+              grep -q "^${key}=" zoo_api/.env || echo "${key}=${value}" >> zoo_api/.env
             done < zoo_api/.env.example
 
             # Run DB migrations
@@ -105,6 +106,16 @@ jobs:
             sudo systemctl restart zoobot
             sudo systemctl restart zooapi
 
-            sleep 2
-            sudo systemctl is-active --quiet zoobot && echo "Bot OK" || (echo "Bot failed" && sudo journalctl -u zoobot -n 20 && exit 1)
-            sudo systemctl is-active --quiet zooapi && echo "API OK" || (echo "API failed" && sudo journalctl -u zooapi -n 20 && exit 1)
+            sleep 4
+            if ! sudo systemctl is-active --quiet zoobot; then
+              echo "Bot failed"
+              sudo journalctl -u zoobot -n 20
+              exit 1
+            fi
+            echo "Bot OK"
+            if ! sudo systemctl is-active --quiet zooapi; then
+              echo "API failed"
+              sudo journalctl -u zooapi -n 20
+              exit 1
+            fi
+            echo "API OK"
