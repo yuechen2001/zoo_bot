@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { api } from '../api.js'
 import GameState from '../GameState.js'
 
 const POWERUP_LABELS = [
@@ -80,6 +81,21 @@ export default class HUD {
     })
 
     this.update()
+    this._startPoll()
+  }
+
+  _startPoll() {
+    this.scene.time.addEvent({
+      delay: 20000,
+      loop: true,
+      callback: async () => {
+        try {
+          const user = await api.getMe()
+          GameState.setUser(user)
+          this.update()
+        } catch (_) {}
+      },
+    })
   }
 
   update() {
