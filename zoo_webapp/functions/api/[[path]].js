@@ -9,7 +9,9 @@ export async function onRequest({ request, env, params }) {
     })
   }
 
-  const targetUrl = 'http://' + env.VM_IP + ':8080' + apiPath + url.search
+  // Cloudflare Workers block fetch to bare IPs; nip.io resolves IP-as-hostname
+  const host = env.VM_IP.replace(/\./g, '-') + '.nip.io'
+  const targetUrl = 'http://' + host + ':8080' + apiPath + url.search
 
   const headers = new Headers(request.headers)
   if (env.API_SECRET) {
