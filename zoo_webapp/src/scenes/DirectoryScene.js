@@ -17,6 +17,9 @@ export default class DirectoryScene extends Phaser.Scene {
     this._objs = []
     this._container = null
     this._activeHabitat = null
+    this._scrollY = 0
+    this._scrollHandler = null
+    this._wheelHandler = null
     try {
       this._data = await api.getDirectory()
       if (this._data.habitats.length) {
@@ -28,9 +31,13 @@ export default class DirectoryScene extends Phaser.Scene {
   }
 
   _clear() {
+    if (this._scrollHandler) this.input.off('pointermove', this._scrollHandler)
+    if (this._wheelHandler) this.input.off('wheel', this._wheelHandler)
+    this._scrollHandler = null
+    this._wheelHandler = null
     this._objs.forEach(o => o.destroy())
     this._objs = []
-    if (this._container) { this._container.destroy(); this._container = null }
+    this._container = null
   }
 
   _render() {
@@ -71,16 +78,16 @@ export default class DirectoryScene extends Phaser.Scene {
       }).setOrigin(0.5).setDepth(2).setInteractive({ useHandCursor: true })
       tabTxt.on('pointerdown', () => {
         this._activeHabitat = habitat
+        this._scrollY = 0
         this._render()
       })
       this._objs.push(tabBg, tabTxt)
     })
 
-    // Species list for active habitat
     const activeData = habitats.find(h => h.habitat === this._activeHabitat)
     if (!activeData) return
 
-    this._container = this.add.container(0, 0)
+    this._container = this.add.container(0, -this._scrollY)
     this._objs.push(this._container)
 
     const TOP = 102
@@ -109,19 +116,23 @@ export default class DirectoryScene extends Phaser.Scene {
       y += ROW_H
     })
 
-    // Drag-to-scroll
-    const contentH = y - TOP
-    const usableH = height - TOP - 56
-    if (contentH > usableH) {
-      this.input.on('pointermove', (p) => {
-        if (p.isDown) {
-          this._container.y = Phaser.Math.Clamp(
-            this._container.y + p.velocity.y * 0.3,
-            -(contentH - usableH),
-            0,
-          )
-        }
-      })
+    this._attachScroll(this._container, y - TOP, height - TOP - 56)
+  }
+
+  _attachScroll(container, contentH, usableH) {
+    if (contentH <= usableH) return
+    const maxScroll = contentH - usableH
+    this._scrollHandler = (p) => {
+      if (!p.isDown) return
+      const dy = p.prevPosition.y - p.y
+      this._scrollY = Phaser.Math.Clamp(this._scrollY + dy, 0, maxScroll)
+      container.y = -this._scrollY
     }
+    this._wheelHandler = (_, __, ___, dy) => {
+      this._scrollY = Phaser.Math.Clamp(this._scrollY + dy * 0.5, 0, maxScroll)
+      container.y = -this._scrollY
+    }
+    this.input.on('pointermove', this._scrollHandler)
+    this.input.on('wheel', this._wheelHandler)
   }
 }

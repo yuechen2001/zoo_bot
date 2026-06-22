@@ -11,8 +11,12 @@ export default class InventoryScene extends Phaser.Scene {
   async create() {
     this.hud = new HUD(this)
     this._tab = 0
-    this._meta = {}   // key → { name, emoji, desc } from store
+    this._meta = {}
     this._objs = []
+    this._scrollContainer = null
+    this._scrollY = 0
+    this._scrollHandler = null
+    this._wheelHandler = null
     try {
       const storeItems = await api.getStore()
       for (const item of storeItems) this._meta[item.key] = item
@@ -21,27 +25,32 @@ export default class InventoryScene extends Phaser.Scene {
     this.scale.on('resize', (s) => { this.hud.resize(s.width, s.height); this._render() })
   }
 
-  _clear() { this._objs.forEach(o => o.destroy()); this._objs = [] }
+  _clear() {
+    if (this._scrollHandler) this.input.off('pointermove', this._scrollHandler)
+    if (this._wheelHandler) this.input.off('wheel', this._wheelHandler)
+    this._scrollHandler = null
+    this._wheelHandler = null
+    this._objs.forEach(o => o.destroy())
+    this._objs = []
+    this._scrollContainer = null
+  }
 
   _render() {
     this._clear()
-    const { width } = this.scale
+    const { width, height } = this.scale
     const inv = GameState.inventory
 
-    // Back button
     const back = this.add.text(12, 52, '← Store', {
       fontFamily: 'monospace', fontSize: '11px', color: '#888888',
     }).setDepth(1).setInteractive({ useHandCursor: true })
     back.on('pointerdown', () => this.scene.start('Store'))
     this._objs.push(back)
 
-    // Title
     const title = this.add.text(width / 2, 52, '🎒 INVENTORY', {
       fontFamily: 'monospace', fontSize: '14px', color: '#ffd700',
     }).setOrigin(0.5, 0).setDepth(1)
     this._objs.push(title)
 
-    // Tabs
     const tabW = width / TABS.length
     TABS.forEach((tab, i) => {
       const bg = this.add.rectangle(i * tabW, 68, tabW, 26, i === this._tab ? 0x2a4a6a : 0x1a2a3a)
@@ -49,26 +58,36 @@ export default class InventoryScene extends Phaser.Scene {
       const label = this.add.text(i * tabW + tabW / 2, 81, tab, {
         fontFamily: 'monospace', fontSize: '11px', color: i === this._tab ? '#ffd700' : '#888888',
       }).setOrigin(0.5).setDepth(2)
-      bg.on('pointerdown', () => { this._tab = i; this._render() })
+      bg.on('pointerdown', () => { this._tab = i; this._scrollY = 0; this._render() })
       this._objs.push(bg, label)
     })
 
-    if (this._tab === 0) this._renderItems(inv)
-    else if (this._tab === 1) this._renderLures(inv)
-    else this._renderTitles(inv)
+    const TOP = 102
+    this._scrollContainer = this.add.container(0, -this._scrollY)
+    this._objs.push(this._scrollContainer)
+
+    let finalY
+    if (this._tab === 0) finalY = this._renderItems(inv, TOP)
+    else if (this._tab === 1) finalY = this._renderLures(inv, TOP)
+    else finalY = this._renderTitles(inv, TOP)
+
+    if (finalY !== undefined) {
+      this._attachScroll(this._scrollContainer, finalY - TOP, height - TOP - 56)
+    }
   }
 
-  _renderItems(inv) {
+  _renderItems(inv, TOP) {
     const { width } = this.scale
     const consumables = inv?.consumables || {}
     const entries = Object.entries(consumables).filter(([, qty]) => qty > 0)
-    let y = 102
+    let y = TOP
 
     if (entries.length === 0) {
-      this.add.text(width / 2, 200, 'No items in inventory', {
+      const empty = this.add.text(width / 2, 200, 'No items in inventory', {
         fontFamily: 'monospace', fontSize: '12px', color: '#555555',
       }).setOrigin(0.5)
-      return
+      this._scrollContainer.add(empty)
+      return y + 100
     }
 
     for (const [key, qty] of entries) {
@@ -90,28 +109,30 @@ export default class InventoryScene extends Phaser.Scene {
       btn.on('pointerover', () => btn.setFillStyle(0x2a6a9a))
       btn.on('pointerout', () => btn.setFillStyle(0x1a4a6a))
 
-      this._objs.push(row, nameTxt, descTxt, btn, btnLabel)
+      this._scrollContainer.add([row, nameTxt, descTxt, btn, btnLabel])
       y += 62
     }
+    return y
   }
 
-  _renderLures(inv) {
+  _renderLures(inv, TOP) {
     const { width } = this.scale
     const lures = inv?.lures || {}
     const entries = Object.entries(lures).filter(([, qty]) => qty > 0)
-    let y = 102
+    let y = TOP
 
     if (entries.length === 0) {
-      this.add.text(width / 2, 200, 'No lures in inventory', {
+      const empty = this.add.text(width / 2, 200, 'No lures in inventory', {
         fontFamily: 'monospace', fontSize: '12px', color: '#555555',
       }).setOrigin(0.5)
-      return
+      this._scrollContainer.add(empty)
+      return y + 100
     }
 
     const note = this.add.text(width / 2, y, 'Use lures from the CATCH screen', {
       fontFamily: 'monospace', fontSize: '10px', color: '#555555',
     }).setOrigin(0.5)
-    this._objs.push(note)
+    this._scrollContainer.add(note)
     y += 18
 
     for (const [key, qty] of entries) {
@@ -124,22 +145,24 @@ export default class InventoryScene extends Phaser.Scene {
         fontFamily: 'monospace', fontSize: '13px', color: '#ffd700',
       }).setOrigin(1, 0.5).setDepth(2)
 
-      this._objs.push(row, nameTxt, qtyTxt)
+      this._scrollContainer.add([row, nameTxt, qtyTxt])
       y += 52
     }
+    return y
   }
 
-  _renderTitles(inv) {
+  _renderTitles(inv, TOP) {
     const { width } = this.scale
     const owned = inv?.titles_owned || []
     const activeTitle = inv?.active_title || null
-    let y = 102
+    let y = TOP
 
     if (owned.length === 0) {
-      this.add.text(width / 2, 200, 'No titles owned', {
+      const empty = this.add.text(width / 2, 200, 'No titles owned', {
         fontFamily: 'monospace', fontSize: '12px', color: '#555555',
       }).setOrigin(0.5)
-      return
+      this._scrollContainer.add(empty)
+      return y + 100
     }
 
     for (const key of owned) {
@@ -167,9 +190,10 @@ export default class InventoryScene extends Phaser.Scene {
         btn.on('pointerout', () => btn.setFillStyle(0x1a4a1a))
       }
 
-      this._objs.push(row, nameTxt, btn, btnLabel)
+      this._scrollContainer.add([row, nameTxt, btn, btnLabel])
       y += 52
     }
+    return y
   }
 
   async _useItem(key) {
@@ -210,6 +234,23 @@ export default class InventoryScene extends Phaser.Scene {
     } catch (err) {
       this._showToast(err.message)
     }
+  }
+
+  _attachScroll(container, contentH, usableH) {
+    if (contentH <= usableH) return
+    const maxScroll = contentH - usableH
+    this._scrollHandler = (p) => {
+      if (!p.isDown) return
+      const dy = p.prevPosition.y - p.y
+      this._scrollY = Phaser.Math.Clamp(this._scrollY + dy, 0, maxScroll)
+      container.y = -this._scrollY
+    }
+    this._wheelHandler = (_, __, ___, dy) => {
+      this._scrollY = Phaser.Math.Clamp(this._scrollY + dy * 0.5, 0, maxScroll)
+      container.y = -this._scrollY
+    }
+    this.input.on('pointermove', this._scrollHandler)
+    this.input.on('wheel', this._wheelHandler)
   }
 
   _showToast(msg) {

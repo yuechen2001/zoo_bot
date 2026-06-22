@@ -9,9 +9,13 @@ export default class GamesScene extends Phaser.Scene {
   create() {
     this.hud = new HUD(this)
     this._objs = []
-    this._triviaState = null  // null | { question, choices, answer_key, wager }
+    this._scrollContainer = null
+    this._scrollY = 0
+    this._scrollHandler = null
+    this._wheelHandler = null
+    this._triviaState = null
     this._triviaWager = 0
-    this._investData = null   // null = loading, object = loaded
+    this._investData = null
     this._investAmt = 100
     this._render()
     this._loadInvestment()
@@ -25,17 +29,29 @@ export default class GamesScene extends Phaser.Scene {
     } catch (_) {}
   }
 
-  _clear() { this._objs.forEach(o => o.destroy()); this._objs = [] }
+  _clear() {
+    if (this._scrollHandler) this.input.off('pointermove', this._scrollHandler)
+    if (this._wheelHandler) this.input.off('wheel', this._wheelHandler)
+    this._scrollHandler = null
+    this._wheelHandler = null
+    this._objs.forEach(o => o.destroy())
+    this._objs = []
+    this._scrollContainer = null
+  }
 
   _render() {
     this._clear()
-    const { width } = this.scale
+    const { width, height } = this.scale
+
+    this._scrollContainer = this.add.container(0, -this._scrollY)
+    this._objs.push(this._scrollContainer)
+
     let y = 78
 
     const title = this.add.text(width / 2, y, '🎮 MINI-GAMES', {
       fontFamily: 'monospace', fontSize: '16px', color: '#ffd700',
     }).setOrigin(0.5)
-    this._objs.push(title)
+    this._scrollContainer.add(title)
     y += 30
 
     y = this._renderMassageCard(y)
@@ -44,23 +60,26 @@ export default class GamesScene extends Phaser.Scene {
     y = this._renderSlotsCard(y)
     y = this._renderGambleCard(y)
     y = this._renderInvestCard(y)
-    this._renderAutofeedCard(y)
+    y = this._renderAutofeedCard(y)
+
+    this._attachScroll(this._scrollContainer, y - 78, height - 78 - 56)
   }
 
   _renderAutofeedCard(y) {
     const { width } = this.scale
-    y = this._cardBg(y, 56)
-    this.add.text(12, y + 4, '⚙️ Auto-Feed', {
+    const innerY = this._cardBg(y, 56)
+    const heading = this.add.text(12, innerY + 4, '⚙️ Auto-Feed', {
       fontFamily: 'monospace', fontSize: '13px', color: '#ffffff',
     })
-    this.add.text(12, y + 22, 'Auto-feed hungry animals on a timer', {
+    const sub = this.add.text(12, innerY + 22, 'Auto-feed hungry animals on a timer', {
       fontFamily: 'monospace', fontSize: '10px', color: '#666666',
     })
-    const btn = this.add.text(width - 14, y + 16, 'SETTINGS →', {
+    const btn = this.add.text(width - 14, innerY + 16, 'SETTINGS →', {
       fontFamily: 'monospace', fontSize: '11px', color: '#ffd700',
     }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true })
     btn.on('pointerdown', () => this.scene.start('Autofeed'))
-    this._objs.push(btn)
+    this._scrollContainer.add([heading, sub, btn])
+    return y + 64
   }
 
   // ── Daily Claim ──────────────────────────────────────────────────────────────
@@ -70,23 +89,23 @@ export default class GamesScene extends Phaser.Scene {
     const streak = GameState.user?.daily_streak || 0
     const reward = streak >= 14 ? 150 : streak >= 7 ? 100 : streak >= 3 ? 75 : 50
 
-    y = this._cardBg(y, 80)
-    this.add.text(12, y + 8, `📅 Daily Claim`, {
+    const innerY = this._cardBg(y, 80)
+    const heading = this.add.text(12, innerY + 8, '📅 Daily Claim', {
       fontFamily: 'monospace', fontSize: '13px', color: '#ffffff',
     }).setDepth(1)
-    this.add.text(12, y + 28, `Streak: ${streak} days  →  ${reward} 🪙`, {
+    const streakTxt = this.add.text(12, innerY + 28, `Streak: ${streak} days  →  ${reward} 🪙`, {
       fontFamily: 'monospace', fontSize: '11px', color: '#aaaaaa',
     }).setDepth(1)
 
-    const btn = this.add.rectangle(width - 14, y + 38, 100, 26, 0x1a4a1a).setOrigin(1, 0.5).setDepth(1).setInteractive({ useHandCursor: true })
-    const btnLabel = this.add.text(width - 14, y + 38, 'CLAIM', {
+    const btn = this.add.rectangle(width - 14, innerY + 38, 100, 26, 0x1a4a1a).setOrigin(1, 0.5).setDepth(1).setInteractive({ useHandCursor: true })
+    const btnLabel = this.add.text(width - 14, innerY + 38, 'CLAIM', {
       fontFamily: 'monospace', fontSize: '12px', color: '#88ff88',
     }).setOrigin(1, 0.5).setDepth(2)
     btn.on('pointerdown', () => this._claimDaily())
     btn.on('pointerover', () => btn.setFillStyle(0x2a6a2a))
     btn.on('pointerout', () => btn.setFillStyle(0x1a4a1a))
-    this._objs.push(btn, btnLabel)
-    return y + 88
+    this._scrollContainer.add([heading, streakTxt, btn, btnLabel])
+    return innerY + 88
   }
 
   async _claimDaily() {
@@ -107,30 +126,32 @@ export default class GamesScene extends Phaser.Scene {
   _renderTriviaCard(y) {
     const { width } = this.scale
     const cardH = this._triviaState ? 220 : 72
-    y = this._cardBg(y, cardH)
+    const innerY = this._cardBg(y, cardH)
 
-    this.add.text(12, y + 8, '🧠 Trivia', {
+    const heading = this.add.text(12, innerY + 8, '🧠 Trivia', {
       fontFamily: 'monospace', fontSize: '13px', color: '#ffffff',
     }).setDepth(1)
+    this._scrollContainer.add(heading)
 
     if (!this._triviaState) {
-      const btn = this.add.rectangle(width - 14, y + 36, 110, 26, 0x1a3a6a).setOrigin(1, 0.5).setDepth(1).setInteractive({ useHandCursor: true })
-      const btnLabel = this.add.text(width - 14, y + 36, 'GET QUESTION', {
+      const btn = this.add.rectangle(width - 14, innerY + 36, 110, 26, 0x1a3a6a).setOrigin(1, 0.5).setDepth(1).setInteractive({ useHandCursor: true })
+      const btnLabel = this.add.text(width - 14, innerY + 36, 'GET QUESTION', {
         fontFamily: 'monospace', fontSize: '10px', color: '#aaddff',
       }).setOrigin(1, 0.5).setDepth(2)
       btn.on('pointerdown', () => this._fetchTrivia())
       btn.on('pointerover', () => btn.setFillStyle(0x2a5a9a))
       btn.on('pointerout', () => btn.setFillStyle(0x1a3a6a))
-      this._objs.push(btn, btnLabel)
+      this._scrollContainer.add([btn, btnLabel])
     } else {
       const { question, choices, answer_key, answered, result } = this._triviaState
 
-      this.add.text(12, y + 28, question, {
+      const qTxt = this.add.text(12, innerY + 28, question, {
         fontFamily: 'monospace', fontSize: '10px', color: '#cccccc', wordWrap: { width: width - 24 },
       }).setDepth(1)
+      this._scrollContainer.add(qTxt)
 
       choices.forEach((choice, ci) => {
-        const by = y + 90 + ci * 28
+        const by = innerY + 90 + ci * 28
         let color = 0x1a2a4a
         if (answered) {
           if (choice === answer_key) color = 0x1a4a1a
@@ -145,23 +166,23 @@ export default class GamesScene extends Phaser.Scene {
           cbtn.on('pointerover', () => cbtn.setFillStyle(0x2a4a7a))
           cbtn.on('pointerout', () => cbtn.setFillStyle(0x1a2a4a))
         }
-        this._objs.push(cbtn, clabel)
+        this._scrollContainer.add([cbtn, clabel])
       })
 
       if (answered) {
         const coin = result?.coins || 0
-        this.add.text(width / 2, y + cardH - 18, coin >= 0 ? `+${coin} 🪙` : `${coin} 🪙`, {
+        const coinTxt = this.add.text(width / 2, innerY + cardH - 18, coin >= 0 ? `+${coin} 🪙` : `${coin} 🪙`, {
           fontFamily: 'monospace', fontSize: '12px', color: coin >= 0 ? '#44ff44' : '#ff4444',
         }).setOrigin(0.5).setDepth(2)
 
-        const nextBtn = this.add.text(width - 12, y + cardH - 18, '→ Next question', {
+        const nextBtn = this.add.text(width - 12, innerY + cardH - 18, '→ Next question', {
           fontFamily: 'monospace', fontSize: '10px', color: '#888888',
         }).setOrigin(1, 0.5).setDepth(2).setInteractive({ useHandCursor: true })
         nextBtn.on('pointerdown', () => { this._triviaState = null; this._render() })
-        this._objs.push(nextBtn)
+        this._scrollContainer.add([coinTxt, nextBtn])
       }
     }
-    return y + cardH + 8
+    return innerY + cardH + 8
   }
 
   async _fetchTrivia() {
@@ -192,31 +213,33 @@ export default class GamesScene extends Phaser.Scene {
 
   _renderSlotsCard(y) {
     const { width } = this.scale
-    y = this._cardBg(y, 90)
+    const innerY = this._cardBg(y, 90)
 
-    this.add.text(12, y + 8, '🎰 Slots  (10 🪙/spin)', {
+    const heading = this.add.text(12, innerY + 8, '🎰 Slots  (10 🪙/spin)', {
       fontFamily: 'monospace', fontSize: '13px', color: '#ffffff',
     }).setDepth(1)
+    this._scrollContainer.add(heading)
 
     if (this._slotsResult) {
       const { reels, net } = this._slotsResult
-      this.add.text(width / 2, y + 38, reels.join('  '), {
+      const reelsTxt = this.add.text(width / 2, innerY + 38, reels.join('  '), {
         fontFamily: 'monospace', fontSize: '22px',
       }).setOrigin(0.5).setDepth(2)
-      this.add.text(width / 2, y + 66, net >= 0 ? `+${net} 🪙` : `${net} 🪙`, {
+      const netTxt = this.add.text(width / 2, innerY + 66, net >= 0 ? `+${net} 🪙` : `${net} 🪙`, {
         fontFamily: 'monospace', fontSize: '12px', color: net >= 0 ? '#44ff44' : '#ff4444',
       }).setOrigin(0.5).setDepth(2)
+      this._scrollContainer.add([reelsTxt, netTxt])
     }
 
-    const btn = this.add.rectangle(width - 14, y + 38, 80, 26, 0x4a2a0a).setOrigin(1, 0.5).setDepth(1).setInteractive({ useHandCursor: true })
-    const btnLabel = this.add.text(width - 14, y + 38, '🎰 SPIN', {
+    const btn = this.add.rectangle(width - 14, innerY + 38, 80, 26, 0x4a2a0a).setOrigin(1, 0.5).setDepth(1).setInteractive({ useHandCursor: true })
+    const btnLabel = this.add.text(width - 14, innerY + 38, '🎰 SPIN', {
       fontFamily: 'monospace', fontSize: '11px', color: '#ffcc44',
     }).setOrigin(1, 0.5).setDepth(2)
     btn.on('pointerdown', () => this._spinSlots())
     btn.on('pointerover', () => btn.setFillStyle(0x6a4a1a))
     btn.on('pointerout', () => btn.setFillStyle(0x4a2a0a))
-    this._objs.push(btn, btnLabel)
-    return y + 98
+    this._scrollContainer.add([btn, btnLabel])
+    return innerY + 98
   }
 
   async _spinSlots() {
@@ -236,45 +259,48 @@ export default class GamesScene extends Phaser.Scene {
 
   _renderGambleCard(y) {
     const { width } = this.scale
-    y = this._cardBg(y, 90)
+    const innerY = this._cardBg(y, 90)
     if (!this._gambBet) this._gambBet = 50
 
-    this.add.text(12, y + 8, '💰 Coin Flip', {
+    const heading = this.add.text(12, innerY + 8, '💰 Coin Flip', {
       fontFamily: 'monospace', fontSize: '13px', color: '#ffffff',
     }).setDepth(1)
 
-    // Bet controls
-    const minusBtn = this.add.text(14, y + 44, '[-]', {
+    const minusBtn = this.add.text(14, innerY + 44, '[-]', {
       fontFamily: 'monospace', fontSize: '13px', color: '#aaaaaa',
     }).setDepth(2).setInteractive({ useHandCursor: true })
     minusBtn.on('pointerdown', () => { this._gambBet = Math.max(10, this._gambBet - 10); this._render() })
 
-    const betLabel = this.add.text(70, y + 44, `${this._gambBet} 🪙`, {
+    const betLabel = this.add.text(70, innerY + 44, `${this._gambBet} 🪙`, {
       fontFamily: 'monospace', fontSize: '13px', color: '#ffd700',
     }).setOrigin(0, 0.5).setDepth(2)
 
-    const plusBtn = this.add.text(140, y + 44, '[+]', {
+    const plusBtn = this.add.text(140, innerY + 44, '[+]', {
       fontFamily: 'monospace', fontSize: '13px', color: '#aaaaaa',
     }).setDepth(2).setInteractive({ useHandCursor: true })
     plusBtn.on('pointerdown', () => { this._gambBet = Math.min(500, this._gambBet + 10); this._render() })
 
+    const toAdd = [heading, minusBtn, betLabel, plusBtn]
+
     if (this._gambResult) {
       const { won, delta } = this._gambResult
-      this.add.text(width / 2, y + 66, won ? `✅ +${delta} 🪙` : `❌ ${delta} 🪙`, {
+      const resultTxt = this.add.text(width / 2, innerY + 66, won ? `✅ +${delta} 🪙` : `❌ ${delta} 🪙`, {
         fontFamily: 'monospace', fontSize: '13px', color: won ? '#44ff44' : '#ff4444',
       }).setOrigin(0.5).setDepth(2)
+      toAdd.push(resultTxt)
     }
 
-    const btn = this.add.rectangle(width - 14, y + 44, 80, 26, 0x3a1a4a).setOrigin(1, 0.5).setDepth(1).setInteractive({ useHandCursor: true })
-    const btnLabel = this.add.text(width - 14, y + 44, '🪙 FLIP', {
+    const btn = this.add.rectangle(width - 14, innerY + 44, 80, 26, 0x3a1a4a).setOrigin(1, 0.5).setDepth(1).setInteractive({ useHandCursor: true })
+    const btnLabel = this.add.text(width - 14, innerY + 44, '🪙 FLIP', {
       fontFamily: 'monospace', fontSize: '11px', color: '#dd88ff',
     }).setOrigin(1, 0.5).setDepth(2)
     btn.on('pointerdown', () => this._gamble())
     btn.on('pointerover', () => btn.setFillStyle(0x5a2a6a))
     btn.on('pointerout', () => btn.setFillStyle(0x3a1a4a))
+    toAdd.push(btn, btnLabel)
 
-    this._objs.push(minusBtn, betLabel, plusBtn, btn, btnLabel)
-    return y + 98
+    this._scrollContainer.add(toAdd)
+    return innerY + 98
   }
 
   async _gamble() {
@@ -309,8 +335,8 @@ export default class GamesScene extends Phaser.Scene {
 
   _renderMassageCard(y) {
     const { width } = this.scale
-    y = this._cardBg(y, 72)
-    this.add.text(12, y + 8, '🦶 Foot Massage  (25 🪙)', {
+    const innerY = this._cardBg(y, 72)
+    const heading = this.add.text(12, innerY + 8, '🦶 Foot Massage  (25 🪙)', {
       fontFamily: 'monospace', fontSize: '13px', color: '#ffffff',
     }).setDepth(1)
 
@@ -318,14 +344,14 @@ export default class GamesScene extends Phaser.Scene {
     let statusText = ''
     if (status.state === 'active') statusText = `Active — ${status.minsLeft}m left`
     else if (status.state === 'cooldown') statusText = `Cooldown — ${status.minsLeft}m`
-    this.add.text(12, y + 28, statusText || 'Halves hunger decay for 1h', {
+    const subTxt = this.add.text(12, innerY + 28, statusText || 'Halves hunger decay for 1h', {
       fontFamily: 'monospace', fontSize: '10px', color: '#aaaaaa',
     }).setDepth(1)
 
     const canMassage = status.state === 'available'
-    const btn = this.add.rectangle(width - 14, y + 38, 100, 26, canMassage ? 0x1a2a4a : 0x111111)
+    const btn = this.add.rectangle(width - 14, innerY + 38, 100, 26, canMassage ? 0x1a2a4a : 0x111111)
       .setOrigin(1, 0.5).setDepth(1).setInteractive({ useHandCursor: canMassage })
-    const btnLabel = this.add.text(width - 14, y + 38, 'MASSAGE', {
+    const btnLabel = this.add.text(width - 14, innerY + 38, 'MASSAGE', {
       fontFamily: 'monospace', fontSize: '11px', color: canMassage ? '#aaddff' : '#555555',
     }).setOrigin(1, 0.5).setDepth(2)
     if (canMassage) {
@@ -333,8 +359,8 @@ export default class GamesScene extends Phaser.Scene {
       btn.on('pointerover', () => btn.setFillStyle(0x2a4a7a))
       btn.on('pointerout', () => btn.setFillStyle(0x1a2a4a))
     }
-    this._objs.push(btn, btnLabel)
-    return y + 80
+    this._scrollContainer.add([heading, subTxt, btn, btnLabel])
+    return innerY + 80
   }
 
   async _massage() {
@@ -355,69 +381,72 @@ export default class GamesScene extends Phaser.Scene {
   _renderInvestCard(y) {
     const { width } = this.scale
     const d = this._investData
-    const cardH = d?.active ? 100 : 100
-    y = this._cardBg(y, cardH)
+    const cardH = 100
+    const innerY = this._cardBg(y, cardH)
 
-    this.add.text(12, y + 8, '📈 Investment Bank', {
+    const heading = this.add.text(12, innerY + 8, '📈 Investment Bank', {
       fontFamily: 'monospace', fontSize: '13px', color: '#ffffff',
     }).setDepth(1)
+    this._scrollContainer.add(heading)
 
     if (!d) {
-      this.add.text(12, y + 30, 'Loading…', {
+      const loadTxt = this.add.text(12, innerY + 30, 'Loading…', {
         fontFamily: 'monospace', fontSize: '10px', color: '#555555',
       }).setDepth(1)
-      return y + cardH + 8
+      this._scrollContainer.add(loadTxt)
+      return innerY + cardH + 8
     }
 
     if (d.active) {
       const readyLabel = d.is_ready ? '✅ READY TO COLLECT' : `⏳ ${this._fmtSecs(d.seconds_remaining)}`
-      this.add.text(12, y + 28, `${d.amount} 🪙  →  ${d.return_amount} 🪙  (+${d.rate_pct}%)`, {
+      const amtTxt = this.add.text(12, innerY + 28, `${d.amount} 🪙  →  ${d.return_amount} 🪙  (+${d.rate_pct}%)`, {
         fontFamily: 'monospace', fontSize: '10px', color: '#aaaaaa',
       }).setDepth(1)
-      this.add.text(12, y + 46, readyLabel, {
+      const statusTxt = this.add.text(12, innerY + 46, readyLabel, {
         fontFamily: 'monospace', fontSize: '11px', color: d.is_ready ? '#44ff44' : '#ffd700',
       }).setDepth(1)
+      this._scrollContainer.add([amtTxt, statusTxt])
 
       if (d.is_ready) {
-        const btn = this.add.rectangle(width - 14, y + 60, 100, 26, 0x1a4a1a).setOrigin(1, 0.5).setDepth(1).setInteractive({ useHandCursor: true })
-        const btnLabel = this.add.text(width - 14, y + 60, 'COLLECT', {
+        const btn = this.add.rectangle(width - 14, innerY + 60, 100, 26, 0x1a4a1a).setOrigin(1, 0.5).setDepth(1).setInteractive({ useHandCursor: true })
+        const btnLabel = this.add.text(width - 14, innerY + 60, 'COLLECT', {
           fontFamily: 'monospace', fontSize: '11px', color: '#88ff88',
         }).setOrigin(1, 0.5).setDepth(2)
         btn.on('pointerdown', () => this._collectInvest())
         btn.on('pointerover', () => btn.setFillStyle(0x2a6a2a))
         btn.on('pointerout', () => btn.setFillStyle(0x1a4a1a))
-        this._objs.push(btn, btnLabel)
+        this._scrollContainer.add([btn, btnLabel])
       }
     } else {
-      this.add.text(12, y + 28, `${d.rate_pct}% return after ${d.hours}h`, {
+      const rateTxt = this.add.text(12, innerY + 28, `${d.rate_pct}% return after ${d.hours}h`, {
         fontFamily: 'monospace', fontSize: '10px', color: '#aaaaaa',
       }).setDepth(1)
 
-      const minus = this.add.text(12, y + 60, '[-]', {
+      const minus = this.add.text(12, innerY + 60, '[-]', {
         fontFamily: 'monospace', fontSize: '13px', color: '#aaaaaa',
       }).setDepth(2).setInteractive({ useHandCursor: true })
       minus.on('pointerdown', () => { this._investAmt = Math.max(10, this._investAmt - 10); this._render() })
 
-      this.add.text(60, y + 60, `${this._investAmt} 🪙`, {
+      const amtLabel = this.add.text(60, innerY + 60, `${this._investAmt} 🪙`, {
         fontFamily: 'monospace', fontSize: '13px', color: '#ffd700',
       }).setOrigin(0, 0.5).setDepth(2)
 
-      const plus = this.add.text(130, y + 60, '[+]', {
+      const plus = this.add.text(130, innerY + 60, '[+]', {
         fontFamily: 'monospace', fontSize: '13px', color: '#aaaaaa',
       }).setDepth(2).setInteractive({ useHandCursor: true })
       plus.on('pointerdown', () => { this._investAmt = Math.min(9999, this._investAmt + 10); this._render() })
 
-      const btn = this.add.rectangle(width - 14, y + 60, 100, 26, 0x1a3a1a).setOrigin(1, 0.5).setDepth(1).setInteractive({ useHandCursor: true })
-      const btnLabel = this.add.text(width - 14, y + 60, 'INVEST', {
+      const btn = this.add.rectangle(width - 14, innerY + 60, 100, 26, 0x1a3a1a).setOrigin(1, 0.5).setDepth(1).setInteractive({ useHandCursor: true })
+      const btnLabel = this.add.text(width - 14, innerY + 60, 'INVEST', {
         fontFamily: 'monospace', fontSize: '11px', color: '#88ff88',
       }).setOrigin(1, 0.5).setDepth(2)
       btn.on('pointerdown', () => this._invest())
       btn.on('pointerover', () => btn.setFillStyle(0x2a5a2a))
       btn.on('pointerout', () => btn.setFillStyle(0x1a3a1a))
-      this._objs.push(minus, plus, btn, btnLabel)
+      this._scrollContainer.add([rateTxt, minus, amtLabel, plus, btn, btnLabel])
     }
 
-    return y + cardH + 8
+    return innerY + cardH + 8
   }
 
   _fmtSecs(s) {
@@ -459,8 +488,25 @@ export default class GamesScene extends Phaser.Scene {
   _cardBg(y, h) {
     const { width } = this.scale
     const bg = this.add.rectangle(8, y, width - 16, h, 0x1a2a3a).setOrigin(0, 0).setDepth(0)
-    this._objs.push(bg)
+    this._scrollContainer.add(bg)
     return y + 8
+  }
+
+  _attachScroll(container, contentH, usableH) {
+    if (contentH <= usableH) return
+    const maxScroll = contentH - usableH
+    this._scrollHandler = (p) => {
+      if (!p.isDown) return
+      const dy = p.prevPosition.y - p.y
+      this._scrollY = Phaser.Math.Clamp(this._scrollY + dy, 0, maxScroll)
+      container.y = -this._scrollY
+    }
+    this._wheelHandler = (_, __, ___, dy) => {
+      this._scrollY = Phaser.Math.Clamp(this._scrollY + dy * 0.5, 0, maxScroll)
+      container.y = -this._scrollY
+    }
+    this.input.on('pointermove', this._scrollHandler)
+    this.input.on('wheel', this._wheelHandler)
   }
 
   _showToast(msg) {

@@ -10,6 +10,8 @@ export default class AchievementsScene extends Phaser.Scene {
     this._data = null
     this._objs = []
     this._scrollY = 0
+    this._scrollHandler = null
+    this._wheelHandler = null
     try {
       this._data = await api.getAchievements()
     } catch (_) {}
@@ -17,7 +19,14 @@ export default class AchievementsScene extends Phaser.Scene {
     this.scale.on('resize', (s) => { this.hud.resize(s.width, s.height); this._render() })
   }
 
-  _clear() { this._objs.forEach(o => o.destroy()); this._objs = [] }
+  _clear() {
+    if (this._scrollHandler) this.input.off('pointermove', this._scrollHandler)
+    if (this._wheelHandler) this.input.off('wheel', this._wheelHandler)
+    this._scrollHandler = null
+    this._wheelHandler = null
+    this._objs.forEach(o => o.destroy())
+    this._objs = []
+  }
 
   _render() {
     this._clear()
@@ -46,12 +55,11 @@ export default class AchievementsScene extends Phaser.Scene {
     }).setOrigin(0.5, 0).setDepth(1)
     this._objs.push(title)
 
-    // Scrollable container
-    if (this._container) this._container.destroy()
-    this._container = this.add.container(0, 0)
-    this._objs.push(this._container)
+    const container = this.add.container(0, -this._scrollY)
+    this._objs.push(container)
 
-    let y = 78
+    const TOP = 78
+    let y = TOP
     for (const [, ach] of Object.entries(all)) {
       const rowH = 52
       const bg = this.add.rectangle(8, y, width - 16, rowH, ach.earned ? 0x1a3a1a : 0x1a1a2a).setOrigin(0, 0)
@@ -63,23 +71,27 @@ export default class AchievementsScene extends Phaser.Scene {
       const descTxt = this.add.text(16, y + 28, ach.desc.slice(0, 55) + (ach.desc.length > 55 ? '…' : ''), {
         fontFamily: 'monospace', fontSize: '9px', color: ach.earned ? '#88bb88' : '#444444',
       })
-      this._container.add([bg, nameTxt, descTxt])
+      container.add([bg, nameTxt, descTxt])
       y += rowH + 4
     }
 
-    // Drag-to-scroll
-    const contentH = y - 78
-    const usableH = height - 68 - 56
-    if (contentH > usableH) {
-      this.input.on('pointermove', (p) => {
-        if (p.isDown) {
-          this._container.y = Phaser.Math.Clamp(
-            this._container.y + p.velocity.y * 0.3,
-            -(contentH - usableH),
-            0,
-          )
-        }
-      })
+    this._attachScroll(container, y - TOP, height - TOP - 56)
+  }
+
+  _attachScroll(container, contentH, usableH) {
+    if (contentH <= usableH) return
+    const maxScroll = contentH - usableH
+    this._scrollHandler = (p) => {
+      if (!p.isDown) return
+      const dy = p.prevPosition.y - p.y
+      this._scrollY = Phaser.Math.Clamp(this._scrollY + dy, 0, maxScroll)
+      container.y = -this._scrollY
     }
+    this._wheelHandler = (_, __, ___, dy) => {
+      this._scrollY = Phaser.Math.Clamp(this._scrollY + dy * 0.5, 0, maxScroll)
+      container.y = -this._scrollY
+    }
+    this.input.on('pointermove', this._scrollHandler)
+    this.input.on('wheel', this._wheelHandler)
   }
 }

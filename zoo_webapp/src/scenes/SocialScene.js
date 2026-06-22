@@ -17,6 +17,9 @@ export default class SocialScene extends Phaser.Scene {
     this._partner = null
     this._trades = null
     this._selectingMyAnimal = null
+    this._scrollY = 0
+    this._scrollHandler = null
+    this._wheelHandler = null
 
     try { this._partner = await api.getPartner() } catch (_) {}
     try {
@@ -29,9 +32,13 @@ export default class SocialScene extends Phaser.Scene {
   }
 
   _clear() {
+    if (this._scrollHandler) this.input.off('pointermove', this._scrollHandler)
+    if (this._wheelHandler) this.input.off('wheel', this._wheelHandler)
+    this._scrollHandler = null
+    this._wheelHandler = null
     this._objs.forEach(o => o.destroy())
     this._objs = []
-    if (this._container) { this._container.destroy(); this._container = null }
+    this._container = null
   }
 
   _render() {
@@ -71,12 +78,17 @@ export default class SocialScene extends Phaser.Scene {
       const tabTxt = this.add.text(i * tabW + tabW / 2, tabY + 11, tab, {
         fontFamily: 'monospace', fontSize: '10px', color: isActive ? '#ffd700' : '#666666',
       }).setOrigin(0.5).setDepth(2).setInteractive({ useHandCursor: true })
-      tabTxt.on('pointerdown', () => { this._tab = tab; this._selectingMyAnimal = null; this._render() })
+      tabTxt.on('pointerdown', () => {
+        this._tab = tab
+        this._selectingMyAnimal = null
+        this._scrollY = 0
+        this._render()
+      })
       this._objs.push(tabBg, tabTxt)
     })
 
     const TOP = 100
-    this._container = this.add.container(0, 0)
+    this._container = this.add.container(0, -this._scrollY)
     this._objs.push(this._container)
 
     if (this._tab === 'VISIT') this._renderVisit(TOP, width, height)
@@ -90,7 +102,6 @@ export default class SocialScene extends Phaser.Scene {
     const partner = this._partner
     let y = TOP
 
-    // Feed button
     const feedBg = this.add.rectangle(16, y, width - 32, 40, 0x1a3a1a).setOrigin(0, 0).setDepth(1).setInteractive({ useHandCursor: true })
     const feedTxt = this.add.text(width / 2, y + 20, `🍖 Feed ${partner.username}'s hungriest animal`, {
       fontFamily: 'monospace', fontSize: '11px', color: '#44cc44',
@@ -107,7 +118,6 @@ export default class SocialScene extends Phaser.Scene {
     this._container.add(subTxt)
     y += 22
 
-    // Partner's animals
     const animals = partner.animals || []
     if (!animals.length) {
       const emptyTxt = this.add.text(width / 2, y + 20, `${partner.username}'s zoo is empty.`, {
@@ -143,7 +153,7 @@ export default class SocialScene extends Phaser.Scene {
       y += 38
     })
 
-    this._setupScroll(y - TOP, height - TOP - 56)
+    this._attachScroll(this._container, y - TOP, height - TOP - 56)
   }
 
   // ── GIFT ───────────────────────────────────────────────────────────────────
@@ -202,7 +212,7 @@ export default class SocialScene extends Phaser.Scene {
       y += 72
     }
 
-    this._setupScroll(y - TOP, height - TOP - 56)
+    this._attachScroll(this._container, y - TOP, height - TOP - 56)
   }
 
   // ── TRADE ──────────────────────────────────────────────────────────────────
@@ -213,7 +223,6 @@ export default class SocialScene extends Phaser.Scene {
     const incoming = trades.filter(t => t.is_incoming)
     const outgoing = trades.filter(t => !t.is_incoming)
 
-    // Incoming trades
     if (incoming.length) {
       const inHdr = this.add.text(12, y, '📬 Incoming trade offers', {
         fontFamily: 'monospace', fontSize: '11px', color: '#ffd700',
@@ -247,7 +256,6 @@ export default class SocialScene extends Phaser.Scene {
       })
     }
 
-    // Outgoing trades
     if (outgoing.length) {
       const outHdr = this.add.text(12, y, '📤 Your pending offers', {
         fontFamily: 'monospace', fontSize: '11px', color: '#888888',
@@ -271,7 +279,6 @@ export default class SocialScene extends Phaser.Scene {
       })
     }
 
-    // Propose new trade
     const proposeHdr = this.add.text(12, y, '🔄 Propose a trade', {
       fontFamily: 'monospace', fontSize: '11px', color: '#ffd700',
     }).setDepth(1)
@@ -289,7 +296,6 @@ export default class SocialScene extends Phaser.Scene {
       return
     }
 
-    // Two-column selector: Your animals | Partner's animals
     const colW = (width - 24) / 2
     const yourHdr = this.add.text(12, y, 'Your animal', {
       fontFamily: 'monospace', fontSize: '9px', color: '#888888',
@@ -301,8 +307,8 @@ export default class SocialScene extends Phaser.Scene {
     y += 14
 
     const maxRows = Math.max(myAnimals.length, theirAnimals.length)
-    let myPick = this._selectingMyAnimal
-    let theirPick = this._tradeTheirPick
+    const myPick = this._selectingMyAnimal
+    const theirPick = this._tradeTheirPick
 
     myAnimals.forEach((a, i) => {
       const ry = y + i * 32
@@ -345,7 +351,7 @@ export default class SocialScene extends Phaser.Scene {
       y += 44
     }
 
-    this._setupScroll(y - TOP, height - TOP - 56)
+    this._attachScroll(this._container, y - TOP, height - TOP - 56)
   }
 
   // ── Actions ────────────────────────────────────────────────────────────────
@@ -410,18 +416,21 @@ export default class SocialScene extends Phaser.Scene {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
-  _setupScroll(contentH, usableH) {
-    if (contentH > usableH) {
-      this.input.on('pointermove', (p) => {
-        if (p.isDown) {
-          this._container.y = Phaser.Math.Clamp(
-            this._container.y + p.velocity.y * 0.3,
-            -(contentH - usableH),
-            0,
-          )
-        }
-      })
+  _attachScroll(container, contentH, usableH) {
+    if (contentH <= usableH) return
+    const maxScroll = contentH - usableH
+    this._scrollHandler = (p) => {
+      if (!p.isDown) return
+      const dy = p.prevPosition.y - p.y
+      this._scrollY = Phaser.Math.Clamp(this._scrollY + dy, 0, maxScroll)
+      container.y = -this._scrollY
     }
+    this._wheelHandler = (_, __, ___, dy) => {
+      this._scrollY = Phaser.Math.Clamp(this._scrollY + dy * 0.5, 0, maxScroll)
+      container.y = -this._scrollY
+    }
+    this.input.on('pointermove', this._scrollHandler)
+    this.input.on('wheel', this._wheelHandler)
   }
 
   _showToast(msg) {
