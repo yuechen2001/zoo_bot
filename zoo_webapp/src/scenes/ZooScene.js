@@ -26,7 +26,7 @@ const BOTTOM_OFFSET = 56
 export default class ZooScene extends Phaser.Scene {
   constructor() { super('Zoo') }
 
-  create() {
+  async create() {
     this.hud = new HUD(this)
     this._animalPanel = null
     this._tiles = []
@@ -39,6 +39,18 @@ export default class ZooScene extends Phaser.Scene {
       this.hud.resize(gameSize.width, gameSize.height)
       this._rebuildWorld()
     })
+
+    // Refresh state on entry so data is always current
+    try {
+      const [user, animals, enclosures] = await Promise.all([
+        api.getMe(), api.getAnimals(), api.getEnclosures(),
+      ])
+      GameState.setUser(user)
+      GameState.setAnimals(animals)
+      GameState.setEnclosures(enclosures)
+      this.hud.update()
+      this._rebuildWorld()
+    } catch (_) {}
   }
 
   _buildWorld() {
@@ -252,7 +264,8 @@ export default class ZooScene extends Phaser.Scene {
     try {
       const res = await api.feedAnimal(animal.animal_id)
       animal.hunger = res.hunger
-      GameState.user.coins -= res.coins_spent
+      const user = await api.getMe()
+      GameState.setUser(user)
       this.hud.update()
       this._rebuildWorld()
       if (this._animalPanel) {
@@ -267,7 +280,8 @@ export default class ZooScene extends Phaser.Scene {
   async _sellAnimal(animal) {
     try {
       const res = await api.sellAnimal(animal.animal_id)
-      GameState.user.coins += res.coins_earned
+      const user = await api.getMe()
+      GameState.setUser(user)
       GameState.setAnimals(GameState.animals.filter(a => a.animal_id !== animal.animal_id))
       this.hud.update()
       this._rebuildWorld()

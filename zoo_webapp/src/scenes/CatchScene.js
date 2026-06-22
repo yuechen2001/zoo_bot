@@ -18,13 +18,18 @@ const RARITY_COLORS = { common: '#888888', rare: '#4488ff', epic: '#aa44ff', leg
 export default class CatchScene extends Phaser.Scene {
   constructor() { super('Catch') }
 
-  create() {
+  async create() {
     this.hud = new HUD(this)
     this._state = 'select'   // select → searching → result
     this._selectedLure = null
     this._objs = []
     this._render()
     this.scale.on('resize', (s) => { this.hud.resize(s.width, s.height); this._render() })
+    try {
+      const inv = await api.getInventory()
+      GameState.setInventory(inv)
+      this._render()
+    } catch (_) {}
   }
 
   _clear() { this._objs.forEach(o => o.destroy()); this._objs = [] }

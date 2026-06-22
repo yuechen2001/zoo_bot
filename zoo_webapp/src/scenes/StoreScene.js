@@ -108,8 +108,9 @@ export default class StoreScene extends Phaser.Scene {
   async _buy(itemKey) {
     try {
       await api.buyItem(itemKey)
-      const [user, items] = await Promise.all([api.getMe(), api.getStore()])
+      const [user, items, inv] = await Promise.all([api.getMe(), api.getStore(), api.getInventory()])
       GameState.setUser(user)
+      GameState.setInventory(inv)
       this._items = items
       this.hud.update()
       this._render()

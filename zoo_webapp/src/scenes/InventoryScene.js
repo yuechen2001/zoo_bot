@@ -18,8 +18,9 @@ export default class InventoryScene extends Phaser.Scene {
     this._scrollHandler = null
     this._wheelHandler = null
     try {
-      const storeItems = await api.getStore()
+      const [storeItems, inv] = await Promise.all([api.getStore(), api.getInventory()])
       for (const item of storeItems) this._meta[item.key] = item
+      GameState.setInventory(inv)
     } catch (_) {}
     this._render()
     this.scale.on('resize', (s) => { this.hud.resize(s.width, s.height); this._render() })
