@@ -38,7 +38,9 @@ async def start_catch(body: CatchBody, uid: int = Depends(get_uid)):
             raise HTTPException(status_code=400, detail="Invalid lure key")
         item_counts = db.get_item_counts(uid)
         if item_counts.get(lure_key, 0) < 1:
-            raise HTTPException(status_code=400, detail="No lure of that type in inventory")
+            raise HTTPException(
+                status_code=400, detail="No lure of that type in inventory"
+            )
         habitat = lure_key.removeprefix("lure_")
         # Consume lure
         purchase_row = db.get_oldest_purchase(uid, lure_key)
@@ -47,7 +49,9 @@ async def start_catch(body: CatchBody, uid: int = Depends(get_uid)):
         base_catch_multiplier = LURE_MULTIPLIER
 
     if user["coins"] < catch_cost:
-        raise HTTPException(status_code=400, detail=f"Need {catch_cost} coins to search")
+        raise HTTPException(
+            status_code=400, detail=f"Need {catch_cost} coins to search"
+        )
 
     # Apply power-ups
     catch_net = bool(user["catch_net_active"])
@@ -108,7 +112,15 @@ async def start_catch(body: CatchBody, uid: int = Depends(get_uid)):
         conn.execute(
             "INSERT INTO animals (animal_id, user_id, species_id, hunger, is_shiny, "
             "stat_speed, stat_rarity, stat_temperament) VALUES (?, ?, ?, 100, ?, ?, ?, ?)",
-            (animal_id, uid, species["species_id"], is_shiny, stat_speed, stat_rarity, stat_temperament),
+            (
+                animal_id,
+                uid,
+                species["species_id"],
+                is_shiny,
+                stat_speed,
+                stat_rarity,
+                stat_temperament,
+            ),
         )
 
     await check_achievements(uid, "catch", NULL_CTX)
@@ -119,5 +131,9 @@ async def start_catch(body: CatchBody, uid: int = Depends(get_uid)):
         "species": dict(species),
         "rarity": rarity,
         "is_shiny": is_shiny,
-        "stats": {"speed": stat_speed, "rarity": stat_rarity, "temperament": stat_temperament},
+        "stats": {
+            "speed": stat_speed,
+            "rarity": stat_rarity,
+            "temperament": stat_temperament,
+        },
     }

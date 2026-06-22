@@ -17,7 +17,9 @@ def _now():
 
 
 def _ready_at(inv):
-    return datetime.datetime.fromisoformat(inv["invested_at"]) + datetime.timedelta(hours=INVESTMENT_HOURS)
+    return datetime.datetime.fromisoformat(inv["invested_at"]) + datetime.timedelta(
+        hours=INVESTMENT_HOURS
+    )
 
 
 def _is_ready(inv) -> bool:
@@ -33,7 +35,11 @@ def _seconds_remaining(inv) -> int:
 async def get_investment(uid: int = Depends(get_uid)):
     inv = db.get_active_investment(uid)
     if not inv:
-        return {"active": False, "rate_pct": int(INVESTMENT_RETURN_RATE * 100), "hours": INVESTMENT_HOURS}
+        return {
+            "active": False,
+            "rate_pct": int(INVESTMENT_RETURN_RATE * 100),
+            "hours": INVESTMENT_HOURS,
+        }
     return {
         "active": True,
         "id": inv["id"],
@@ -57,7 +63,9 @@ async def create_investment(body: InvestBody, uid: int = Depends(get_uid)):
         raise HTTPException(status_code=404, detail="User not found")
 
     if body.amount < MIN_INVEST:
-        raise HTTPException(status_code=400, detail=f"Minimum investment is {MIN_INVEST} 🪙")
+        raise HTTPException(
+            status_code=400, detail=f"Minimum investment is {MIN_INVEST} 🪙"
+        )
 
     if user["coins"] < body.amount:
         raise HTTPException(status_code=400, detail="Not enough coins")
@@ -87,7 +95,11 @@ async def collect_investment(uid: int = Depends(get_uid)):
         secs = _seconds_remaining(inv)
         h, rem = divmod(secs, 3600)
         m = rem // 60
-        detail = f"Not ready yet! {h}h {m}m remaining" if h else f"Not ready yet! {m}m remaining"
+        detail = (
+            f"Not ready yet! {h}h {m}m remaining"
+            if h
+            else f"Not ready yet! {m}m remaining"
+        )
         raise HTTPException(status_code=400, detail=detail)
 
     db.collect_investment(inv["id"])

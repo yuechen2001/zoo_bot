@@ -5,7 +5,16 @@ from deps import get_uid
 
 router = APIRouter(tags=["directory"])
 
-HABITAT_ORDER = ['woodland', 'savanna', 'tropical', 'aquatic', 'tundra', 'desert', 'mythic', 'spectral']
+HABITAT_ORDER = [
+    "woodland",
+    "savanna",
+    "tropical",
+    "aquatic",
+    "tundra",
+    "desert",
+    "mythic",
+    "spectral",
+]
 
 
 @router.get("/directory")
@@ -16,13 +25,15 @@ async def get_directory(uid: int = Depends(get_uid)):
     by_habitat: dict[str, list] = {}
     for s in all_species:
         h = s["habitat"] or "other"
-        by_habitat.setdefault(h, []).append({
-            "species_id": s["species_id"],
-            "name": s["name"],
-            "emoji": s["emoji"],
-            "rarity": s["rarity"],
-            "owned": s["species_id"] in owned_ids,
-        })
+        by_habitat.setdefault(h, []).append(
+            {
+                "species_id": s["species_id"],
+                "name": s["name"],
+                "emoji": s["emoji"],
+                "rarity": s["rarity"],
+                "owned": s["species_id"] in owned_ids,
+            }
+        )
 
     for habitat_list in by_habitat.values():
         habitat_list.sort(key=lambda s: (s["rarity"], s["name"]))

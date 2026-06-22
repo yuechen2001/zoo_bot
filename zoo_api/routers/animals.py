@@ -35,7 +35,9 @@ async def feed_animal(animal_id: str, uid: int = Depends(get_uid)):
         raise HTTPException(status_code=400, detail="Animal is already full")
     feed_cost = FEED_COST_BY_RARITY.get(animal["rarity"], 10)
     if user["coins"] < feed_cost:
-        raise HTTPException(status_code=400, detail=f"Not enough coins (need {feed_cost})")
+        raise HTTPException(
+            status_code=400, detail=f"Not enough coins (need {feed_cost})"
+        )
     new_hunger = min(100, animal["hunger"] + FEED_HUNGER)
     db.feed_animal(uid, animal_id, new_hunger, feed_cost)
     await check_achievements(uid, "feed", NULL_CTX)

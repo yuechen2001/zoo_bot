@@ -1,4 +1,5 @@
 """Shared FastAPI dependencies."""
+
 import os
 from fastapi import HTTPException, Request
 
@@ -27,6 +28,7 @@ class _NullBot:
 
 class _NullCtx:
     """Minimal ctx stub for check_achievements — awards achievement to DB but skips Telegram notify."""
+
     bot = _NullBot()
 
 

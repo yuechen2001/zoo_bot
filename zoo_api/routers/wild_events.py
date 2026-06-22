@@ -59,23 +59,33 @@ async def claim_wild_event(event_id: int, uid: int = Depends(get_uid)):
     # Check enclosure capacity
     enc_level = db.get_enclosure_level(uid, species["habitat"])
     from game.species_data import ENCLOSURE_LEVELS
+
     capacity = ENCLOSURE_LEVELS[enc_level]["capacity"]
     current = db.get_animal_count_by_habitat(uid, species["habitat"])
     if current >= capacity:
-        raise HTTPException(status_code=400, detail=f"Your {species['habitat'].title()} enclosure is full")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Your {species['habitat'].title()} enclosure is full",
+        )
 
     # Requires matching lure
     lure_key = f"lure_{species['habitat']}"
     lure = db.get_oldest_purchase(uid, lure_key)
     if not lure:
-        raise HTTPException(status_code=400, detail=f"Need a {species['habitat'].title()} lure to claim this")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Need a {species['habitat'].title()} lure to claim this",
+        )
 
     db.consume_purchase(lure["id"])
 
     catch_rate = min(1.0, species["catch_rate"] * LURE_MULTIPLIER)
     if random.random() >= catch_rate:
         db.claim_wild_event(event_id, -1)
-        return {"caught": False, "message": f"🌿 {species['emoji']} {species['name']} got away!"}
+        return {
+            "caught": False,
+            "message": f"🌿 {species['emoji']} {species['name']} got away!",
+        }
 
     claimed = db.claim_wild_event(event_id, uid)
     if not claimed:

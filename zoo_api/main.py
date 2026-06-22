@@ -15,7 +15,24 @@ from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
 
 from deps import get_uid  # noqa: E402
-from routers import achievements, animals, autofeed, breed, catch, directory, enclosures, escapes, inventory, invest, minigames, quests, social, store, user, wild_events  # noqa: E402
+from routers import (  # noqa: E402
+    achievements,
+    animals,
+    autofeed,
+    breed,
+    catch,
+    directory,
+    enclosures,
+    escapes,
+    inventory,
+    invest,
+    minigames,
+    quests,
+    social,
+    store,
+    user,
+    wild_events,
+)
 
 WEBAPP_ORIGIN = os.getenv("WEBAPP_ORIGIN", "*")
 API_SECRET = os.getenv("API_SECRET", "")
@@ -36,6 +53,7 @@ async def validate_api_key(request: Request, call_next):
     if API_SECRET and request.headers.get("X-Internal-API-Key") != API_SECRET:
         return JSONResponse({"detail": "Forbidden"}, status_code=403)
     return await call_next(request)
+
 
 # All routers share the same auth dependency (supports DEV_USER_ID for local dev)
 _auth = [Depends(get_uid)]

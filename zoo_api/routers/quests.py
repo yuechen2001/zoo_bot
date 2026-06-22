@@ -24,24 +24,28 @@ async def get_quests(uid: int = Depends(get_uid)):
         if prog:
             user_row = db.get_user(uid)
             for t in ch["tasks"]:
-                tasks_out.append({
-                    "desc": t["desc"],
-                    "done": t["check"](uid, user_row),
-                })
-        chapters_out.append({
-            "chapter_num": num,
-            "arc": ch["arc"],
-            "title": ch["title"],
-            "intro": ch["intro"],
-            "outro": ch["outro"],
-            "reward_coins": ch["reward_coins"],
-            "reward_species": ch["reward_species"],
-            "reward_title": ch["reward_title"],
-            "tasks": tasks_out,
-            "started": prog is not None,
-            "completed": prog["completed_at"] is not None if prog else False,
-            "is_active": num == active_chapter,
-        })
+                tasks_out.append(
+                    {
+                        "desc": t["desc"],
+                        "done": t["check"](uid, user_row),
+                    }
+                )
+        chapters_out.append(
+            {
+                "chapter_num": num,
+                "arc": ch["arc"],
+                "title": ch["title"],
+                "intro": ch["intro"],
+                "outro": ch["outro"],
+                "reward_coins": ch["reward_coins"],
+                "reward_species": ch["reward_species"],
+                "reward_title": ch["reward_title"],
+                "tasks": tasks_out,
+                "started": prog is not None,
+                "completed": prog["completed_at"] is not None if prog else False,
+                "is_active": num == active_chapter,
+            }
+        )
 
     return {
         "arcs": dict(ARCS),

@@ -56,10 +56,14 @@ async def start_breed(body: BreedBody, uid: int = Depends(get_uid)):
         if not a or a["user_id"] != uid:
             raise HTTPException(status_code=404, detail=f"Animal {label} not found")
         if a["is_breeding"]:
-            raise HTTPException(status_code=400, detail=f"Animal {label} is already breeding")
+            raise HTTPException(
+                status_code=400, detail=f"Animal {label} is already breeding"
+            )
 
     if body.animal_a_id == body.animal_b_id:
-        raise HTTPException(status_code=400, detail="Cannot breed an animal with itself")
+        raise HTTPException(
+            status_code=400, detail="Cannot breed an animal with itself"
+        )
 
     cost = calc_breed_cost(animal_a["rarity"], animal_b["rarity"])
     if user["coins"] < cost:
@@ -69,10 +73,13 @@ async def start_breed(body: BreedBody, uid: int = Depends(get_uid)):
     habitat_bonus = ENCLOSURE_LEVELS[enc_level].get("breed_bonus", 0.0)
 
     ready_at = calc_breed_ready_at(
-        animal_a["rarity"], animal_b["rarity"],
-        animal_a["hunger"], animal_b["hunger"],
+        animal_a["rarity"],
+        animal_b["rarity"],
+        animal_a["hunger"],
+        animal_b["hunger"],
         habitat_bonus,
-        animal_a["stat_speed"], animal_b["stat_speed"],
+        animal_a["stat_speed"],
+        animal_b["stat_speed"],
     )
 
     def get_candidates(rarity):
@@ -82,12 +89,16 @@ async def start_breed(body: BreedBody, uid: int = Depends(get_uid)):
             ).fetchall()
 
     offspring_species_id = resolve_offspring(
-        animal_a["rarity"], animal_b["rarity"],
+        animal_a["rarity"],
+        animal_b["rarity"],
         get_candidates,
-        animal_a["stat_rarity"], animal_b["stat_rarity"],
+        animal_a["stat_rarity"],
+        animal_b["stat_rarity"],
     )
 
-    db.start_breed(uid, body.animal_a_id, body.animal_b_id, offspring_species_id, ready_at, cost)
+    db.start_breed(
+        uid, body.animal_a_id, body.animal_b_id, offspring_species_id, ready_at, cost
+    )
     return {"ready_at": ready_at, "cost": cost}
 
 
@@ -119,7 +130,9 @@ async def collect_breed(uid: int = Depends(get_uid)):
 
     stat_speed = _inherit(parent_a["stat_speed"], parent_b["stat_speed"])
     stat_rarity = _inherit(parent_a["stat_rarity"], parent_b["stat_rarity"])
-    stat_temperament = _inherit(parent_a["stat_temperament"], parent_b["stat_temperament"])
+    stat_temperament = _inherit(
+        parent_a["stat_temperament"], parent_b["stat_temperament"]
+    )
     is_shiny = random.random() < 0.015
 
     animal_id = str(uuid.uuid4())
@@ -127,13 +140,23 @@ async def collect_breed(uid: int = Depends(get_uid)):
         conn.execute(
             "INSERT INTO animals (animal_id, user_id, species_id, hunger, is_shiny, "
             "stat_speed, stat_rarity, stat_temperament) VALUES (?, ?, ?, 100, ?, ?, ?, ?)",
-            (animal_id, uid, breed["offspring_species_id"], is_shiny, stat_speed, stat_rarity, stat_temperament),
+            (
+                animal_id,
+                uid,
+                breed["offspring_species_id"],
+                is_shiny,
+                stat_speed,
+                stat_rarity,
+                stat_temperament,
+            ),
         )
         conn.execute(
             "UPDATE animals SET is_breeding = 0 WHERE animal_id IN (?, ?)",
             (breed["parent_a"], breed["parent_b"]),
         )
-        conn.execute("UPDATE breeding_queue SET collected = 1 WHERE id = ?", (breed["id"],))
+        conn.execute(
+            "UPDATE breeding_queue SET collected = 1 WHERE id = ?", (breed["id"],)
+        )
 
     offspring = db.get_animal(animal_id)
     await check_achievements(uid, "breed", NULL_CTX)
@@ -145,5 +168,9 @@ async def collect_breed(uid: int = Depends(get_uid)):
         "species_name": offspring["species_name"] if offspring else "",
         "rarity": offspring["rarity"] if offspring else "",
         "is_shiny": is_shiny,
-        "stats": {"speed": stat_speed, "rarity": stat_rarity, "temperament": stat_temperament},
+        "stats": {
+            "speed": stat_speed,
+            "rarity": stat_rarity,
+            "temperament": stat_temperament,
+        },
     }

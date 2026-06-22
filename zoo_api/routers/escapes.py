@@ -5,7 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 import db
-from game.constants import ESCAPE_LURE_SUCCESS_RATE, ESCAPE_CHASE_SUCCESS_RATE, ESCAPE_RELEASE_REFUND_RATE
+from game.constants import (
+    ESCAPE_LURE_SUCCESS_RATE,
+    ESCAPE_CHASE_SUCCESS_RATE,
+    ESCAPE_RELEASE_REFUND_RATE,
+)
 from deps import get_uid
 
 router = APIRouter(tags=["escapes"])
@@ -45,7 +49,9 @@ class ResolveBody(BaseModel):
 
 
 @router.post("/escapes/{escape_id}/resolve")
-async def resolve_escape(escape_id: int, body: ResolveBody, uid: int = Depends(get_uid)):
+async def resolve_escape(
+    escape_id: int, body: ResolveBody, uid: int = Depends(get_uid)
+):
     escape = db.get_escape(escape_id)
     if not escape:
         raise HTTPException(status_code=404, detail="Escape not found")
@@ -69,7 +75,9 @@ async def resolve_escape(escape_id: int, body: ResolveBody, uid: int = Depends(g
         lure_key = f"lure_{animal['habitat']}"
         purchase = db.get_oldest_purchase(uid, lure_key)
         if not purchase:
-            raise HTTPException(status_code=400, detail=f"No {animal['habitat']} lure in inventory")
+            raise HTTPException(
+                status_code=400, detail=f"No {animal['habitat']} lure in inventory"
+            )
         db.consume_purchase(purchase["id"])
         if random.random() < ESCAPE_LURE_SUCCESS_RATE:
             db.resolve_escape(escape_id, 1)
@@ -77,7 +85,10 @@ async def resolve_escape(escape_id: int, body: ResolveBody, uid: int = Depends(g
         else:
             db.delete_animal(escape["animal_id"])
             db.resolve_escape(escape_id, 2)
-            return {"success": False, "message": f"😢 The lure failed — {emoji} {name} got away!"}
+            return {
+                "success": False,
+                "message": f"😢 The lure failed — {emoji} {name} got away!",
+            }
 
     elif body.action == "chase":
         if random.random() < ESCAPE_CHASE_SUCCESS_RATE:
@@ -86,13 +97,19 @@ async def resolve_escape(escape_id: int, body: ResolveBody, uid: int = Depends(g
         else:
             db.delete_animal(escape["animal_id"])
             db.resolve_escape(escape_id, 2)
-            return {"success": False, "message": f"😢 {emoji} {name} was too fast and got away!"}
+            return {
+                "success": False,
+                "message": f"😢 {emoji} {name} was too fast and got away!",
+            }
 
     elif body.action == "release":
         refund = max(1, round(animal["catch_cost"] // 2 * ESCAPE_RELEASE_REFUND_RATE))
         db.add_coins(uid, refund)
         db.delete_animal(escape["animal_id"])
         db.resolve_escape(escape_id, 3)
-        return {"success": True, "message": f"🕊️ {emoji} {name} was set free. +{refund} 🪙"}
+        return {
+            "success": True,
+            "message": f"🕊️ {emoji} {name} was set free. +{refund} 🪙",
+        }
 
     raise HTTPException(status_code=400, detail="Invalid action")

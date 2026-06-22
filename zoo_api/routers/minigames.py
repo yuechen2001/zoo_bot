@@ -95,7 +95,9 @@ async def get_trivia_question(uid: int = Depends(get_uid)):
         "question": q["q"],
         "choices": q["options"],
         "wager_options": TRIVIA_WAGER_OPTIONS,
-        "expires_at": (now + datetime.timedelta(minutes=TRIVIA_WINDOW_MINUTES)).isoformat(),
+        "expires_at": (
+            now + datetime.timedelta(minutes=TRIVIA_WINDOW_MINUTES)
+        ).isoformat(),
         "_answer_key": q["answer"],
     }
 
@@ -192,14 +194,20 @@ async def foot_massage(uid: int = Depends(get_uid)):
         au_dt = datetime.datetime.fromisoformat(active_until)
         if now < au_dt:
             remaining = int((au_dt - now).total_seconds())
-            raise HTTPException(status_code=400, detail=f"Massage active! {remaining // 60}m remaining")
+            raise HTTPException(
+                status_code=400, detail=f"Massage active! {remaining // 60}m remaining"
+            )
         cooldown_end = au_dt + datetime.timedelta(hours=MASSAGE_COOLDOWN_HOURS)
         if now < cooldown_end:
             remaining = int((cooldown_end - now).total_seconds())
-            raise HTTPException(status_code=400, detail=f"On cooldown. {remaining // 60}m remaining")
+            raise HTTPException(
+                status_code=400, detail=f"On cooldown. {remaining // 60}m remaining"
+            )
 
     if user["coins"] < MASSAGE_COST:
-        raise HTTPException(status_code=400, detail=f"Need {MASSAGE_COST} 🪙 for a massage")
+        raise HTTPException(
+            status_code=400, detail=f"Need {MASSAGE_COST} 🪙 for a massage"
+        )
 
     massage_until = (now + datetime.timedelta(hours=MASSAGE_DURATION_HOURS)).isoformat()
     db.activate_massage(uid, MASSAGE_COST, massage_until)
