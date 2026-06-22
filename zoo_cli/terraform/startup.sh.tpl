@@ -38,6 +38,8 @@ gsutil cp gs://${backup_bucket}/zoo_bot.db ${database_path} 2>/dev/null \
 # ── Write bot .env ────────────────────────────────────────────────────────────
 cat > /opt/zoo_bot/zoo_cli/.env << 'ENVEOF'
 BOT_TOKEN=${bot_token}
+BOT_TOKEN_PROD=${bot_token}
+BOT_ENV=prod
 DATABASE_PATH=${database_path}
 PROMPT_INTERVAL_MINUTES=${prompt_interval}
 TIMEZONE=${timezone}
