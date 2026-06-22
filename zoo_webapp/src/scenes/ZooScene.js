@@ -55,6 +55,13 @@ export default class ZooScene extends Phaser.Scene {
     dirBtn.on('pointerdown', () => this.scene.start('Directory'))
     this._tiles.push(dirBtn)
 
+    // Social shortcut
+    const socialBtn = this.add.text(width - 32, 68, '💌', {
+      fontSize: '16px',
+    }).setOrigin(1, 0).setDepth(10).setInteractive({ useHandCursor: true })
+    socialBtn.on('pointerdown', () => this.scene.start('Social'))
+    this._tiles.push(socialBtn)
+
     const animalsByHabitat = GameState.animalsByHabitat()
     const scrollH = Math.ceil(HABITATS.length / COLS) * (TILE_H + PAD_Y) + TOP_OFFSET + BOTTOM_OFFSET
 

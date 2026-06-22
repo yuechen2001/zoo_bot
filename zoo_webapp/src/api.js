@@ -49,6 +49,13 @@ export const api = {
   getQuests: () => request('GET', '/quests'),
   getAchievements: () => request('GET', '/achievements'),
   getDirectory: () => request('GET', '/directory'),
+  getPartner: () => request('GET', '/social/partner'),
+  visitFeed: () => request('POST', '/social/partner/feed'),
+  giftAnimal: (animal_id) => request('POST', '/social/gift', { animal_id }),
+  getTrades: () => request('GET', '/social/trades'),
+  proposeTrade: (my_animal_id, their_animal_id) => request('POST', '/social/trades', { my_animal_id, their_animal_id }),
+  respondTrade: (trade_id, action) => request('POST', `/social/trades/${trade_id}/respond`, { action }),
+
   getAutofeed: () => request('GET', '/autofeed'),
   setAutofeed: (threshold, max_coins) => request('POST', '/autofeed', { threshold, max_coins }),
   disableAutofeed: () => request('POST', '/autofeed', {}),
