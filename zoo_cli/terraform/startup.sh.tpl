@@ -103,11 +103,11 @@ DB=/opt/zoo_bot/zoo_bot.db
 BUCKET=$(cat /etc/zoo_backup_bucket)
 BACKUP_DIR=/opt/zoo_bot/backups
 
-gsutil cp "$$DB" "gs://$$BUCKET/zoo_bot.db"
+gsutil cp "$DB" "gs://$BUCKET/zoo_bot.db"
 
-mkdir -p "$$BACKUP_DIR"
-cp "$$DB" "$$BACKUP_DIR/zoo_bot_$$(date +%Y%m%d_%H%M%S).db"
-ls -t "$$BACKUP_DIR"/*.db | tail -n +4 | xargs -r rm
+mkdir -p "$BACKUP_DIR"
+cp "$DB" "$BACKUP_DIR/zoo_bot_$(date +%Y%m%d_%H%M%S).db"
+ls -t "$BACKUP_DIR"/*.db | tail -n +4 | xargs -r rm
 BACKUPEOF
 
 chmod +x /usr/local/bin/zoo_backup.sh
