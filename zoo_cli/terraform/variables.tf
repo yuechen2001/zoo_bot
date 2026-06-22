@@ -12,7 +12,7 @@ variable "region" {
 variable "zone" {
   description = "GCP zone"
   type        = string
-  default     = "us-east1-b"
+  default     = "us-east1-c"
 }
 
 variable "ssh_user" {
@@ -73,23 +73,14 @@ variable "catch_expiry_minutes" {
   default     = 5
 }
 
-variable "webapp_domain" {
-  description = "Domain for the Mini App (e.g. zoo.yourdomain.com). Add a CNAME in Cloudflare pointing to <tunnel-id>.cfargotunnel.com."
-  type        = string
-}
-
 variable "webapp_url" {
-  description = "Full HTTPS URL of the Mini App — passed to the bot as WEBAPP_URL (e.g. https://zoo.yourdomain.com)"
+  description = "Full HTTPS URL of the Cloudflare Pages app (e.g. https://zoo-bot.pages.dev) — passed to the bot as WEBAPP_URL"
   type        = string
+  default     = ""
 }
 
-variable "cloudflare_tunnel_id" {
-  description = "UUID of the Cloudflare Tunnel (from: cloudflared tunnel create zoo)"
-  type        = string
-}
-
-variable "cloudflare_tunnel_credentials" {
-  description = "JSON content of the tunnel credentials file (~/.cloudflared/<tunnel-id>.json)"
+variable "api_secret" {
+  description = "Shared secret between Cloudflare Pages Function and the API. Generate with: openssl rand -hex 32"
   type        = string
   sensitive   = true
 }

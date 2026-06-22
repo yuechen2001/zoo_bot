@@ -7,8 +7,8 @@ __pycache__/
 *.pyc
 
 # Agent harness files — local only
-zoo_cli/CLAUDE.md
-zoo_cli/docs/
+CLAUDE.md
+docs/
 zoo_cli/tests/test_architecture.py
 
 # zoo_api
@@ -20,3 +20,11 @@ zoo_api/.env
 # zoo_webapp
 zoo_webapp/node_modules/
 zoo_webapp/dist/
+run_local.txt
+
+# Terraform — tfvars contains secrets (tokens, keys)
+zoo_cli/terraform/terraform.tfvars
+zoo_cli/terraform/terraform.tfstate
+zoo_cli/terraform/terraform.tfstate.backup
+zoo_cli/terraform/.terraform/
+zoo_cli/terraform/.terraform.lock.hcl

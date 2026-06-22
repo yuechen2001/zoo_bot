@@ -48,7 +48,7 @@ jobs:
     needs: [ci, webapp-ci]
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy to GCP VM
+      - name: Deploy bot + API to GCP VM
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.GCP_VM_IP }}
@@ -75,17 +75,12 @@ jobs:
               grep -q "^${key}=" zoo_api/.env || echo "${key}=${value}" >> zoo_api/.env
             done < zoo_api/.env.example
 
-            # Build webapp on the VM (fast — ~2s with cached node_modules)
-            cd /opt/zoo_bot/zoo_webapp && npm ci --quiet && npm run build
-            cd /opt/zoo_bot
-
             # Run DB migrations
             ./venv/bin/python zoo_cli/migrate.py up
 
             # Restart services
             sudo systemctl restart zoobot
             sudo systemctl restart zooapi
-            sudo systemctl reload nginx
 
             sleep 2
             sudo systemctl is-active --quiet zoobot && echo "Bot OK" || (echo "Bot failed" && sudo journalctl -u zoobot -n 20 && exit 1)
