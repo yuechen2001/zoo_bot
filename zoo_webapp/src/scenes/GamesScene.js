@@ -44,6 +44,23 @@ export default class GamesScene extends Phaser.Scene {
     y = this._renderSlotsCard(y)
     y = this._renderGambleCard(y)
     y = this._renderInvestCard(y)
+    this._renderAutofeedCard(y)
+  }
+
+  _renderAutofeedCard(y) {
+    const { width } = this.scale
+    y = this._cardBg(y, 56)
+    this.add.text(12, y + 4, '⚙️ Auto-Feed', {
+      fontFamily: 'monospace', fontSize: '13px', color: '#ffffff',
+    })
+    this.add.text(12, y + 22, 'Auto-feed hungry animals on a timer', {
+      fontFamily: 'monospace', fontSize: '10px', color: '#666666',
+    })
+    const btn = this.add.text(width - 14, y + 16, 'SETTINGS →', {
+      fontFamily: 'monospace', fontSize: '11px', color: '#ffd700',
+    }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true })
+    btn.on('pointerdown', () => this.scene.start('Autofeed'))
+    this._objs.push(btn)
   }
 
   // ── Daily Claim ──────────────────────────────────────────────────────────────

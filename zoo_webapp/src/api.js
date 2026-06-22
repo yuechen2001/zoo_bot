@@ -48,6 +48,10 @@ export const api = {
 
   getQuests: () => request('GET', '/quests'),
   getAchievements: () => request('GET', '/achievements'),
+  getDirectory: () => request('GET', '/directory'),
+  getAutofeed: () => request('GET', '/autofeed'),
+  setAutofeed: (threshold, max_coins) => request('POST', '/autofeed', { threshold, max_coins }),
+  disableAutofeed: () => request('POST', '/autofeed', {}),
 
   getPendingEscape: () => request('GET', '/escapes/pending'),
   resolveEscape: (escape_id, action) => request('POST', `/escapes/${escape_id}/resolve`, { action }),

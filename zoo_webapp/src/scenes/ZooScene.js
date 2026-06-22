@@ -48,6 +48,13 @@ export default class ZooScene extends Phaser.Scene {
     this._tiles = []
     this._animalSprites = []
 
+    // Directory shortcut
+    const dirBtn = this.add.text(width - 8, 68, '📖', {
+      fontSize: '16px',
+    }).setOrigin(1, 0).setDepth(10).setInteractive({ useHandCursor: true })
+    dirBtn.on('pointerdown', () => this.scene.start('Directory'))
+    this._tiles.push(dirBtn)
+
     const animalsByHabitat = GameState.animalsByHabitat()
     const scrollH = Math.ceil(HABITATS.length / COLS) * (TILE_H + PAD_Y) + TOP_OFFSET + BOTTOM_OFFSET
 
@@ -171,7 +178,7 @@ export default class ZooScene extends Phaser.Scene {
 
     const { width, height } = this.scale
     const panelW = Math.min(260, width - 20)
-    const panelH = 180
+    const panelH = 220
     const px = (width - panelW) / 2
     const py = (height - panelH) / 2
 
@@ -195,16 +202,17 @@ export default class ZooScene extends Phaser.Scene {
       fontFamily: 'monospace', fontSize: '11px', color: '#aaaaaa',
     }).setOrigin(0.5, 0).setDepth(50)
 
-    // Action buttons
-    const actions = [
+    // Action buttons — 2x2 grid + full-width Inspect + Close row
+    const closeAction = () => { objs.forEach(o => o.destroy()); this._animalPanel = null }
+    const gridActions = [
       { label: '🍖 Feed', action: () => this._feedAnimal(animal) },
       { label: '✏️ Name', action: () => this._promptName(animal) },
       { label: '💰 Sell', action: () => this._sellAnimal(animal) },
-      { label: '✕ Close', action: () => { objs.forEach(o => o.destroy()); this._animalPanel = null } },
+      { label: '🔬 Inspect', action: () => { closeAction(); this.scene.start('Inspect', { animal }) } },
     ]
 
     const btnW = (panelW - 16) / 2
-    actions.forEach((act, i) => {
+    gridActions.forEach((act, i) => {
       const bx = px + 8 + (i % 2) * (btnW + 4)
       const by = py + 75 + Math.floor(i / 2) * 40
       const btnBg = this.add.rectangle(bx, by, btnW, 30, 0x1a3a5a).setOrigin(0, 0).setDepth(50).setInteractive({ useHandCursor: true })
@@ -216,6 +224,18 @@ export default class ZooScene extends Phaser.Scene {
       btnBg.on('pointerout', () => btnBg.setFillStyle(0x1a3a5a))
       objs.push(btnBg, btnLabel)
     })
+
+    // Full-width close button
+    const closeBx = px + 8
+    const closeBy = py + 165
+    const closeBg = this.add.rectangle(closeBx, closeBy, panelW - 16, 30, 0x222222).setOrigin(0, 0).setDepth(50).setInteractive({ useHandCursor: true })
+    const closeLabel = this.add.text(px + panelW / 2, closeBy + 15, '✕ Close', {
+      fontFamily: 'monospace', fontSize: '11px', color: '#888888',
+    }).setOrigin(0.5).setDepth(51)
+    closeBg.on('pointerdown', closeAction)
+    closeBg.on('pointerover', () => closeBg.setFillStyle(0x333333))
+    closeBg.on('pointerout', () => closeBg.setFillStyle(0x222222))
+    objs.push(closeBg, closeLabel)
 
     objs.push(bg, border, title, rarityLabel, hungerLabel)
     this._animalPanel = objs

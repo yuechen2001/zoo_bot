@@ -9,6 +9,9 @@ import QuestScene from './scenes/QuestScene.js'
 import GamesScene from './scenes/GamesScene.js'
 import InventoryScene from './scenes/InventoryScene.js'
 import AchievementsScene from './scenes/AchievementsScene.js'
+import InspectScene from './scenes/InspectScene.js'
+import DirectoryScene from './scenes/DirectoryScene.js'
+import AutofeedScene from './scenes/AutofeedScene.js'
 
 const config = {
   type: Phaser.AUTO,
@@ -16,7 +19,7 @@ const config = {
   height: window.innerHeight,
   backgroundColor: '#1a1a2e',
   pixelArt: true,
-  scene: [BootScene, ZooScene, CatchScene, BreedScene, EnclosureScene, StoreScene, QuestScene, GamesScene, InventoryScene, AchievementsScene],
+  scene: [BootScene, ZooScene, CatchScene, BreedScene, EnclosureScene, StoreScene, QuestScene, GamesScene, InventoryScene, AchievementsScene, InspectScene, DirectoryScene, AutofeedScene],
   scale: {
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,

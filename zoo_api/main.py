@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
 
 from deps import get_uid  # noqa: E402
-from routers import achievements, animals, breed, catch, enclosures, escapes, inventory, invest, minigames, quests, store, user, wild_events  # noqa: E402
+from routers import achievements, animals, autofeed, breed, catch, directory, enclosures, escapes, inventory, invest, minigames, quests, store, user, wild_events  # noqa: E402
 
 WEBAPP_ORIGIN = os.getenv("WEBAPP_ORIGIN", "*")
 API_SECRET = os.getenv("API_SECRET", "")
@@ -52,6 +52,8 @@ app.include_router(minigames.router, prefix="/api/v1", dependencies=_auth)
 app.include_router(invest.router, prefix="/api/v1", dependencies=_auth)
 app.include_router(escapes.router, prefix="/api/v1", dependencies=_auth)
 app.include_router(wild_events.router, prefix="/api/v1", dependencies=_auth)
+app.include_router(directory.router, prefix="/api/v1", dependencies=_auth)
+app.include_router(autofeed.router, prefix="/api/v1", dependencies=_auth)
 
 
 @app.get("/health")
