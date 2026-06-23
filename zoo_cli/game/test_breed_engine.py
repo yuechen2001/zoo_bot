@@ -58,20 +58,20 @@ class TestBreedDurationStr:
         assert breed_duration_str("common", "common", 100, 100) == "30m"
 
     def test_rare_rare_full_hunger(self):
-        assert breed_duration_str("rare", "rare", 100, 100) == "1h"
+        assert breed_duration_str("rare", "rare", 100, 100) == "3h"
 
     def test_epic_epic_full_hunger(self):
-        assert breed_duration_str("epic", "epic", 100, 100) == "2h"
+        assert breed_duration_str("epic", "epic", 100, 100) == "8h"
 
     def test_legendary_legendary_full_hunger(self):
-        assert breed_duration_str("legendary", "legendary", 100, 100) == "2h"
+        assert breed_duration_str("legendary", "legendary", 100, 100) == "16h"
 
     def test_common_rare_full_hunger(self):
-        assert breed_duration_str("common", "rare", 100, 100) == "45m"
+        assert breed_duration_str("common", "rare", 100, 100) == "1h 30m"
 
-    def test_legendary_legendary_zero_hunger_is_4h(self):
-        # At 0 hunger modifier = 2.0× → 2h × 2 = 4h
-        assert breed_duration_str("legendary", "legendary", 0, 0) == "4h"
+    def test_legendary_legendary_zero_hunger_is_32h(self):
+        # At 0 hunger modifier = 2.0× → 16h × 2 = 32h
+        assert breed_duration_str("legendary", "legendary", 0, 0) == "1d 8h"
 
     def test_hunger_increases_time(self):
         short = breed_duration_str("rare", "rare", 100, 100)
@@ -105,11 +105,11 @@ class TestCalcBreedReadyAt:
         delta = dt - datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         assert abs(delta.total_seconds() - 30 * 60) < 5
 
-    def test_legendary_legendary_full_hunger_approx_2h(self):
+    def test_legendary_legendary_full_hunger_approx_16h(self):
         ts = calc_breed_ready_at("legendary", "legendary", 100, 100)
         dt = datetime.datetime.fromisoformat(ts)
         delta = dt - datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-        assert abs(delta.total_seconds() - 2 * 3600) < 5
+        assert abs(delta.total_seconds() - 16 * 3600) < 5
 
     def test_low_hunger_makes_longer_breed(self):
         ts_full = calc_breed_ready_at("rare", "rare", 100, 100)

@@ -1190,18 +1190,18 @@ RARITY_SQUARE = {
 }
 
 # Breed costs by rarity pair (sorted tuple → cost, base_hours at 100 hunger).
-# Max breed time = base_hours * 2 (at 0 hunger). Legendary×Legendary capped at 4h.
+# Max breed time = base_hours * 2 (at 0 hunger). Speed stat and enclosure bonus can reduce further.
 BREED_TABLE = {
     ("common", "common"): {"cost": 50, "hours": 0.5},
-    ("common", "rare"): {"cost": 120, "hours": 0.75},
-    ("rare", "rare"): {"cost": 200, "hours": 1.0},
-    ("common", "epic"): {"cost": 250, "hours": 1.25},
-    ("rare", "epic"): {"cost": 300, "hours": 1.5},
-    ("epic", "epic"): {"cost": 400, "hours": 2.0},
-    ("common", "legendary"): {"cost": 500, "hours": 1.25},
-    ("rare", "legendary"): {"cost": 600, "hours": 1.5},
-    ("epic", "legendary"): {"cost": 700, "hours": 2.0},
-    ("legendary", "legendary"): {"cost": 800, "hours": 2.0},
+    ("common", "rare"): {"cost": 120, "hours": 1.5},
+    ("rare", "rare"): {"cost": 200, "hours": 3.0},
+    ("common", "epic"): {"cost": 250, "hours": 2.0},
+    ("rare", "epic"): {"cost": 300, "hours": 5.0},
+    ("epic", "epic"): {"cost": 400, "hours": 8.0},
+    ("common", "legendary"): {"cost": 500, "hours": 3.0},
+    ("rare", "legendary"): {"cost": 600, "hours": 6.0},
+    ("epic", "legendary"): {"cost": 700, "hours": 10.0},
+    ("legendary", "legendary"): {"cost": 800, "hours": 16.0},
 }
 
 

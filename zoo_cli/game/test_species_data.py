@@ -14,19 +14,19 @@ class TestGetBreedParams:
         assert get_breed_params("common", "common") == {"cost": 50, "hours": 0.5}
 
     def test_common_rare(self):
-        assert get_breed_params("common", "rare") == {"cost": 120, "hours": 0.75}
+        assert get_breed_params("common", "rare") == {"cost": 120, "hours": 1.5}
 
     def test_rare_rare(self):
-        assert get_breed_params("rare", "rare") == {"cost": 200, "hours": 1.0}
+        assert get_breed_params("rare", "rare") == {"cost": 200, "hours": 3.0}
 
     def test_common_epic(self):
-        assert get_breed_params("common", "epic") == {"cost": 250, "hours": 1.25}
+        assert get_breed_params("common", "epic") == {"cost": 250, "hours": 2.0}
 
     def test_epic_epic(self):
-        assert get_breed_params("epic", "epic") == {"cost": 400, "hours": 2.0}
+        assert get_breed_params("epic", "epic") == {"cost": 400, "hours": 8.0}
 
     def test_legendary_legendary(self):
-        assert get_breed_params("legendary", "legendary") == {"cost": 800, "hours": 2.0}
+        assert get_breed_params("legendary", "legendary") == {"cost": 800, "hours": 16.0}
 
     def test_symmetry_rare_common(self):
         assert get_breed_params("rare", "common") == get_breed_params("common", "rare")
