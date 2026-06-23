@@ -607,7 +607,7 @@ async def test_escape_tick_fires_for_elder_animal():
     ):
         await escape_tick(ctx)
 
-    ctx.bot.send_message.assert_called_once()
+    assert ctx.bot.send_message.call_count == 2  # group message + owner DM
     ctx.job_queue.run_once.assert_called_once()
 
 

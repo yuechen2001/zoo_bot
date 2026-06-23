@@ -10,6 +10,7 @@ from config import (
     WILD_EVENT_MIN_MINUTES,
     WILD_EVENT_MAX_MINUTES,
     WILD_EVENT_EXPIRY_MINUTES,
+    WEBAPP_URL,
 )
 from keyboards import mood_keyboard, breed_collect_keyboard
 from game.species_data import ENCLOSURE_LEVELS, HABITATS, RARITY_LABELS
@@ -165,6 +166,19 @@ async def _send_mood_prompts(ctx):
             db.bulk_set_last_prompt_at([u["user_id"] for u in members], now_str)
         except Exception:
             logger.exception("Failed to send mood prompt to %s", group_chat_id)
+            continue
+
+        # DM each member so they can respond outside the group chat
+        for u in members:
+            try:
+                await ctx.bot.send_message(
+                    u["user_id"],
+                    "🕐 *Mood check-in!* How are you feeling right now?",
+                    parse_mode="Markdown",
+                    reply_markup=mood_keyboard(),
+                )
+            except Exception:
+                pass  # User may not have started the bot in DM
 
 
 async def _decay_stats():
@@ -411,6 +425,29 @@ async def wild_event_tick(ctx):
             )
         except Exception:
             logger.exception("Failed to send wild event to %s", group_chat_id)
+            continue
+
+        # DM each user in the group so they can claim from outside the group chat
+        dm_rows = []
+        if WEBAPP_URL:
+            dm_rows = [
+                [
+                    telegram.InlineKeyboardButton(
+                        "🎮 Claim in Webapp", web_app=telegram.WebAppInfo(url=WEBAPP_URL)
+                    )
+                ]
+            ]
+        for group_user in db.get_users_in_group(group_chat_id):
+            try:
+                await ctx.bot.send_message(
+                    group_user["user_id"],
+                    f"⚡ *Wild {species['emoji']} {species['name']}* spotted in your group!\n"
+                    f"{RARITY_LABELS[species['rarity']]} · needs a {HABITATS[species['habitat']]['name']} lure · first to claim wins!",
+                    parse_mode="Markdown",
+                    reply_markup=telegram.InlineKeyboardMarkup(dm_rows) if dm_rows else None,
+                )
+            except Exception:
+                pass  # User may not have started the bot in DM
 
     delay = random.randint(WILD_EVENT_MIN_MINUTES, WILD_EVENT_MAX_MINUTES) * 60
     next_at = (
@@ -509,6 +546,44 @@ async def escape_tick(ctx):
             db.update_escape_message(escape_id, msg.message_id)
         except Exception:
             logger.exception("Failed to send escape event to %s", group_chat_id)
+            continue
+
+        # DM the owner so they can also respond outside the group chat
+        try:
+            dm_rows = [
+                [
+                    telegram.InlineKeyboardButton(
+                        "🎣 Lure it back", callback_data=f"escape_{escape_id}_lure"
+                    )
+                ],
+                [
+                    telegram.InlineKeyboardButton(
+                        "🏃 Chase it", callback_data=f"escape_{escape_id}_chase"
+                    )
+                ],
+                [
+                    telegram.InlineKeyboardButton(
+                        "🕊️ Let it go", callback_data=f"escape_{escape_id}_release"
+                    )
+                ],
+            ]
+            if WEBAPP_URL:
+                dm_rows.append(
+                    [
+                        telegram.InlineKeyboardButton(
+                            "🎮 Resolve in Webapp", web_app=telegram.WebAppInfo(url=WEBAPP_URL)
+                        )
+                    ]
+                )
+            await ctx.bot.send_message(
+                user["user_id"],
+                f"🚨 *{animal['emoji']} {name}* escaped from your zoo!\n\n"
+                f"You have {ESCAPE_WINDOW_HOURS}h to respond.",
+                parse_mode="Markdown",
+                reply_markup=telegram.InlineKeyboardMarkup(dm_rows),
+            )
+        except Exception:
+            pass  # User may not have started the bot in DM
 
     delay = random.randint(ESCAPE_MIN_HOURS, ESCAPE_MAX_HOURS) * 3600
     next_at = (
