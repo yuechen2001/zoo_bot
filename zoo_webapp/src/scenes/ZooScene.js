@@ -322,17 +322,98 @@ export default class ZooScene extends Phaser.Scene {
   }
 
   _promptName(animal) {
-    const nickname = prompt(`Name for ${animal.emoji || ''} ${animal.species_name}:`, animal.nickname || '')
-    if (nickname !== null && nickname.trim()) {
-      api.nameAnimal(animal.animal_id, nickname.trim()).then(() => {
-        animal.nickname = nickname.trim()
-        this._rebuildWorld()
-        if (this._animalPanel) {
-          this._animalPanel.forEach(o => o.destroy())
-          this._animalPanel = null
-        }
-      }).catch(err => this._showToast(err.message))
+    if (this._animalPanel) {
+      this._animalPanel.forEach(o => o.destroy())
+      this._animalPanel = null
     }
+
+    const { width, height } = this.scale
+    const panelW = Math.min(260, width - 20)
+    const panelH = 130
+    const px = (width - panelW) / 2
+    const py = (height - panelH) / 2
+
+    const objs = []
+
+    const canvas = this.sys.game.canvas
+    const rect = canvas.getBoundingClientRect()
+    const scaleX = rect.width / width
+    const scaleY = rect.height / height
+
+    const inputEl = document.createElement('input')
+    inputEl.type = 'text'
+    inputEl.maxLength = 32
+    inputEl.value = animal.nickname || ''
+    inputEl.placeholder = 'Enter nickname…'
+    inputEl.style.cssText = [
+      `position:fixed`,
+      `left:${rect.left + (px + 8) * scaleX}px`,
+      `top:${rect.top + (py + 46) * scaleY}px`,
+      `width:${(panelW - 16) * scaleX}px`,
+      `height:${32 * scaleY}px`,
+      `font-family:monospace`,
+      `font-size:16px`,
+      `background:#0d1b2a`,
+      `color:#ffffff`,
+      `border:1px solid #4488ff`,
+      `padding:4px 8px`,
+      `box-sizing:border-box`,
+      `outline:none`,
+      `z-index:1000`,
+      `border-radius:2px`,
+    ].join(';')
+    document.body.appendChild(inputEl)
+
+    const cleanup = () => {
+      objs.forEach(o => o.destroy())
+      if (inputEl.parentNode) inputEl.parentNode.removeChild(inputEl)
+    }
+
+    const bg = this.add.rectangle(px, py, panelW, panelH, 0x0d1b2a, 0.97).setOrigin(0, 0).setDepth(60)
+    const border = this.add.rectangle(px, py, panelW, panelH).setStrokeStyle(2, 0x4488ff).setOrigin(0, 0).setDepth(60)
+    const title = this.add.text(px + panelW / 2, py + 12, `✏️ ${animal.emoji || ''} ${animal.species_name}`, {
+      fontFamily: 'monospace', fontSize: '11px', color: '#aaaaaa',
+    }).setOrigin(0.5, 0).setDepth(61)
+    const hint = this.add.text(px + panelW / 2, py + 28, 'Enter nickname (max 32 chars)', {
+      fontFamily: 'monospace', fontSize: '9px', color: '#555555',
+    }).setOrigin(0.5, 0).setDepth(61)
+    objs.push(bg, border, title, hint)
+
+    const btnW = (panelW - 20) / 2
+    const by = py + panelH - 36
+    const saveBg = this.add.rectangle(px + 8, by, btnW, 28, 0x1a4a1a).setOrigin(0, 0).setDepth(61).setInteractive({ useHandCursor: true })
+    const saveLabel = this.add.text(px + 8 + btnW / 2, by + 14, '✓ Save', {
+      fontFamily: 'monospace', fontSize: '11px', color: '#44ff44',
+    }).setOrigin(0.5).setDepth(62)
+    const cancelBg = this.add.rectangle(px + panelW / 2 + 2, by, btnW, 28, 0x2a1a1a).setOrigin(0, 0).setDepth(61).setInteractive({ useHandCursor: true })
+    const cancelLabel = this.add.text(px + panelW / 2 + 2 + btnW / 2, by + 14, '✕ Cancel', {
+      fontFamily: 'monospace', fontSize: '11px', color: '#ff6666',
+    }).setOrigin(0.5).setDepth(62)
+    objs.push(saveBg, saveLabel, cancelBg, cancelLabel)
+
+    const submit = async () => {
+      const nick = inputEl.value.trim()
+      if (!nick) { cleanup(); return }
+      try {
+        await api.nameAnimal(animal.animal_id, nick)
+        animal.nickname = nick
+        cleanup()
+        this._rebuildWorld()
+        this._showToast(`✏️ Named "${nick}"`)
+      } catch (err) {
+        cleanup()
+        this._showToast(err.message)
+      }
+    }
+
+    saveBg.on('pointerdown', submit)
+    cancelBg.on('pointerdown', cleanup)
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submit()
+      if (e.key === 'Escape') cleanup()
+    })
+
+    setTimeout(() => inputEl.focus(), 50)
   }
 
   _showToast(msg) {
