@@ -48,14 +48,15 @@ export default class BreedScene extends Phaser.Scene {
 
     const readyAt = new Date(breed.ready_at)
     const now = new Date()
-    const minsLeft = Math.max(0, Math.round((readyAt - now) / 60000))
+    const minsLeft = Math.max(0, Math.ceil((readyAt - now) / 60000))
+    const isReady = breed.is_ready || minsLeft === 0
     const timeLabel = this.add.text(width / 2, cy,
-      breed.is_ready ? '✅ READY TO COLLECT!' : `⏳ ${minsLeft}m remaining`, {
+      isReady ? '✅ READY TO COLLECT!' : `⏳ ${minsLeft}m remaining`, {
       fontFamily: 'monospace', fontSize: '14px',
-      color: breed.is_ready ? '#44ff44' : '#aaaaaa',
+      color: isReady ? '#44ff44' : '#aaaaaa',
     }).setOrigin(0.5)
 
-    if (breed.is_ready) {
+    if (isReady) {
       const collectBtn = this.add.rectangle(width / 2, cy + 50, 180, 36, 0x1a4a1a).setInteractive({ useHandCursor: true })
       const collectLabel = this.add.text(width / 2, cy + 50, '🐣 Collect Offspring', {
         fontFamily: 'monospace', fontSize: '13px', color: '#ffffff',
