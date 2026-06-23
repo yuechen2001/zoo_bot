@@ -41,6 +41,7 @@ export const api = {
   getMe: () => request('GET', '/user/me'),
   getAnimals: () => request('GET', '/animals'),
   feedAnimal: (id) => request('POST', `/animals/${id}/feed`),
+  feedAllAnimals: () => request('POST', '/animals/feed-all'),
   nameAnimal: (id, nickname) => request('POST', `/animals/${id}/name`, { nickname }),
   sellAnimal: (id) => request('POST', `/animals/${id}/sell`),
 

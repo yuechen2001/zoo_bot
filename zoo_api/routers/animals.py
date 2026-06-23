@@ -61,6 +61,29 @@ async def name_animal(animal_id: str, body: NameBody, uid: int = Depends(get_uid
     return {"nickname": nickname}
 
 
+@router.post("/animals/feed-all")
+async def feed_all_animals(uid: int = Depends(get_uid)):
+    user = db.get_user(uid)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    animals = db.get_animals(uid)
+    hungry = [a for a in animals if not a["is_breeding"] and a["hunger"] < 100]
+    if not hungry:
+        raise HTTPException(status_code=400, detail="All animals are already full")
+    total_cost = sum(FEED_COST_BY_RARITY.get(a["rarity"], 10) for a in hungry)
+    if user["coins"] < total_cost:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Not enough coins (need {total_cost} for {len(hungry)} animals)",
+        )
+    for animal in hungry:
+        feed_cost = FEED_COST_BY_RARITY.get(animal["rarity"], 10)
+        new_hunger = min(100, animal["hunger"] + FEED_HUNGER)
+        db.feed_animal(uid, animal["animal_id"], new_hunger, feed_cost)
+    await check_achievements(uid, "feed", NULL_CTX)
+    return {"fed": len(hungry), "coins_spent": total_cost}
+
+
 @router.post("/animals/{animal_id}/sell")
 async def sell_animal(animal_id: str, uid: int = Depends(get_uid)):
     user = db.get_user(uid)

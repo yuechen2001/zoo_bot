@@ -74,6 +74,16 @@ export default class ZooScene extends Phaser.Scene {
     socialBtn.on('pointerdown', () => this.scene.start('Social'))
     this._tiles.push(socialBtn)
 
+    // Feed All button
+    const feedAllBtn = this.add.text(8, 68, '🍖 Feed All', {
+      fontFamily: 'monospace', fontSize: '11px', color: '#aaaaaa',
+      backgroundColor: '#1a2a1a', padding: { x: 4, y: 2 },
+    }).setDepth(10).setInteractive({ useHandCursor: true })
+    feedAllBtn.on('pointerover', () => feedAllBtn.setColor('#44ff44'))
+    feedAllBtn.on('pointerout', () => feedAllBtn.setColor('#aaaaaa'))
+    feedAllBtn.on('pointerdown', () => this._feedAll(feedAllBtn))
+    this._tiles.push(feedAllBtn)
+
     const animalsByHabitat = GameState.animalsByHabitat()
     const scrollH = Math.ceil(HABITATS.length / COLS) * (TILE_H + PAD_Y) + TOP_OFFSET + BOTTOM_OFFSET
 
@@ -258,6 +268,22 @@ export default class ZooScene extends Phaser.Scene {
 
     objs.push(bg, border, title, rarityLabel, hungerLabel)
     this._animalPanel = objs
+  }
+
+  async _feedAll(btn) {
+    btn.setColor('#888888').disableInteractive()
+    try {
+      const res = await api.feedAllAnimals()
+      const [user, animals] = await Promise.all([api.getMe(), api.getAnimals()])
+      GameState.setUser(user)
+      GameState.setAnimals(animals)
+      this.hud.update()
+      this._rebuildWorld()
+      this._showToast(`🍖 Fed ${res.fed} animals (-${res.coins_spent} 🪙)`)
+    } catch (err) {
+      this._showToast(err.message)
+      btn.setColor('#aaaaaa').setInteractive({ useHandCursor: true })
+    }
   }
 
   async _feedAnimal(animal) {
