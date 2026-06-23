@@ -328,6 +328,8 @@ async def test_wild_event_tick_message_format():
         "scheduler.db.set_setting"
     ), patch(
         "scheduler.random.randint", return_value=60
+    ), patch(
+        "scheduler.db.get_users_in_group", return_value=[]
     ):
         await wild_event_tick(ctx)
 
