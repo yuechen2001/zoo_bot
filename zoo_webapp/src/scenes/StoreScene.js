@@ -38,9 +38,9 @@ export default class StoreScene extends Phaser.Scene {
     this._clear()
     const { width, height } = this.scale
 
-    const invBtn = this.add.text(width - 8, 54, '🎒 Inventory', {
-      fontFamily: 'monospace', fontSize: '11px', color: '#aaaaaa',
-    }).setOrigin(1, 0.5).setDepth(1).setInteractive({ useHandCursor: true })
+    const invBtn = this.add.text(width - 6, 82, '🎒', {
+      fontFamily: 'monospace', fontSize: '14px', color: '#aaaaaa',
+    }).setOrigin(1, 0.5).setDepth(5).setInteractive({ useHandCursor: true })
     invBtn.on('pointerdown', () => this.scene.start('Inventory'))
     invBtn.on('pointerover', () => invBtn.setColor('#ffd700'))
     invBtn.on('pointerout', () => invBtn.setColor('#aaaaaa'))

@@ -41,16 +41,11 @@ export default class InventoryScene extends Phaser.Scene {
     const { width, height } = this.scale
     const inv = GameState.inventory
 
-    const back = this.add.text(12, 52, '← Store', {
-      fontFamily: 'monospace', fontSize: '11px', color: '#888888',
-    }).setDepth(1).setInteractive({ useHandCursor: true })
+    const back = this.add.text(8, 82, '← Store', {
+      fontFamily: 'monospace', fontSize: '10px', color: '#888888',
+    }).setOrigin(0, 0.5).setDepth(5).setInteractive({ useHandCursor: true })
     back.on('pointerdown', () => this.scene.start('Store'))
     this._objs.push(back)
-
-    const title = this.add.text(width / 2, 52, '🎒 INVENTORY', {
-      fontFamily: 'monospace', fontSize: '14px', color: '#ffd700',
-    }).setOrigin(0.5, 0).setDepth(1)
-    this._objs.push(title)
 
     const tabW = width / TABS.length
     TABS.forEach((tab, i) => {
