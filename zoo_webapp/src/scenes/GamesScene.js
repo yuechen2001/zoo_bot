@@ -154,15 +154,15 @@ export default class GamesScene extends Phaser.Scene {
         const by = innerY + 90 + ci * 28
         let color = 0x1a2a4a
         if (answered) {
-          if (choice === answer_key) color = 0x1a4a1a
-          else if (choice === answered && choice !== answer_key) color = 0x4a1a1a
+          if (choice[0] === answer_key) color = 0x1a4a1a
+          else if (choice[0] === answered && choice[0] !== answer_key) color = 0x4a1a1a
         }
         const cbtn = this.add.rectangle(12, by, width - 24, 22, color).setOrigin(0, 0).setDepth(1).setInteractive({ useHandCursor: !answered })
         const clabel = this.add.text(18, by + 11, choice, {
           fontFamily: 'monospace', fontSize: '10px', color: '#cccccc',
         }).setOrigin(0, 0.5).setDepth(2)
         if (!answered) {
-          cbtn.on('pointerdown', () => this._answerTrivia(choice))
+          cbtn.on('pointerdown', () => this._answerTrivia(choice[0]))
           cbtn.on('pointerover', () => cbtn.setFillStyle(0x2a4a7a))
           cbtn.on('pointerout', () => cbtn.setFillStyle(0x1a2a4a))
         }
