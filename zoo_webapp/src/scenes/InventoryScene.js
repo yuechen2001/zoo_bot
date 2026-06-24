@@ -88,12 +88,13 @@ export default class InventoryScene extends Phaser.Scene {
 
     for (const [key, qty] of entries) {
       const m = this._meta[key] || {}
-      const row = this.add.rectangle(8, y, width - 16, 54, 0x1a2a3a).setOrigin(0, 0).setDepth(1)
+      const row = this.add.rectangle(8, y, width - 16, 64, 0x1a2a3a).setOrigin(0, 0).setDepth(1)
       const nameTxt = this.add.text(16, y + 8, `${m.emoji || '📦'} ${m.name || key}  ×${qty}`, {
         fontFamily: 'monospace', fontSize: '12px', color: '#ffffff',
       }).setDepth(2)
-      const descTxt = this.add.text(16, y + 30, (m.desc || '').slice(0, 52) + ((m.desc || '').length > 52 ? '…' : ''), {
+      const descTxt = this.add.text(16, y + 28, m.desc || '', {
         fontFamily: 'monospace', fontSize: '9px', color: '#888888',
+        wordWrap: { width: width - 110, useAdvancedWrap: true },
       }).setDepth(2)
 
       const btn = this.add.rectangle(width - 14, y + 27, 70, 24, 0x1a4a6a).setOrigin(1, 0.5).setDepth(1).setInteractive({ useHandCursor: true })
@@ -106,7 +107,7 @@ export default class InventoryScene extends Phaser.Scene {
       btn.on('pointerout', () => btn.setFillStyle(0x1a4a6a))
 
       this._scrollContainer.add([row, nameTxt, descTxt, btn, btnLabel])
-      y += 62
+      y += 72
     }
     return y
   }

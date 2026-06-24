@@ -61,15 +61,16 @@ export default class AchievementsScene extends Phaser.Scene {
     const TOP = 78
     let y = TOP
     for (const [, ach] of Object.entries(all)) {
-      const rowH = 52
+      const rowH = 64
       const bg = this.add.rectangle(8, y, width - 16, rowH, ach.earned ? 0x1a3a1a : 0x1a1a2a).setOrigin(0, 0)
       const nameColor = ach.earned ? '#ffffff' : '#555555'
       const icon = ach.earned ? ach.emoji : '🔒'
       const nameTxt = this.add.text(16, y + 8, `${icon}  ${ach.name}`, {
         fontFamily: 'monospace', fontSize: '12px', color: nameColor,
       })
-      const descTxt = this.add.text(16, y + 28, ach.desc.slice(0, 55) + (ach.desc.length > 55 ? '…' : ''), {
+      const descTxt = this.add.text(16, y + 28, ach.desc, {
         fontFamily: 'monospace', fontSize: '9px', color: ach.earned ? '#88bb88' : '#444444',
+        wordWrap: { width: width - 32, useAdvancedWrap: true },
       })
       container.add([bg, nameTxt, descTxt])
       y += rowH + 4
